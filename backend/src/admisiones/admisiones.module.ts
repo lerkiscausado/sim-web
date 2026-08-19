@@ -11,10 +11,13 @@ import { Sedes } from './entities/sedes.entity';
 import { Salones } from './entities/salones.entity';
 import { PersonaAtiende } from './entities/persona-atiende.entity';
 import { ConsentimientoInformadoPlantillas } from './entities/consentimiento-informado-plantillas.entity';
+import { TipoEstudio } from '../catalogos/entities/tipo-estudio.entity';
 import { AgendaService } from './agenda.service';
 import { AgendaController } from './agenda.controller';
 import { SedesService } from './sedes.service';
 import { SedesController } from './sedes.controller';
+import { OrdenesService } from './ordenes.service';
+import { OrdenesController } from './ordenes.controller';
 
 @Module({
   imports: [
@@ -30,10 +33,11 @@ import { SedesController } from './sedes.controller';
       Salones,
       PersonaAtiende,
       ConsentimientoInformadoPlantillas,
+      TipoEstudio,
     ]),
   ],
-  providers: [AgendaService, SedesService],
-  controllers: [AgendaController, SedesController],
-  exports: [AgendaService, SedesService],
+  providers: [AgendaService, SedesService, OrdenesService],
+  controllers: [AgendaController, SedesController, OrdenesController],
+  exports: [AgendaService, SedesService, OrdenesService],
 })
 export class AdmisionesModule {}

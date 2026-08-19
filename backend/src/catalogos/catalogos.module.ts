@@ -15,16 +15,26 @@ import { TipoEstudioService } from './tipo-estudio.service';
 import { TipoEstudioController } from './tipo-estudio.controller';
 import { TipoIdentificacionService } from './tipo-identificacion.service';
 import { TipoIdentificacionController } from './tipo-identificacion.controller';
+import { LookupsService } from './lookups.service';
+import { LookupsController } from './lookups.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Diagnosticos, Cups, Medicamentos, TipoEstudio, TipoIdentificacion])],
-  providers: [DiagnosticosService, CupsService, MedicamentosService, TipoEstudioService, TipoIdentificacionService],
+  providers: [
+    DiagnosticosService,
+    CupsService,
+    MedicamentosService,
+    TipoEstudioService,
+    TipoIdentificacionService,
+    LookupsService,
+  ],
   controllers: [
     DiagnosticosController,
     CupsController,
     MedicamentosController,
     TipoEstudioController,
     TipoIdentificacionController,
+    LookupsController,
   ],
   exports: [DiagnosticosService, CupsService, MedicamentosService, TipoEstudioService, TipoIdentificacionService],
 })

@@ -1,6 +1,7 @@
 import {
     Home,
     ClipboardList,
+    ClipboardPlus,
     Stethoscope,
     Building2,
     Settings,
@@ -43,6 +44,7 @@ export const navConfig: NavItem[] = [
         label: "Admisiones",
         icon: ClipboardList,
         children: [
+            { label: "Órdenes", href: "/admisiones/ordenes", icon: ClipboardPlus, description: "Registro de órdenes médicas y procedimientos por paciente." },
             { label: "Consentimiento Informado", href: "/admisiones/consentimiento", icon: FileSignature, description: "Gestión y firma de consentimientos informados de pacientes." },
             { label: "Agenda", href: "/admisiones/agenda", icon: CalendarDays, description: "Programación y seguimiento de citas médicas." },
             { label: "Reportes", href: "/admisiones/reportes", icon: BarChart2, description: "Informes y estadísticas del módulo de admisiones." },
@@ -93,6 +95,7 @@ export const breadcrumbLabels: Record<string, string> = {
     "": "Inicio",
     inicio: "Inicio",
     admisiones: "Admisiones",
+    ordenes: "Órdenes",
     consentimiento: "Consentimiento Informado",
     agenda: "Agenda",
     reportes: "Reportes",

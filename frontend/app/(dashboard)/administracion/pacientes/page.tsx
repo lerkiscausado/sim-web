@@ -39,6 +39,11 @@ interface Paciente {
     tipoIdentificacion?: { id: string; nombreTipoIdentificacion: string };
 }
 
+interface TipoIdentificacion {
+    id: string;
+    nombreTipoIdentificacion: string;
+}
+
 interface Paginated {
     data: Paciente[];
     total: number;
@@ -68,6 +73,7 @@ function nombreCompleto(p: Paciente) {
 
 export default function PacientesPage() {
     const [result, setResult] = useState<Paginated | null>(null);
+    const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -96,6 +102,9 @@ export default function PacientesPage() {
 
     useEffect(() => {
         cargar(1);
+        api.get<TipoIdentificacion[]>("/catalogos/tipo-identificacion")
+            .then(setTiposIdentificacion)
+            .catch(() => setTiposIdentificacion([]));
     }, [cargar]);
 
     useEffect(() => {
@@ -224,7 +233,7 @@ export default function PacientesPage() {
                         {result?.data.map((p) => (
                             <TableRow key={p.id}>
                                 <TableCell className="font-medium">
-                                    {p.tipoIdentificacion?.nombreTipoIdentificacion ?? p.idTipoIdentificacion} {p.identificacion}
+                                    {p.idTipoIdentificacion}{p.identificacion}
                                 </TableCell>
                                 <TableCell>{nombreCompleto(p)}</TableCell>
                                 <TableCell>{p.sexo === "M" ? "Masculino" : "Femenino"}</TableCell>
@@ -277,11 +286,18 @@ export default function PacientesPage() {
                     <div className="grid grid-cols-2 gap-3 py-2">
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Tipo de identificación</label>
-                            <Input
+                            <select
+                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                 value={form.idTipoIdentificacion}
-                                onChange={(e) => setForm((f) => ({ ...f, idTipoIdentificacion: e.target.value.toUpperCase() }))}
-                                maxLength={2}
-                            />
+                                onChange={(e) => setForm((f) => ({ ...f, idTipoIdentificacion: e.target.value }))}
+                            >
+                                <option value="">Seleccionar…</option>
+                                {tiposIdentificacion.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.nombreTipoIdentificacion} ({t.id})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Identificación</label>

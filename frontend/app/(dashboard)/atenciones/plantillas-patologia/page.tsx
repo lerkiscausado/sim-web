@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
+import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import {
     Table,
     TableBody,
@@ -38,6 +39,7 @@ export default function PlantillasPatologiaPage() {
     const [error, setError] = useState<string | null>(null);
 
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [previewItem, setPreviewItem] = useState<PlantillaPatologia | null>(null);
     const [editando, setEditando] = useState<PlantillaPatologia | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
@@ -150,9 +152,12 @@ export default function PlantillasPatologiaPage() {
                             <TableRow key={p.id}>
                                 <TableCell className="font-medium">{p.nombre}</TableCell>
                                 <TableCell className="max-w-md truncate text-xs text-muted-foreground">
-                                    {p.diagnostico || "—"}
+                                    {htmlToPlainText(p.diagnostico) || "—"}
                                 </TableCell>
                                 <TableCell className="text-right">
+                                    <Button variant="ghost" size="sm" onClick={() => setPreviewItem(p)}>
+                                        <Eye className="h-3.5 w-3.5" />
+                                    </Button>
                                     <Button variant="ghost" size="sm" onClick={() => abrirEditar(p)}>
                                         Editar
                                     </Button>
@@ -183,31 +188,37 @@ export default function PlantillasPatologiaPage() {
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Descripción macroscópica</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.macro}
-                                onChange={(e) => setForm((f) => ({ ...f, macro: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, macro: html }))}
                             />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Descripción microscópica</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.micro}
-                                onChange={(e) => setForm((f) => ({ ...f, micro: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, micro: html }))}
                             />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Diagnóstico</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.diagnostico}
-                                onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))}
                             />
                         </div>
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>
+                        {(form.macro || form.micro || form.diagnostico) && (
+                            <Button type="button" variant="outline" onClick={() => setPreviewItem({ id: 0, ...form })}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Vista previa
+                            </Button>
+                        )}
                         <Button onClick={guardar} disabled={guardando}>
                             {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Guardar
@@ -215,6 +226,17 @@ export default function PlantillasPatologiaPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <HtmlPreviewDialog
+                open={!!previewItem}
+                onOpenChange={(open) => !open && setPreviewItem(null)}
+                titulo={previewItem?.nombre || "Plantilla"}
+                secciones={[
+                    { titulo: "Descripción macroscópica", html: previewItem?.macro ?? "" },
+                    { titulo: "Descripción microscópica", html: previewItem?.micro ?? "" },
+                    { titulo: "Diagnóstico", html: previewItem?.diagnostico ?? "" },
+                ]}
+            />
         </div>
     );
 }

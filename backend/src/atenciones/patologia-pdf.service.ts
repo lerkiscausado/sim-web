@@ -7,6 +7,29 @@ import { Patologia } from './entities/patologia.entity';
 import { Empresa } from '../documentos-soporte/entities/empresa.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
 
+/**
+ * Los campos macro/micro/diagnóstico pueden venir en HTML (texto enriquecido
+ * capturado desde el editor o copiado de una plantilla de patología). pdfkit
+ * no renderiza HTML, así que lo convertimos a texto plano legible antes de
+ * imprimirlo: <br>/</p>/</li> se convierten en saltos de línea, las listas
+ * numeradas/con viñeta se preservan como "- " y se quita cualquier otra
+ * etiqueta.
+ */
+function htmlToPlainText(html: string | null | undefined): string {
+  if (!html) return '';
+  return html
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<\/(li|p|div)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 @Injectable()
 export class PatologiaPdfService {
   constructor(
@@ -93,12 +116,12 @@ export class PatologiaPdfService {
       this.seccion(doc, 'TIPO DE MUESTRA', patologia.tipoMuestra);
       this.seccion(doc, 'SITIO DE LESIÓN', patologia.sitioLesion);
       this.seccion(doc, 'ESTUDIO SOLICITADO', patologia.solicitado);
-      this.seccion(doc, 'DESCRIPCIÓN MACROSCÓPICA', patologia.descripcionMacroscopica);
-      this.seccion(doc, 'DESCRIPCIÓN MICROSCÓPICA', patologia.descripcionMicroscopica);
+      this.seccion(doc, 'DESCRIPCIÓN MACROSCÓPICA', htmlToPlainText(patologia.descripcionMacroscopica));
+      this.seccion(doc, 'DESCRIPCIÓN MICROSCÓPICA', htmlToPlainText(patologia.descripcionMicroscopica));
       this.seccion(
         doc,
         'DIAGNÓSTICO',
-        `${patologia.diagnostico}${
+        `${htmlToPlainText(patologia.diagnostico)}${
           patologia.diagnosticoCie10?.nombreDiagnostico
             ? ` (CIE10 ${patologia.codigoDiagnostico} — ${patologia.diagnosticoCie10.nombreDiagnostico})`
             : ''

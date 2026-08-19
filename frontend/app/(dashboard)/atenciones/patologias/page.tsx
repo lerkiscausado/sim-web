@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye } from "lucide-react";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import { Badge } from "@/components/ui/badge";
 import {
     Table,
@@ -61,6 +63,7 @@ export default function PatologiasPage() {
     const [generandoPdf, setGenerandoPdf] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [informeGuardado, setInformeGuardado] = useState<InformePatologia | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
 
     const cargarPendientes = useCallback(async () => {
         setLoading(true);
@@ -347,28 +350,28 @@ export default function PatologiasPage() {
 
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Descripción macroscópica</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.descripcionMacroscopica}
-                                onChange={(e) => setForm((f) => ({ ...f, descripcionMacroscopica: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, descripcionMacroscopica: html }))}
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Descripción microscópica</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.descripcionMicroscopica}
-                                onChange={(e) => setForm((f) => ({ ...f, descripcionMicroscopica: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, descripcionMicroscopica: html }))}
                             />
                         </div>
 
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Diagnóstico</label>
-                            <Textarea
+                            <RichTextEditor
                                 rows={3}
                                 value={form.diagnostico}
-                                onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))}
+                                onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))}
                             />
                         </div>
 
@@ -424,6 +427,12 @@ export default function PatologiasPage() {
                     </div>
 
                     <DialogFooter className="gap-2">
+                        {(form.descripcionMacroscopica || form.descripcionMicroscopica || form.diagnostico) && (
+                            <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+                                <Eye size={14} />
+                                Vista previa
+                            </Button>
+                        )}
                         {informeGuardado && (
                             <Button variant="outline" onClick={descargarPdf} disabled={generandoPdf}>
                                 {generandoPdf ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
@@ -437,6 +446,17 @@ export default function PatologiasPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <HtmlPreviewDialog
+                open={previewOpen}
+                onOpenChange={setPreviewOpen}
+                titulo={`Orden ${ordenActiva?.numeroOrden ?? ""}`}
+                secciones={[
+                    { titulo: "Descripción macroscópica", html: form.descripcionMacroscopica },
+                    { titulo: "Descripción microscópica", html: form.descripcionMicroscopica },
+                    { titulo: "Diagnóstico", html: form.diagnostico },
+                ]}
+            />
         </div>
     );
 }

@@ -47,3 +47,17 @@ export const api = {
         apiFetch<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
     delete: <T,>(path: string) => apiFetch<T>(path, { method: "DELETE" }),
 };
+
+/** Descarga un binario (ej. PDF) autenticado y devuelve un blob URL listo para abrir/descargar. */
+export async function apiFetchBlobUrl(path: string): Promise<string> {
+    const token = getToken();
+    const headers = new Headers();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const res = await fetch(`${API_URL}${path}`, { headers });
+    if (!res.ok) {
+        throw new ApiError(res.status, res.statusText);
+    }
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+}

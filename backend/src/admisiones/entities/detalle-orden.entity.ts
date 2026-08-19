@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Ordenes } from './ordenes.entity';
 import { CausaExterna } from '../../catalogos/entities/causa-externa.entity';
 import { FinalidadConsulta } from '../../catalogos/entities/finalidad-consulta.entity';
 import { FinalidadProcedimiento } from '../../catalogos/entities/finalidad-procedimiento.entity';
@@ -42,13 +41,14 @@ export class DetalleOrden {
 
   // NOTA: en la BD real ID_ORDEN es char(50) mientras que ordenes.ID es int
   // (inconsistencia heredada del sistema legado, no se corrige el tipo de
-  // columna). La relación funciona igual porque MySQL castea en el JOIN.
+  // columna). TypeORM no soporta una relación @ManyToOne cuando el tipo de
+  // columna no coincide con el de la PK referenciada (falla en runtime:
+  // "Column does not support length property"), así que este campo queda
+  // como columna simple. Para unir con `ordenes` desde código, usar
+  // QueryBuilder con CAST explícito, ej:
+  //   .innerJoin('ordenes', 'o', 'o.ID = CAST(detalle_orden.ID_ORDEN AS UNSIGNED)')
   @Column({ name: 'ID_ORDEN', type: 'char', length: 50 })
   idOrden: string;
-
-  @ManyToOne(() => Ordenes)
-  @JoinColumn({ name: 'ID_ORDEN', referencedColumnName: 'id' })
-  orden?: Ordenes;
 
   @Column({ name: 'ID_CAUSA', type: 'int' })
   idCausa: number;

@@ -57,6 +57,24 @@ export interface DetalleOrden {
     cups?: CupsItem;
 }
 
+export interface OrdenListado {
+    id: number;
+    numeroOrden: string;
+    consecutivo: string;
+    fechaIngreso: string;
+    estado: string;
+    paciente?: { identificacion: string; primerNombre: string; primerApellido: string };
+    contrato?: { nombre: string };
+    tipoEstudio?: { nombreTipoEstudio: string };
+}
+
+export interface OrdenListadoResult {
+    data: OrdenListado[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
 export function nombrePaciente(p?: PacienteBusqueda | null) {
     if (!p) return "";
     return [p.primerNombre, p.segundoNombre, p.primerApellido, p.segundoApellido].filter(Boolean).join(" ");

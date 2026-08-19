@@ -6,6 +6,8 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +22,19 @@ import { CreateDetalleOrdenDto } from './dto/create-detalle-orden.dto';
 @RequirePermission('listadoOrdenes')
 export class OrdenesController {
   constructor(private readonly ordenesService: OrdenesService) {}
+
+  @Get()
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.ordenesService.findAll(
+      page ? Number(page) : 1,
+      pageSize ? Number(pageSize) : 20,
+      q,
+    );
+  }
 
   @Get('paciente/:idUsuario')
   findByPaciente(@Param('idUsuario', ParseIntPipe) idUsuario: number) {
@@ -37,8 +52,8 @@ export class OrdenesController {
   }
 
   @Post()
-  create(@Body() dto: CreateOrdenDto) {
-    return this.ordenesService.create(dto);
+  create(@Body() dto: CreateOrdenDto, @Req() req: any) {
+    return this.ordenesService.create(dto, req.user.idEmpleado);
   }
 
   @Post(':id/detalles')

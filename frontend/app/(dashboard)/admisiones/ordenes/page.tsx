@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,12 @@ import type {
     CupsItem,
     Orden,
     DetalleOrden,
+    OrdenListado,
+    OrdenListadoResult,
 } from "./types";
 import { nombrePaciente } from "./types";
+
+type Vista = "listado" | "buscar-paciente" | "datos-orden" | "procedimientos";
 
 const HEADER_INICIAL = {
     idContrato: undefined as number | undefined,
@@ -37,6 +41,7 @@ const HEADER_INICIAL = {
     idTipoEstudio: undefined as number | undefined,
     idEspecimen: undefined as number | undefined,
     autorizacion: "",
+    fechaOrden: new Date().toISOString().slice(0, 10),
     comentarios: "",
 };
 
@@ -55,6 +60,15 @@ const DETALLE_INICIAL = {
 };
 
 export default function OrdenesPage() {
+    const [vista, setVista] = useState<Vista>("listado");
+
+    // --- listado ---
+    const [listado, setListado] = useState<OrdenListadoResult | null>(null);
+    const [listadoLoading, setListadoLoading] = useState(true);
+    const [listadoError, setListadoError] = useState<string | null>(null);
+    const [listadoQuery, setListadoQuery] = useState("");
+    const [listadoPage, setListadoPage] = useState(1);
+
     // --- búsqueda / selección de paciente ---
     const [searchTerm, setSearchTerm] = useState("");
     const [pacientes, setPacientes] = useState<PacienteBusqueda[]>([]);
@@ -91,7 +105,34 @@ export default function OrdenesPage() {
     const [guardandoDetalle, setGuardandoDetalle] = useState(false);
     const [cupsQuery, setCupsQuery] = useState("");
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
-    const [cupsNombre, setCupsNombre] = useState("");
+
+    const cargarListado = useCallback(async (page: number, q?: string) => {
+        setListadoLoading(true);
+        setListadoError(null);
+        try {
+            const qs = new URLSearchParams({ page: String(page), pageSize: "15" });
+            if (q) qs.set("q", q);
+            const res = await api.get<OrdenListadoResult>(`/admisiones/ordenes?${qs.toString()}`);
+            setListado(res);
+        } catch (err) {
+            setListadoError(err instanceof ApiError ? err.message : "No se pudo cargar el listado de órdenes");
+        } finally {
+            setListadoLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (vista === "listado") cargarListado(listadoPage, listadoQuery);
+    }, [vista, listadoPage, cargarListado]);
+
+    useEffect(() => {
+        if (vista !== "listado") return;
+        const t = setTimeout(() => {
+            setListadoPage(1);
+            cargarListado(1, listadoQuery);
+        }, 350);
+        return () => clearTimeout(t);
+    }, [listadoQuery, vista, cargarListado]);
 
     // Cargar catálogos de apoyo una vez
     useEffect(() => {
@@ -148,7 +189,7 @@ export default function OrdenesPage() {
             .catch(() => setSubentidades([]));
     }, [header.idContrato]);
 
-    // Búsqueda CIE10... perdón, CUPS con debounce
+    // Búsqueda de CUPS con debounce
     useEffect(() => {
         if (cupsQuery.trim().length < 2) {
             setCupsResultados([]);
@@ -165,19 +206,42 @@ export default function OrdenesPage() {
         return () => clearTimeout(t);
     }, [cupsQuery]);
 
+    function iniciarNuevaAdmision() {
+        setPaciente(null);
+        setOrden(null);
+        setDetalles([]);
+        setHeader(HEADER_INICIAL);
+        setSearchTerm("");
+        setVista("buscar-paciente");
+    }
+
     function seleccionarPaciente(p: PacienteBusqueda) {
         setPaciente(p);
         setPacientes([]);
         setSearchTerm("");
-        setOrden(null);
-        setDetalles([]);
-        setHeader(HEADER_INICIAL);
+        setVista("datos-orden");
     }
 
-    function cambiarPaciente() {
-        setPaciente(null);
-        setOrden(null);
-        setDetalles([]);
+    async function abrirOrdenExistente(o: OrdenListado) {
+        setOrdenError(null);
+        try {
+            const [ordenCompleta, detallesOrden] = await Promise.all([
+                api.get<any>(`/admisiones/ordenes/${o.id}`),
+                api.get<DetalleOrden[]>(`/admisiones/ordenes/${o.id}/detalles`),
+            ]);
+            setPaciente(ordenCompleta.paciente ?? null);
+            setOrden(ordenCompleta);
+            setDetalles(detallesOrden);
+            setHeader((h) => ({ ...h, idTipoEstudio: ordenCompleta.idTipoEstudio }));
+            setVista("procedimientos");
+        } catch (err) {
+            setListadoError(err instanceof ApiError ? err.message : "No se pudo abrir la orden");
+        }
+    }
+
+    function volverAlListado() {
+        setVista("listado");
+        cargarListado(listadoPage, listadoQuery);
     }
 
     async function crearOrden() {
@@ -206,6 +270,7 @@ export default function OrdenesPage() {
             });
             setOrden(nuevaOrden);
             setDetalles([]);
+            setVista("procedimientos");
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
         } finally {
@@ -215,7 +280,6 @@ export default function OrdenesPage() {
 
     function elegirCups(c: CupsItem) {
         setDetalleForm((f) => ({ ...f, codigoCups: c.codigoCups }));
-        setCupsNombre(c.nombreCups);
         setCupsQuery(`${c.codigoCups} — ${c.nombreCups}`);
         setCupsResultados([]);
     }
@@ -243,12 +307,11 @@ export default function OrdenesPage() {
         try {
             const nuevoDetalle = await api.post<DetalleOrden>(`/admisiones/ordenes/${orden.id}/detalles`, {
                 ...detalleForm,
-                idTipoEstudio: header.idTipoEstudio,
+                idTipoEstudio: header.idTipoEstudio ?? orden.idTipoEstudio,
             });
             setDetalles((prev) => [...prev, nuevoDetalle]);
             setDetalleForm(DETALLE_INICIAL);
             setCupsQuery("");
-            setCupsNombre("");
         } catch (err) {
             setDetalleError(err instanceof ApiError ? err.message : "No se pudo agregar el procedimiento");
         } finally {
@@ -261,13 +324,15 @@ export default function OrdenesPage() {
             await api.patch(`/admisiones/ordenes/detalles/${id}/cancelar`);
             setDetalles((prev) => prev.map((d) => (d.id === id ? { ...d, estado: "CANCELADO" } : d)));
         } catch {
-            // silencioso: el usuario ve el estado sin cambiar si falla
+            // silencioso
         }
     }
 
     const totalOrden = detalles
         .filter((d) => d.estado !== "CANCELADO")
         .reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0);
+
+    const totalPaginas = listado ? Math.max(1, Math.ceil(listado.total / listado.pageSize)) : 1;
 
     return (
         <div className="space-y-5">
@@ -279,15 +344,111 @@ export default function OrdenesPage() {
                     <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                         Admisiones
                     </span>
-                    <h1 style={{ color: "var(--ink-primary)" }}>Registro de Órdenes</h1>
+                    <h1 style={{ color: "var(--ink-primary)" }}>Órdenes o Admisiones de Pacientes</h1>
                     <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                        Admisión del paciente y solicitud de procedimientos
+                        {vista === "listado"
+                            ? listado
+                                ? `${listado.total.toLocaleString()} órdenes registradas`
+                                : "Listado de órdenes registradas"
+                            : "Admisión del paciente y solicitud de procedimientos"}
                     </p>
                 </div>
+                {vista === "listado" ? (
+                    <Button size="sm" onClick={iniciarNuevaAdmision}>
+                        <ClipboardPlus className="mr-2 h-4 w-4" />
+                        Nueva Admisión
+                    </Button>
+                ) : (
+                    <Button variant="outline" size="sm" onClick={volverAlListado}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Volver al listado
+                    </Button>
+                )}
             </div>
 
-            {/* Paso 1: paciente */}
-            {!paciente && (
+            {/* Listado */}
+            {vista === "listado" && (
+                <div className="space-y-4">
+                    <div className="relative max-w-sm">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar por No. de orden, consecutivo o paciente..."
+                            className="pl-9"
+                            value={listadoQuery}
+                            onChange={(e) => setListadoQuery(e.target.value)}
+                        />
+                    </div>
+
+                    {listadoError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}
+
+                    <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>No. de Orden</TableHead>
+                                    <TableHead>Consecutivo</TableHead>
+                                    <TableHead>Paciente</TableHead>
+                                    <TableHead>Entidad o Contrato</TableHead>
+                                    <TableHead>Tipo de Estudio</TableHead>
+                                    <TableHead>Fecha Ingreso</TableHead>
+                                    <TableHead className="text-center">Estado</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {!listadoLoading && (!listado || listado.data.length === 0) && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
+                                            No hay órdenes registradas todavía.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                                {listado?.data.map((o) => (
+                                    <TableRow
+                                        key={o.id}
+                                        className="cursor-pointer hover:bg-muted/40"
+                                        onClick={() => abrirOrdenExistente(o)}
+                                    >
+                                        <TableCell className="font-medium">{o.numeroOrden}</TableCell>
+                                        <TableCell>{o.consecutivo}</TableCell>
+                                        <TableCell>
+                                            {o.paciente
+                                                ? `${o.paciente.primerNombre} ${o.paciente.primerApellido} (${o.paciente.identificacion})`
+                                                : "—"}
+                                        </TableCell>
+                                        <TableCell>{o.contrato?.nombre ?? "—"}</TableCell>
+                                        <TableCell>{o.tipoEstudio?.nombreTipoEstudio ?? "—"}</TableCell>
+                                        <TableCell>{o.fechaIngreso}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Badge variant="outline">{o.estado}</Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {listado && listado.total > 0 && (
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-muted-foreground">
+                                Página {listadoPage} de {totalPaginas}
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" disabled={listadoPage <= 1} onClick={() => setListadoPage((p) => p - 1)}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                    Anterior
+                                </Button>
+                                <Button variant="outline" size="sm" disabled={listadoPage >= totalPaginas} onClick={() => setListadoPage((p) => p + 1)}>
+                                    Siguiente
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Paso: buscar paciente */}
+            {vista === "buscar-paciente" && (
                 <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
                     <p className="mb-3 text-sm font-medium">Buscar paciente</p>
                     <div className="relative max-w-md">
@@ -297,6 +458,7 @@ export default function OrdenesPage() {
                             className="pl-9"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            autoFocus
                         />
                         {buscando && (
                             <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -323,8 +485,8 @@ export default function OrdenesPage() {
                 </div>
             )}
 
-            {/* Paso 2: datos del paciente + orden */}
-            {paciente && !orden && (
+            {/* Paso: datos de la orden */}
+            {vista === "datos-orden" && paciente && (
                 <div className="space-y-4">
                     <div
                         className="flex items-center justify-between rounded-lg border px-5 py-3"
@@ -337,7 +499,7 @@ export default function OrdenesPage() {
                                 {paciente.identificacion}
                             </p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={cambiarPaciente}>
+                        <Button variant="ghost" size="sm" onClick={() => setVista("buscar-paciente")}>
                             Cambiar paciente
                         </Button>
                     </div>
@@ -345,17 +507,25 @@ export default function OrdenesPage() {
                     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
                         <p className="mb-3 text-sm font-medium">Datos de la orden</p>
                         <div className="grid grid-cols-2 gap-3">
-                            <Selector label="Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
+                            <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
                             <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
                             <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
-                            <Selector label="Tipo de ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
-                            <Selector label="Tipo de afiliado" value={header.idTipoAfiliado} onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))} options={tiposAfiliado} />
-                            <Selector label="Tipo de usuario" value={header.idTipoUsuario} onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))} options={tiposUsuario} />
-                            <Selector label="Tipo de estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
-                            <Selector label="Espécimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
+                            <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
+                            <Selector label="Tipo Afiliado" value={header.idTipoAfiliado} onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))} options={tiposAfiliado} />
+                            <Selector label="Regimen, Tipo Usuario" value={header.idTipoUsuario} onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))} options={tiposUsuario} />
+                            <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
+                            <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
                             <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Autorización</label>
+                                <label className="text-[12.5px] font-medium">Autorizacion</label>
                                 <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Fecha Orden</label>
+                                <Input
+                                    type="date"
+                                    value={header.fechaOrden}
+                                    onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
+                                />
                             </div>
                         </div>
                         <div className="mt-3 space-y-1.5">
@@ -372,24 +542,37 @@ export default function OrdenesPage() {
                 </div>
             )}
 
-            {/* Paso 3: orden creada + procedimientos */}
-            {paciente && orden && (
+            {/* Paso: orden creada / abierta + procedimientos */}
+            {vista === "procedimientos" && paciente && orden && (
                 <div className="space-y-4">
                     <div
-                        className="flex items-center justify-between rounded-lg border px-5 py-3"
+                        className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
                         style={{ borderColor: "var(--border-default)" }}
                     >
-                        <div>
+                        <div className="col-span-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Paciente</p>
                             <p className="font-medium">{nombrePaciente(paciente)}</p>
                             <p className="text-xs text-muted-foreground">
-                                Orden #{orden.numeroOrden} · Consecutivo {orden.consecutivo}
+                                {paciente.idTipoIdentificacion}
+                                {paciente.identificacion}
                             </p>
                         </div>
-                        <Badge variant="outline">{orden.estado}</Badge>
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
+                            <p className="font-medium">{orden.numeroOrden}</p>
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
+                            <p className="font-medium">{orden.consecutivo}</p>
+                        </div>
+                        <div className="col-span-4 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
+                            <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
+                            <Badge variant="outline">{orden.estado}</Badge>
+                        </div>
                     </div>
 
                     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                        <p className="mb-3 text-sm font-medium">Agregar procedimiento (CUPS)</p>
+                        <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="relative col-span-2 space-y-1.5">
                                 <label className="text-[12.5px] font-medium">CUPS</label>
@@ -416,12 +599,12 @@ export default function OrdenesPage() {
                                     </div>
                                 )}
                             </div>
-                            <Selector label="Causa externa" value={detalleForm.idCausa} onChange={(v) => setDetalleForm((f) => ({ ...f, idCausa: v }))} options={causas} />
-                            <Selector label="Finalidad consulta" value={detalleForm.idFinalidadConsulta} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadConsulta: v }))} options={finalidadesConsulta} />
-                            <Selector label="Finalidad procedimiento" value={detalleForm.idFinalidadProcedimiento} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadProcedimiento: v }))} options={finalidadesProcedimiento} />
-                            <Selector label="Ámbito" value={detalleForm.idAmbito} onChange={(v) => setDetalleForm((f) => ({ ...f, idAmbito: v }))} options={ambitos} />
-                            <Selector label="Persona que atiende" value={detalleForm.idPersonaAtiende} onChange={(v) => setDetalleForm((f) => ({ ...f, idPersonaAtiende: v }))} options={personasAtiende} />
-                            <Selector label="Tipo de diagnóstico" value={detalleForm.idTipoDiagnostico} onChange={(v) => setDetalleForm((f) => ({ ...f, idTipoDiagnostico: v }))} options={tiposDiagnostico} />
+                            <Selector label="Causa Externa" value={detalleForm.idCausa} onChange={(v) => setDetalleForm((f) => ({ ...f, idCausa: v }))} options={causas} />
+                            <Selector label="Finalidad Consulta" value={detalleForm.idFinalidadConsulta} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadConsulta: v }))} options={finalidadesConsulta} />
+                            <Selector label="Finalidad Procedimiento" value={detalleForm.idFinalidadProcedimiento} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadProcedimiento: v }))} options={finalidadesProcedimiento} />
+                            <Selector label="Ambito del Procedimiento" value={detalleForm.idAmbito} onChange={(v) => setDetalleForm((f) => ({ ...f, idAmbito: v }))} options={ambitos} />
+                            <Selector label="Persona que Atiende" value={detalleForm.idPersonaAtiende} onChange={(v) => setDetalleForm((f) => ({ ...f, idPersonaAtiende: v }))} options={personasAtiende} />
+                            <Selector label="Tipo de Diagnóstico" value={detalleForm.idTipoDiagnostico} onChange={(v) => setDetalleForm((f) => ({ ...f, idTipoDiagnostico: v }))} options={tiposDiagnostico} />
                             <div className="space-y-1.5">
                                 <label className="text-[12.5px] font-medium">Diagnóstico (CIE10)</label>
                                 <Input
@@ -431,9 +614,9 @@ export default function OrdenesPage() {
                                     maxLength={10}
                                 />
                             </div>
-                            <Selector label="Forma de realización" value={detalleForm.idFormaRealizacion} onChange={(v) => setDetalleForm((f) => ({ ...f, idFormaRealizacion: v }))} options={formasRealizacion} />
+                            <Selector label="Forma de Realización" value={detalleForm.idFormaRealizacion} onChange={(v) => setDetalleForm((f) => ({ ...f, idFormaRealizacion: v }))} options={formasRealizacion} />
                             <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Valor (opcional, se calcula con la tarifa del contrato)</label>
+                                <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
                                 <Input
                                     type="number"
                                     value={detalleForm.valor ?? ""}
@@ -456,6 +639,8 @@ export default function OrdenesPage() {
                                     <TableHead>CUPS</TableHead>
                                     <TableHead>Diagnóstico</TableHead>
                                     <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead className="text-right">Copago</TableHead>
+                                    <TableHead className="text-right">Neto</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                     <TableHead className="text-right">Acción</TableHead>
                                 </TableRow>
@@ -463,7 +648,7 @@ export default function OrdenesPage() {
                             <TableBody>
                                 {detalles.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-20 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
                                             Aún no se han agregado procedimientos.
                                         </TableCell>
                                     </TableRow>
@@ -474,6 +659,8 @@ export default function OrdenesPage() {
                                             {d.codigoCups} {d.cups?.nombreCups && <span className="text-xs text-muted-foreground">— {d.cups.nombreCups}</span>}
                                         </TableCell>
                                         <TableCell>{d.diagnostico1}</TableCell>
+                                        <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
+                                        <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
                                         <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
                                         <TableCell className="text-center">
                                             <Badge variant={d.estado === "CANCELADO" ? "destructive" : "outline"}>{d.estado}</Badge>

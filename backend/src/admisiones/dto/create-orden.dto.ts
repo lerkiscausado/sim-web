@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateOrdenDto {
   @IsInt()
@@ -20,6 +20,10 @@ export class CreateOrdenDto {
   @IsString()
   @MaxLength(50)
   autorizacion?: string;
+
+  @IsOptional()
+  @IsDateString()
+  fechaOrden?: string;
 
   @IsInt()
   idTipoAfiliado: number;

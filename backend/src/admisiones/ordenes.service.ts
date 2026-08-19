@@ -50,16 +50,17 @@ export class OrdenesService {
     return String(total + 1).padStart(8, '0');
   }
 
-  async create(dto: CreateOrdenDto): Promise<Ordenes> {
+  async create(dto: CreateOrdenDto, idEmpleado: number): Promise<Ordenes> {
     const consecutivo = await this.generarConsecutivo(dto.idTipoEstudio);
     const numeroOrden = await this.generarNumeroOrden();
 
     const orden = this.ordenesRepository.create({
       ...dto,
+      idEmpleado,
       numeroOrden,
       consecutivo,
       fechaIngreso: hoyISO(),
-      fechaOrden: hoyISO(),
+      fechaOrden: dto.fechaOrden ?? hoyISO(),
       hora: horaActual(),
       idFactura: '',
       estado: EstadoOrden.PENDIENTE,
@@ -67,6 +68,32 @@ export class OrdenesService {
     } as Partial<Ordenes>);
 
     return this.ordenesRepository.save(orden);
+  }
+
+  async findAll(page = 1, pageSize = 20, q?: string) {
+    const take = Math.min(Math.max(pageSize, 1), 100);
+    const skip = (Math.max(page, 1) - 1) * take;
+
+    const qb = this.ordenesRepository
+      .createQueryBuilder('o')
+      .leftJoinAndSelect('o.paciente', 'paciente')
+      .leftJoinAndSelect('o.contrato', 'contrato')
+      .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
+      .orderBy('o.fechaIngreso', 'DESC')
+      .addOrderBy('o.id', 'DESC')
+      .take(take)
+      .skip(skip);
+
+    if (q && q.trim().length > 0) {
+      const term = `%${q.trim()}%`;
+      qb.where(
+        '(o.numeroOrden LIKE :term OR o.consecutivo LIKE :term OR paciente.identificacion LIKE :term OR paciente.primerNombre LIKE :term OR paciente.primerApellido LIKE :term)',
+        { term },
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, pageSize: take };
   }
 
   async findOne(id: number) {

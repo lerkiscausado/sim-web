@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, Loader2 } from "lucide-react";
+import { Activity, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth, ApiError } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ export default function LoginPage() {
     const router = useRouter();
     const [usuario, setUsuario] = useState("");
     const [pass, setPass] = useState("");
+    const [mostrarPass, setMostrarPass] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -74,14 +75,27 @@ export default function LoginPage() {
                         <label htmlFor="pass" className="text-[12.5px] font-medium">
                             Contraseña
                         </label>
-                        <Input
-                            id="pass"
-                            type="password"
-                            value={pass}
-                            onChange={(e) => setPass(e.target.value)}
-                            autoComplete="current-password"
-                            required
-                        />
+                        <div className="relative">
+                            <Input
+                                id="pass"
+                                type={mostrarPass ? "text" : "password"}
+                                value={pass}
+                                onChange={(e) => setPass(e.target.value)}
+                                autoComplete="current-password"
+                                required
+                                className="pr-9"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setMostrarPass((v) => !v)}
+                                className="absolute inset-y-0 right-0 flex items-center px-2.5"
+                                style={{ color: "var(--ink-tertiary, #9ca3af)" }}
+                                aria-label={mostrarPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                                tabIndex={-1}
+                            >
+                                {mostrarPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                     </div>
 
                     {error && (

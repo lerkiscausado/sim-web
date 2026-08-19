@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivoEliminado } from '../../common/enums/estado.enum';
+import { Empleados } from './empleados.entity';
 
 @Entity('users')
 export class Users {
@@ -8,6 +9,10 @@ export class Users {
 
   @Column({ name: 'ID_EMPLEADO', type: 'int' })
   idEmpleado: number;
+
+  @ManyToOne(() => Empleados)
+  @JoinColumn({ name: 'ID_EMPLEADO' })
+  empleado?: Empleados;
 
   @Column({ name: 'USUARIO', type: 'varchar', length: 60, nullable: true })
   usuario?: string | null;

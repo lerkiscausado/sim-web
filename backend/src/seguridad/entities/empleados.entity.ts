@@ -1,5 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
+import { Cargos } from '../../catalogos/entities/cargos.entity';
+import { Especialidades } from '../../catalogos/entities/especialidades.entity';
 
 @Entity('empleados')
 export class Empleados {
@@ -12,8 +22,16 @@ export class Empleados {
   @Column({ name: 'ID_CARGO', type: 'int' })
   idCargo: number;
 
+  @ManyToOne(() => Cargos)
+  @JoinColumn({ name: 'ID_CARGO' })
+  cargo?: Cargos;
+
   @Column({ name: 'ID_ESPECIALIDAD', type: 'int' })
   idEspecialidad: number;
+
+  @ManyToOne(() => Especialidades)
+  @JoinColumn({ name: 'ID_ESPECIALIDAD' })
+  especialidad?: Especialidades;
 
   @Column({ name: 'REGISTRO_MEDICO', type: 'varchar', length: 10, nullable: true })
   registroMedico?: string | null;

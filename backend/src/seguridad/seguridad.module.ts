@@ -4,6 +4,8 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { EspecialistasService } from './especialistas.service';
 import { EspecialistasController } from './especialistas.controller';
+import { EmpleadosService } from './empleados.service';
+import { EmpleadosController } from './empleados.controller';
 import { Users } from './entities/users.entity';
 import { Empleados } from './entities/empleados.entity';
 import { Especialistas } from './entities/especialistas.entity';
@@ -36,8 +38,8 @@ import { Registros } from './entities/registros.entity';
       Registros,
     ]),
   ],
-  providers: [UsersService, EspecialistasService],
-  controllers: [UsersController, EspecialistasController],
+  providers: [UsersService, EspecialistasService, EmpleadosService],
+  controllers: [UsersController, EspecialistasController, EmpleadosController],
   exports: [UsersService],
 })
 export class SeguridadModule {}

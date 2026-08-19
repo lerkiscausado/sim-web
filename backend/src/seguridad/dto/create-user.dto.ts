@@ -23,10 +23,6 @@ export class CreateUserDto {
   @MinLength(6)
   pass: string;
 
-  @IsInt()
-  @IsNotEmpty()
-  idLicencia: number;
-
   /** '1' = administrador (todos los permisos), '0' = usuario normal */
   @IsOptional()
   @IsBoolean()

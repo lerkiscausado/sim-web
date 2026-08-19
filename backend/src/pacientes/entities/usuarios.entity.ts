@@ -1,4 +1,14 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { TipoIdentificacion } from '../../catalogos/entities/tipo-identificacion.entity';
+import { TipoUsuario } from '../../catalogos/entities/tipo-usuario.entity';
 
 @Entity('usuarios')
 export class Usuarios {
@@ -7,6 +17,10 @@ export class Usuarios {
 
   @Column({ name: 'ID_TIPO_IDENTIFICACION', type: 'char', length: 2 })
   idTipoIdentificacion: string;
+
+  @ManyToOne(() => TipoIdentificacion)
+  @JoinColumn({ name: 'ID_TIPO_IDENTIFICACION' })
+  tipoIdentificacion?: TipoIdentificacion;
 
   @Column({ name: 'IDENTIFICACION', type: 'char', length: 150 })
   identificacion: string;
@@ -50,11 +64,18 @@ export class Usuarios {
   @Column({ name: 'ZONA', type: 'set', enum: ['R', 'U'], nullable: true })
   zona?: string | null;
 
+  // NOTA: no se declara relación formal con `municipios` porque su PK es
+  // compuesta (CODIGO_MUNICIPIO + CODIGO_DEPARTAMENTO) y aquí solo se guarda
+  // el código de municipio suelto (dato legado). Queda como texto libre.
   @Column({ name: 'CODIGO_MUNICIPIO', type: 'char', length: 45, nullable: true })
   codigoMunicipio?: string | null;
 
   @Column({ name: 'CODIGO_TIPO_USUARIO', type: 'int' })
   codigoTipoUsuario: number;
+
+  @ManyToOne(() => TipoUsuario)
+  @JoinColumn({ name: 'CODIGO_TIPO_USUARIO' })
+  tipoUsuario?: TipoUsuario;
 
   @Column({ name: 'CARNET', type: 'char', length: 150, nullable: true })
   carnet?: string | null;

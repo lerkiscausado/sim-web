@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Patologia } from './entities/patologia.entity';
 import { Especimenes } from './entities/especimenes.entity';
 import { PlantillasPatologia } from './entities/plantillas-patologia.entity';
+import { PlantillasInformes } from './entities/plantillas-informes.entity';
 import { EntregaResultados } from './entities/entrega-resultados.entity';
 import { Ordenes } from '../admisiones/entities/ordenes.entity';
 import { EstudiosGenerados } from '../documentos-soporte/entities/estudios-generados.entity';
@@ -12,6 +13,8 @@ import { PatologiaPdfService } from './patologia-pdf.service';
 import { PatologiaController } from './patologia.controller';
 import { EspecimenesService } from './especimenes.service';
 import { PlantillasPatologiaService } from './plantillas-patologia.service';
+import { PlantillasInformesService } from './plantillas-informes.service';
+import { PlantillasInformesController } from './plantillas-informes.controller';
 import { EspecimenesController, PlantillasPatologiaController } from './especimenes.controller';
 
 @Module({
@@ -20,14 +23,26 @@ import { EspecimenesController, PlantillasPatologiaController } from './especime
       Patologia,
       Especimenes,
       PlantillasPatologia,
+      PlantillasInformes,
       EntregaResultados,
       Ordenes,
       EstudiosGenerados,
       Empresa,
     ]),
   ],
-  providers: [PatologiaService, PatologiaPdfService, EspecimenesService, PlantillasPatologiaService],
-  controllers: [PatologiaController, EspecimenesController, PlantillasPatologiaController],
+  providers: [
+    PatologiaService,
+    PatologiaPdfService,
+    EspecimenesService,
+    PlantillasPatologiaService,
+    PlantillasInformesService,
+  ],
+  controllers: [
+    PatologiaController,
+    EspecimenesController,
+    PlantillasPatologiaController,
+    PlantillasInformesController,
+  ],
   exports: [PatologiaService],
 })
 export class AtencionesModule {}

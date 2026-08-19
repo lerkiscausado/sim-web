@@ -9,6 +9,7 @@ import { AdmisionesModule } from './admisiones/admisiones.module';
 import { AtencionesModule } from './atenciones/atenciones.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { EntidadesContratosModule } from './entidades-contratos/entidades-contratos.module';
+import { PacientesModule } from './pacientes/pacientes.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { EntidadesContratosModule } from './entidades-contratos/entidades-contra
     AtencionesModule,
     CatalogosModule,
     EntidadesContratosModule,
+    PacientesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

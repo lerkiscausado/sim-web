@@ -1,5 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
+import { TipoEstudio } from '../../catalogos/entities/tipo-estudio.entity';
+import { Especialistas } from '../../seguridad/entities/especialistas.entity';
 
 @Entity('plantillas_informes')
 export class PlantillasInformes {
@@ -9,8 +19,16 @@ export class PlantillasInformes {
   @Column({ name: 'ID_TIPO_ESTUDIO', type: 'int' })
   idTipoEstudio: number;
 
+  @ManyToOne(() => TipoEstudio)
+  @JoinColumn({ name: 'ID_TIPO_ESTUDIO' })
+  tipoEstudio?: TipoEstudio;
+
   @Column({ name: 'ID_ESPECIALISTA', type: 'int' })
   idEspecialista: number;
+
+  @ManyToOne(() => Especialistas)
+  @JoinColumn({ name: 'ID_ESPECIALISTA' })
+  especialista?: Especialistas;
 
   @Column({ name: 'CAMPO1', type: 'text', nullable: true })
   campo1?: string | null;

@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
+import { EspecialistasService } from './especialistas.service';
+import { EspecialistasController } from './especialistas.controller';
 import { Users } from './entities/users.entity';
 import { Empleados } from './entities/empleados.entity';
 import { Especialistas } from './entities/especialistas.entity';
@@ -34,8 +36,8 @@ import { Registros } from './entities/registros.entity';
       Registros,
     ]),
   ],
-  providers: [UsersService],
-  controllers: [UsersController],
+  providers: [UsersService, EspecialistasService],
+  controllers: [UsersController, EspecialistasController],
   exports: [UsersService],
 })
 export class SeguridadModule {}

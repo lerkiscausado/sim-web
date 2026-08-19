@@ -1,5 +1,22 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
+import { Entidades } from './entidades.entity';
+import { Tarifas } from './tarifas.entity';
+import { Licencias } from '../../seguridad/entities/licencias.entity';
+
+export enum TipoContrato {
+  EVENTO = 'EVENTO',
+  CAPITADO = 'CAPITADO',
+  PAQUETE = 'PAQUETE',
+}
 
 @Entity('contratos')
 export class Contratos {
@@ -8,6 +25,10 @@ export class Contratos {
 
   @Column({ name: 'CODIGO_ENTIDAD', type: 'char', length: 50 })
   codigoEntidad: string;
+
+  @ManyToOne(() => Entidades)
+  @JoinColumn({ name: 'CODIGO_ENTIDAD', referencedColumnName: 'codigoEntidad' })
+  entidad?: Entidades;
 
   @Column({ name: 'NOMBRE', type: 'varchar', length: 100 })
   nombre: string;
@@ -33,8 +54,8 @@ export class Contratos {
   @Column({ name: 'CORREO_ELECTRONICO', type: 'varchar', length: 100, nullable: true })
   correoElectronico?: string | null;
 
-  @Column({ name: 'TIPO_CONTRATO', type: 'set', enum: ['EVENTO', 'CAPITADO', 'PAQUETE'] })
-  tipoContrato: string;
+  @Column({ name: 'TIPO_CONTRATO', type: 'set', enum: TipoContrato })
+  tipoContrato: TipoContrato;
 
   @Column({ name: 'RIPS', type: 'set', enum: ['SI', 'NO'] })
   rips: string;
@@ -42,19 +63,29 @@ export class Contratos {
   @Column({ name: 'ID_TARIFA', type: 'int', nullable: true })
   idTarifa?: number | null;
 
+  @ManyToOne(() => Tarifas, { nullable: true })
+  @JoinColumn({ name: 'ID_TARIFA' })
+  tarifa?: Tarifas | null;
+
   @Column({ name: 'VALOR_CONVENIO', type: 'bigint', nullable: true })
   valorConvenio?: number | null;
 
   @Column({ name: 'ID_LICENCIA', type: 'int' })
   idLicencia: number;
 
+  @ManyToOne(() => Licencias)
+  @JoinColumn({ name: 'ID_LICENCIA' })
+  licencia?: Licencias;
+
   @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
+  // Credenciales del portal externo del contrato (dato legado propio del
+  // sistema VB.NET, no relacionado con el login web nuevo).
   @Column({ name: 'usuario', type: 'char', length: 50 })
   usuario: string;
 
-  @Column({ name: 'contrasena', type: 'char', length: 50 })
+  @Column({ name: 'contrasena', type: 'char', length: 50, select: false })
   contrasena: string;
 
   @CreateDateColumn({ name: 'createdAt' })

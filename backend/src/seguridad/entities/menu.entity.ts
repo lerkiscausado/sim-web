@@ -1,0 +1,16 @@
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+
+@Entity('menu')
+export class Menu {
+  @PrimaryGeneratedColumn({ name: 'ID' })
+  id: number;
+
+  @Column({ name: 'NOMBRE', type: 'char', length: 100 })
+  nombre: string;
+
+  @CreateDateColumn({ name: 'createdAt' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updatedAt' })
+  updatedAt: Date;
+}

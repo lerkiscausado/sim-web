@@ -1,0 +1,61 @@
+/**
+ * Nombres (camelCase, como quedaron en la entity `Users`) de las columnas de
+ * permiso `char(1)` ('0' = no, '1' = sí) de la tabla `users`.
+ * Se usa para: (a) construir el payload de permisos del JWT, (b) validar
+ * `@RequirePermission()` en los controllers, (c) armar defaults al crear un
+ * usuario de sistema nuevo.
+ */
+export const PERMISOS_USUARIO = [
+  'nuevo',
+  'editar',
+  'anular',
+  'consultar',
+  'adjuntos',
+  'agenda',
+  'historiaClinica',
+  'historiasAnteriores',
+  'historiaGrupal',
+  'evolucionPaciente',
+  'programacionCirugia',
+  'citologia',
+  'patologia',
+  'endoscopia',
+  'adjuntarImagenes',
+  'listadoOrdenes',
+  'generarFactura',
+  'rips',
+  'inventario',
+  'nomina',
+  'vistaPrevia',
+  'imprimir',
+  'indicadoresGestion',
+  'usuarios',
+  'entidades',
+  'subEntidades',
+  'contratos',
+  'tarifas',
+  'detalleTarifas',
+  'cargos',
+  'especialidades',
+  'empleados',
+  'examenes',
+  'medicamentos',
+  'cups',
+  'cie10',
+  'tipoPatologia',
+  'estudiosPredeterminados',
+  'equiposApoyo',
+  'procedimientoTerapeutico',
+  'encabezadoPiedepagina',
+  'logo',
+  'firma',
+  'users',
+  'seguridad',
+  'privilegios',
+  'ayudaProducto',
+  'soporteTecnico',
+  'tutoriales',
+  'acercade',
+] as const;
+
+export type PermisoUsuario = (typeof PERMISOS_USUARIO)[number];

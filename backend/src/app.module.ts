@@ -1,0 +1,40 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { SeguridadModule } from './seguridad/seguridad.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT'),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        // IMPORTANTE: synchronize queda en false porque la BD es una base
+        // legada en producción con datos reales y 119 tablas MyISAM sin FKs.
+        // Los cambios de esquema (createdAt/updatedAt en todas las tablas,
+        // PASS a varchar(255) para bcrypt) se aplican con la migración SQL
+        // en migrations/001_add_timestamps_and_pass.sql, revisada a mano.
+        synchronize: false,
+        autoLoadEntities: true,
+      }),
+      inject: [ConfigService],
+    }),
+    AuthModule,
+    SeguridadModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}

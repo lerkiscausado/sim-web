@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Info, Plus, Download, Filter } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Search, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -21,53 +21,115 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip";
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { api, ApiError } from "@/lib/api";
 
-// Mock data for CUPS
-const mockCups = [
-    { code: "890201", description: "CONSULTA DE PRIMERA VEZ POR MEDICINA GENERAL", category: "Consulta", status: "Activo" },
-    { code: "890301", description: "CONSULTA DE CONTROL O SEGUIMIENTO POR MEDICINA GENERAL", category: "Consulta", status: "Activo" },
-    { code: "903841", description: "HEMOGLOBINA GLICOSILADA POR AFINIDAD DE BORONATO", category: "Laboratorio", status: "Activo" },
-    { code: "902204", description: "HEMOGRAMA IV (HEMOGLOBINA, HEMATOCRITO, RECUENTO DE ERITROCITOS, INDICES ERITROCITARIOS, LEUCOGRAMA, RECUENTO DE PLAQUETAS Y MORFOLOGIA CELULAR)", category: "Laboratorio", status: "Activo" },
-    { code: "881234", description: "ECOGRAFIA ABDOMINAL TOTAL", category: "Imagenología", status: "Activo" },
-    { code: "939401", description: "TERAPIA RESPIRATORIA INTEGRAL", category: "Procedimiento", status: "Inactivo" },
-    { code: "992101", description: "INYECCION DE CUALQUIER OTRA SUSTANCIA TERAPEUTICA O PROFILACTICA", category: "Procedimiento", status: "Activo" },
-];
+interface CupsItem {
+    codigoCups: string;
+    nombreCups: string;
+    estado: "ACTIVO" | "INACTIVO";
+}
 
 export default function Cups() {
+    const [items, setItems] = useState<CupsItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const filteredCups = mockCups.filter(cup =>
-        cup.code.includes(searchTerm) ||
-        cup.description.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [editando, setEditando] = useState<CupsItem | null>(null);
+    const [form, setForm] = useState({ codigoCups: "", nombreCups: "" });
+    const [formError, setFormError] = useState<string | null>(null);
+    const [guardando, setGuardando] = useState(false);
+
+    const cargar = useCallback(async (q?: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+            const data = await api.get<CupsItem[]>(`/catalogos/cups${qs}`);
+            setItems(data);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : "No se pudo cargar el catálogo CUPS");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        cargar();
+    }, [cargar]);
+
+    useEffect(() => {
+        const t = setTimeout(() => cargar(searchTerm), 300);
+        return () => clearTimeout(t);
+    }, [searchTerm, cargar]);
+
+    function abrirNuevo() {
+        setEditando(null);
+        setForm({ codigoCups: "", nombreCups: "" });
+        setFormError(null);
+        setDialogOpen(true);
+    }
+
+    function abrirEditar(item: CupsItem) {
+        setEditando(item);
+        setForm({ codigoCups: item.codigoCups, nombreCups: item.nombreCups });
+        setFormError(null);
+        setDialogOpen(true);
+    }
+
+    async function guardar() {
+        if (!form.codigoCups || !form.nombreCups) {
+            setFormError("Código y nombre son obligatorios.");
+            return;
+        }
+        setGuardando(true);
+        setFormError(null);
+        try {
+            if (editando) {
+                await api.patch(`/catalogos/cups/${editando.codigoCups}`, { nombreCups: form.nombreCups });
+            } else {
+                await api.post("/catalogos/cups", form);
+            }
+            setDialogOpen(false);
+            await cargar(searchTerm);
+        } catch (err) {
+            setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
+        } finally {
+            setGuardando(false);
+        }
+    }
+
+    async function toggleEstado(item: CupsItem) {
+        const nuevo = item.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+        try {
+            await api.patch(`/catalogos/cups/${item.codigoCups}/estado/${nuevo}`);
+            await cargar(searchTerm);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : "No se pudo cambiar el estado");
+        }
+    }
 
     return (
         <Card className="border-none shadow-none bg-transparent">
             <CardHeader className="px-0 pt-0">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="text-xl font-bold flex items-center gap-2">
-                            Catálogo CUPS
-                        </CardTitle>
+                        <CardTitle className="text-xl font-bold">Catálogo CUPS</CardTitle>
                         <CardDescription>
                             Búsqueda y gestión de la Clasificación Única de Procedimientos en Salud.
                         </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="h-9">
-                            <Download className="mr-2 h-4 w-4" />
-                            Exportar
-                        </Button>
-                        <Button size="sm" className="h-9">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Añadir Código
-                        </Button>
-                    </div>
+                    <Button size="sm" className="h-9" onClick={abrirNuevo}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Añadir Código
+                    </Button>
                 </div>
             </CardHeader>
             <CardContent className="px-0">
@@ -81,87 +143,93 @@ export default function Cups() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <Button variant="outline" size="icon" className="h-9 w-9">
-                        <Filter className="h-4 w-4" />
-                    </Button>
+                    {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
+
+                {error && (
+                    <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+                )}
 
                 <div className="rounded-md border bg-card">
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="w-[100px] font-bold">Código</TableHead>
+                                <TableHead className="w-[120px] font-bold">Código</TableHead>
                                 <TableHead className="font-bold">Descripción</TableHead>
-                                <TableHead className="w-[150px] font-bold">Categoría</TableHead>
                                 <TableHead className="w-[100px] font-bold text-center">Estado</TableHead>
-                                <TableHead className="w-[80px] text-right font-bold">Acciones</TableHead>
+                                <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredCups.length > 0 ? (
-                                filteredCups.map((cup) => (
-                                    <TableRow key={cup.code} className="hover:bg-muted/30 transition-colors">
-                                        <TableCell className="font-medium text-primary">
-                                            {cup.code}
-                                        </TableCell>
-                                        <TableCell className="max-w-md">
-                                            <div className="flex items-center gap-2">
-                                                <span className="truncate">{cup.description}</span>
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <button className="text-muted-foreground hover:text-foreground">
-                                                                <Info className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p className="max-w-xs">{cup.description}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="font-normal">
-                                                {cup.category}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge
-                                                variant={cup.status === "Activo" ? "default" : "destructive"}
-                                                className={`font-medium ${cup.status === "Activo" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
-                                            >
-                                                {cup.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" className="h-8 px-2">
-                                                Editar
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+                            {!loading && items.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        No se encontraron resultados para &ldquo;{searchTerm}&rdquo;
+                                    <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
+                                        No se encontraron resultados.
                                     </TableCell>
                                 </TableRow>
                             )}
+                            {items.map((item) => (
+                                <TableRow key={item.codigoCups} className="hover:bg-muted/30 transition-colors">
+                                    <TableCell className="font-medium text-primary">{item.codigoCups}</TableCell>
+                                    <TableCell className="max-w-md truncate">{item.nombreCups}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge
+                                            className={`font-medium ${item.estado === "ACTIVO" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
+                                            variant={item.estado === "ACTIVO" ? "default" : "destructive"}
+                                        >
+                                            {item.estado === "ACTIVO" ? "Activo" : "Inactivo"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => abrirEditar(item)}>
+                                            Editar
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => toggleEstado(item)}>
+                                            {item.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between px-2">
-                    <p className="text-sm text-muted-foreground">
-                        Mostrando {filteredCups.length} de {mockCups.length} registros
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" disabled>Anterior</Button>
-                        <Button variant="outline" size="sm" disabled>Siguiente</Button>
-                    </div>
-                </div>
+                <p className="mt-4 text-sm text-muted-foreground">Mostrando {items.length} registros</p>
             </CardContent>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{editando ? "Editar código CUPS" : "Nuevo código CUPS"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <div className="space-y-1.5">
+                            <label className="text-[12.5px] font-medium">Código</label>
+                            <Input
+                                value={form.codigoCups}
+                                disabled={!!editando}
+                                onChange={(e) => setForm((f) => ({ ...f, codigoCups: e.target.value }))}
+                                maxLength={12}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[12.5px] font-medium">Descripción</label>
+                            <Input
+                                value={form.nombreCups}
+                                onChange={(e) => setForm((f) => ({ ...f, nombreCups: e.target.value }))}
+                                maxLength={300}
+                            />
+                        </div>
+                        {formError && <p className="text-sm text-red-600">{formError}</p>}
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={guardar} disabled={guardando}>
+                            {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Guardar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </Card>
     );
 }

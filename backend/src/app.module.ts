@@ -5,6 +5,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { SeguridadModule } from './seguridad/seguridad.module';
+import { AdmisionesModule } from './admisiones/admisiones.module';
+import { AtencionesModule } from './atenciones/atenciones.module';
+import { CatalogosModule } from './catalogos/catalogos.module';
 
 @Module({
   imports: [
@@ -33,6 +36,9 @@ import { SeguridadModule } from './seguridad/seguridad.module';
     }),
     AuthModule,
     SeguridadModule,
+    AdmisionesModule,
+    AtencionesModule,
+    CatalogosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

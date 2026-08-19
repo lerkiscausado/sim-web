@@ -3,15 +3,14 @@
 import { User, ChevronDown, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-
-const MOCK_USER = {
-    name: "Dra. Carolina Méndez",
-    role: "Médico Especialista",
-    initials: "CM",
-};
+import { useAuth } from "@/lib/auth";
 
 export function UserBadge() {
+    const { user, logout } = useAuth();
     const [open, setOpen] = useState(false);
+
+    const initials = (user?.usuario ?? "??").slice(0, 2).toUpperCase();
+    const roleLabel = user?.admin ? "Administrador" : "Usuario del sistema";
 
     useEffect(() => {
         if (!open) return;
@@ -45,16 +44,16 @@ export function UserBadge() {
                         color: "var(--clinical-700)",
                     }}
                 >
-                    {MOCK_USER.initials}
+                    {initials}
                 </span>
 
                 {/* Name + role — desktop only */}
                 <span className="hidden lg:flex flex-col items-start leading-tight">
                     <span className="font-semibold text-[12.5px]" style={{ color: "var(--ink-primary)" }}>
-                        {MOCK_USER.name}
+                        {user?.usuario}
                     </span>
                     <span className="text-[11px]" style={{ color: "var(--ink-secondary)" }}>
-                        {MOCK_USER.role}
+                        {roleLabel}
                     </span>
                 </span>
 
@@ -78,10 +77,10 @@ export function UserBadge() {
                     >
                         <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
                             <p className="text-[12.5px] font-semibold" style={{ color: "var(--ink-primary)" }}>
-                                {MOCK_USER.name}
+                                {user?.usuario}
                             </p>
                             <p className="text-[11.5px] mt-0.5" style={{ color: "var(--ink-secondary)" }}>
-                                {MOCK_USER.role}
+                                {roleLabel}
                             </p>
                         </div>
                         <div className="py-1">
@@ -105,6 +104,7 @@ export function UserBadge() {
                                 className="flex w-full items-center gap-2.5 px-4 py-2 text-[12.5px] hover:bg-[var(--status-danger-bg)]"
                                 style={{ color: "var(--status-danger)" }}
                                 type="button"
+                                onClick={logout}
                             >
                                 <LogOut size={13} />
                                 Cerrar Sesión

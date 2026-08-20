@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('resoluciones_dian')
 export class ResolucionesDian {
@@ -24,7 +25,7 @@ export class ResolucionesDian {
   @Column({ name: 'NUMERO_FINAL', type: 'char', length: 50 })
   numeroFinal: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo })
+  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
   estado: EstadoActivoInactivo;
 
   @CreateDateColumn({ name: 'createdAt' })

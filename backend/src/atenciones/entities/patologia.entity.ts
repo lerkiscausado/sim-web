@@ -11,6 +11,7 @@ import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { Ordenes } from '../../admisiones/entities/ordenes.entity';
 import { Diagnosticos } from '../../catalogos/entities/diagnosticos.entity';
 import { Empleados } from '../../seguridad/entities/empleados.entity';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('patologia')
 export class Patologia {
@@ -68,7 +69,7 @@ export class Patologia {
   @JoinColumn({ name: 'ID_EMPLEADO' })
   patologo?: Empleados;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo })
+  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
   estado: EstadoActivoInactivo;
 
   // NOTA: en el VB.NET original este campo se llenaba (aparentemente por error/

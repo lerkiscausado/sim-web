@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('soporte')
 export class Soporte {
@@ -20,7 +21,7 @@ export class Soporte {
   @Column({ name: 'DEPARTAMENTO', type: 'char', length: 50 })
   departamento: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: ['ABIERTO\'CANCELADO', 'CERRADO'] })
+  @Column({ name: 'ESTADO', type: 'set', enum: ['ABIERTO\'CANCELADO', 'CERRADO'], transformer: setColumnTransformer })
   estado: string;
 
   @CreateDateColumn({ name: 'createdAt' })

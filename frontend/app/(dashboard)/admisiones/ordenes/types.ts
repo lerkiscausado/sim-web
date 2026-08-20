@@ -123,3 +123,15 @@ export function nombrePaciente(p?: PacienteBusqueda | null) {
     if (!p) return "";
     return [p.primerNombre, p.segundoNombre, p.primerApellido, p.segundoApellido].filter(Boolean).join(" ");
 }
+
+/**
+ * TypeORM devuelve las columnas MySQL `SET` como arreglo de valores
+ * seleccionados (ej. ["ATENDIDO"]), no como string plano — aunque al
+ * renderizarlo directamente en JSX o usarlo como clave de objeto JS lo
+ * "convierte" a texto sin avisar, una comparación estricta (===) contra un
+ * string sí falla. Esta función normaliza cualquiera de las dos formas.
+ */
+export function estadoTexto(estado: string | string[] | null | undefined): string {
+    if (Array.isArray(estado)) return estado[0] ?? "";
+    return estado ?? "";
+}

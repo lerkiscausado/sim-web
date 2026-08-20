@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('toma_muestra')
 export class TomaMuestra {
@@ -35,25 +36,25 @@ export class TomaMuestra {
   @Column({ name: 'FUP', type: 'char', length: 20 })
   fup: string;
 
-  @Column({ name: 'S', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'S', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   s: string;
 
-  @Column({ name: 'U', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'U', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   u: string;
 
-  @Column({ name: 'L', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'L', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   l: string;
 
-  @Column({ name: 'BN', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'BN', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   bn: string;
 
-  @Column({ name: 'CN', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'CN', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   cn: string;
 
-  @Column({ name: 'BA', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'BA', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   ba: string;
 
-  @Column({ name: 'O', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'O', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   o: string;
 
   @Column({ name: 'OBSERVACIONES', type: 'text', nullable: true })

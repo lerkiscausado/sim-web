@@ -10,6 +10,7 @@ import {
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { Cargos } from '../../catalogos/entities/cargos.entity';
 import { Especialidades } from '../../catalogos/entities/especialidades.entity';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('empleados')
 export class Empleados {
@@ -36,7 +37,7 @@ export class Empleados {
   @Column({ name: 'REGISTRO_MEDICO', type: 'varchar', length: 10, nullable: true })
   registroMedico?: string | null;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo })
+  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
   estado: EstadoActivoInactivo;
 
   @Column({ name: 'FIRMA', type: 'blob', nullable: true })

@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivoEliminado } from '../../common/enums/estado.enum';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('subentidades')
 export class Subentidades {
@@ -12,7 +13,7 @@ export class Subentidades {
   @Column({ name: 'nombre', type: 'char', length: 60 })
   nombre: string;
 
-  @Column({ name: 'estado', type: 'set', enum: EstadoActivoInactivoEliminado })
+  @Column({ name: 'estado', type: 'set', enum: EstadoActivoInactivoEliminado, transformer: setColumnTransformer })
   estado: EstadoActivoInactivoEliminado;
 
   @CreateDateColumn({ name: 'createdAt' })

@@ -28,7 +28,7 @@ import type {
     OrdenListadoResult,
     Empleado,
 } from "./types";
-import { nombrePaciente, calcularEdad, sumarDiasHabiles } from "./types";
+import { nombrePaciente, calcularEdad, sumarDiasHabiles, estadoTexto } from "./types";
 
 const ESTADO_ESTILOS: Record<string, { bg: string; text: string; dot: string }> = {
     PENDIENTE: { bg: "#FEF3C7", text: "#92400E", dot: "#D97706" },
@@ -38,15 +38,16 @@ const ESTADO_ESTILOS: Record<string, { bg: string; text: string; dot: string }> 
     FACTURADO: { bg: "#EDE9FE", text: "#5B21B6", dot: "#7C3AED" },
 };
 
-function EstadoBadge({ estado }: { estado: string }) {
-    const estilo = ESTADO_ESTILOS[estado] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
+function EstadoBadge({ estado }: { estado: string | string[] }) {
+    const texto = estadoTexto(estado);
+    const estilo = ESTADO_ESTILOS[texto] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
     return (
         <span
             className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
             style={{ background: estilo.bg, color: estilo.text }}
         >
             <span className="h-1.5 w-1.5 rounded-full" style={{ background: estilo.dot }} />
-            {estado}
+            {texto}
         </span>
     );
 }
@@ -429,7 +430,7 @@ export default function OrdenesPage() {
     }
 
     const totalOrden = detalles
-        .filter((d) => d.estado !== "CANCELADO")
+        .filter((d) => estadoTexto(d.estado) !== "CANCELADO")
         .reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
@@ -627,7 +628,7 @@ export default function OrdenesPage() {
                                                 className="sticky right-0 border-l py-3 text-center"
                                                 style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
                                             >
-                                                {o.estado === "ATENDIDO" && (
+                                                {estadoTexto(o.estado) === "ATENDIDO" && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -918,7 +919,7 @@ export default function OrdenesPage() {
                         </div>
                         <div className="col-span-4 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
                             <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
-                            <Badge variant="outline">{orden.estado}</Badge>
+                            <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
                         </div>
                     </div>
 
@@ -1009,10 +1010,10 @@ export default function OrdenesPage() {
                                         <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
                                         <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
                                         <TableCell className="text-center">
-                                            <Badge variant={d.estado === "CANCELADO" ? "destructive" : "outline"}>{d.estado}</Badge>
+                                            <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {d.estado !== "CANCELADO" && (
+                                            {estadoTexto(d.estado) !== "CANCELADO" && (
                                                 <Button variant="ghost" size="sm" onClick={() => cancelarDetalle(d.id)}>
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>

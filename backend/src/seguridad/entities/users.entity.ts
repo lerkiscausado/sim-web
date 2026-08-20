@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivoEliminado } from '../../common/enums/estado.enum';
 import { Empleados } from './empleados.entity';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('users')
 export class Users {
@@ -170,13 +171,13 @@ export class Users {
   @Column({ name: 'ACERCADE', type: 'char', length: 1 })
   acercade: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivoEliminado, nullable: true })
+  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivoEliminado, nullable: true, transformer: setColumnTransformer })
   estado?: EstadoActivoInactivoEliminado | null;
 
   @Column({ name: 'ID_LICENCIA', type: 'int' })
   idLicencia: number;
 
-  @Column({ name: 'ADMIN', type: 'set', enum: ['1', '0'] })
+  @Column({ name: 'ADMIN', type: 'set', enum: ['1', '0'], transformer: setColumnTransformer })
   admin: string;
 
   @CreateDateColumn({ name: 'createdAt' })

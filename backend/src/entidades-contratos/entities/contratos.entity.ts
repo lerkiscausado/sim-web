@@ -11,6 +11,7 @@ import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { Entidades } from './entidades.entity';
 import { Tarifas } from './tarifas.entity';
 import { Licencias } from '../../seguridad/entities/licencias.entity';
+import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 export enum TipoContrato {
   EVENTO = 'EVENTO',
@@ -54,10 +55,10 @@ export class Contratos {
   @Column({ name: 'CORREO_ELECTRONICO', type: 'varchar', length: 100, nullable: true })
   correoElectronico?: string | null;
 
-  @Column({ name: 'TIPO_CONTRATO', type: 'set', enum: TipoContrato })
+  @Column({ name: 'TIPO_CONTRATO', type: 'set', enum: TipoContrato, transformer: setColumnTransformer })
   tipoContrato: TipoContrato;
 
-  @Column({ name: 'RIPS', type: 'set', enum: ['SI', 'NO'] })
+  @Column({ name: 'RIPS', type: 'set', enum: ['SI', 'NO'], transformer: setColumnTransformer })
   rips: string;
 
   @Column({ name: 'ID_TARIFA', type: 'int', nullable: true })
@@ -77,7 +78,7 @@ export class Contratos {
   @JoinColumn({ name: 'ID_LICENCIA' })
   licencia?: Licencias;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo })
+  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
   estado: EstadoActivoInactivo;
 
   // Credenciales del portal externo del contrato (dato legado propio del

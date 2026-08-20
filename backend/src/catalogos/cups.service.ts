@@ -1,9 +1,10 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Cups } from './entities/cups.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
 import { CreateCupsDto } from './dto/create-cups.dto';
+import { paginate } from '../common/pagination';
 
 @Injectable()
 export class CupsService {
@@ -12,18 +13,25 @@ export class CupsService {
     private readonly repo: Repository<Cups>,
   ) {}
 
-  findAll(q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string) {
+    const qb = this.repo.createQueryBuilder('c').orderBy('c.codigoCups', 'ASC');
     if (q && q.trim().length > 0) {
-      return this.repo.find({
-        where: [
-          { codigoCups: Like(`%${q.trim()}%`) },
-          { nombreCups: Like(`%${q.trim()}%`) },
-        ],
-        order: { codigoCups: 'ASC' },
-        take: 100,
-      });
+      const term = `%${q.trim()}%`;
+      qb.where('(c.codigoCups LIKE :term OR c.nombreCups LIKE :term)', { term });
     }
-    return this.repo.find({ order: { codigoCups: 'ASC' }, take: 100 });
+    return paginate(qb, page, pageSize);
+  }
+
+  /** Sin paginar, para autocompletados (Patología, Órdenes). */
+  async search(q: string) {
+    if (!q || q.trim().length < 2) return [];
+    const term = `%${q.trim()}%`;
+    return this.repo
+      .createQueryBuilder('c')
+      .where('(c.codigoCups LIKE :term OR c.nombreCups LIKE :term)', { term })
+      .orderBy('c.codigoCups', 'ASC')
+      .take(20)
+      .getMany();
   }
 
   async findOne(codigo: string) {

@@ -1,8 +1,9 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Diagnosticos } from './entities/diagnosticos.entity';
 import { CreateDiagnosticoDto } from './dto/create-diagnostico.dto';
+import { paginate } from '../common/pagination';
 
 @Injectable()
 export class DiagnosticosService {
@@ -11,34 +12,31 @@ export class DiagnosticosService {
     private readonly repo: Repository<Diagnosticos>,
   ) {}
 
-  /** Búsqueda por código o nombre (CIE10), usada en los autocompletados. */
+  /** Sin paginar, para autocompletados (Patología, Órdenes). */
   async search(q: string) {
     if (!q || q.trim().length < 2) return [];
     const term = q.trim();
-    const porCodigo = await this.repo.find({
-      where: { codigoDiagnostico: Like(`${term.toUpperCase()}%`) },
-      take: 20,
-    });
+    const porCodigo = await this.repo
+      .createQueryBuilder('d')
+      .where('d.codigoDiagnostico LIKE :term', { term: `${term.toUpperCase()}%` })
+      .take(20)
+      .getMany();
     if (porCodigo.length > 0) return porCodigo;
-    return this.repo.find({
-      where: { nombreDiagnostico: Like(`%${term}%`) },
-      take: 20,
-    });
+    return this.repo
+      .createQueryBuilder('d')
+      .where('d.nombreDiagnostico LIKE :term', { term: `%${term}%` })
+      .take(20)
+      .getMany();
   }
 
-  /** Listado paginado simple para la grilla de administración. */
-  findAll(q?: string) {
+  /** Listado paginado para la grilla de administración (Complementos). */
+  findAll(page = 1, pageSize = 20, q?: string) {
+    const qb = this.repo.createQueryBuilder('d').orderBy('d.codigoDiagnostico', 'ASC');
     if (q && q.trim().length > 0) {
-      return this.repo.find({
-        where: [
-          { codigoDiagnostico: Like(`%${q.trim().toUpperCase()}%`) },
-          { nombreDiagnostico: Like(`%${q.trim()}%`) },
-        ],
-        order: { codigoDiagnostico: 'ASC' },
-        take: 100,
-      });
+      const term = `%${q.trim()}%`;
+      qb.where('(d.codigoDiagnostico LIKE :term OR d.nombreDiagnostico LIKE :term)', { term });
     }
-    return this.repo.find({ order: { codigoDiagnostico: 'ASC' }, take: 100 });
+    return paginate(qb, page, pageSize);
   }
 
   findByCodigo(codigo: string) {

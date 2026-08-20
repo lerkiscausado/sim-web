@@ -1,9 +1,10 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Entidades } from './entities/entidades.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
 import { CreateEntidadDto } from './dto/create-entidad.dto';
+import { paginate } from '../common/pagination';
 
 @Injectable()
 export class EntidadesService {
@@ -12,19 +13,22 @@ export class EntidadesService {
     private readonly repo: Repository<Entidades>,
   ) {}
 
-  findAll(q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string) {
+    const qb = this.repo.createQueryBuilder('e').orderBy('e.nombreEntidad', 'ASC');
     if (q && q.trim().length > 0) {
-      return this.repo.find({
-        where: [
-          { codigoEntidad: Like(`%${q.trim()}%`) },
-          { nombreEntidad: Like(`%${q.trim()}%`) },
-          { nit: Like(`%${q.trim()}%`) },
-        ],
-        order: { nombreEntidad: 'ASC' },
-        take: 100,
-      });
+      const term = `%${q.trim()}%`;
+      qb.where('(e.codigoEntidad LIKE :term OR e.nombreEntidad LIKE :term OR e.nit LIKE :term)', { term });
     }
-    return this.repo.find({ order: { nombreEntidad: 'ASC' }, take: 100 });
+    return paginate(qb, page, pageSize);
+  }
+
+  /** Lista completa (sin paginar) de entidades activas, para selects (Contratos). */
+  findActivas() {
+    return this.repo.find({
+      where: { estado: EstadoActivoInactivo.ACTIVO },
+      order: { nombreEntidad: 'ASC' },
+      take: 300,
+    });
   }
 
   async findOne(codigo: string) {

@@ -5,13 +5,15 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Stethoscope, Pill, Building2 } from "lucide-react";
+import { Activity, Stethoscope, Pill, Building2, GraduationCap, TestTube } from "lucide-react";
 import { ModulePlaceholder } from "@/components/layout/ModulePlaceholder";
 import { Separator } from "@/components/ui/separator";
 import Cups from "./component/Cups";
 import Cie10 from "./component/Cie10";
 import Medicamentos from "./component/Medicamentos";
 import Entidades from "./component/Entidades";
+import Especialidades from "./component/Especialidades";
+import Especimenes from "./component/Especimenes";
 
 export default function ComplementosPage() {
     return (
@@ -20,7 +22,7 @@ export default function ComplementosPage() {
                 <ModulePlaceholder
                     module="Administración"
                     title="Complementos"
-                    description="Gestión de complementos Consulta de Cups, CIE10 y Medicamentos."
+                    description="Gestión de complementos: CUPS, CIE10, Medicamentos, Entidades, Especialidades y Especímenes."
                 />
             </div>
             <Separator />
@@ -42,6 +44,14 @@ export default function ComplementosPage() {
                         <TabsTrigger value="entidades" className="flex items-center gap-2 px-6 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
                             <Building2 className="h-4 w-4" />
                             <span className="font-medium">Entidades</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="especialidades" className="flex items-center gap-2 px-6 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                            <GraduationCap className="h-4 w-4" />
+                            <span className="font-medium">Especialidades</span>
+                        </TabsTrigger>
+                        <TabsTrigger value="especimenes" className="flex items-center gap-2 px-6 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                            <TestTube className="h-4 w-4" />
+                            <span className="font-medium">Especímenes</span>
                         </TabsTrigger>
                     </TabsList>
 
@@ -109,6 +119,40 @@ export default function ComplementosPage() {
                             </CardHeader>
                             <CardContent className="border-t border-dashed">
                                 <Entidades />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="especialidades" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <GraduationCap className="h-5 w-5 text-primary" />
+                                    Gestión de Especialidades
+                                </CardTitle>
+                                <CardDescription>
+                                    Administre las especialidades médicas del cuerpo asistencial.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="border-t border-dashed">
+                                <Especialidades />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="especimenes" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <TestTube className="h-5 w-5 text-primary" />
+                                    Gestión de Especímenes
+                                </CardTitle>
+                                <CardDescription>
+                                    Administre los tipos de muestra utilizados en órdenes y patología.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="border-t border-dashed">
+                                <Especimenes />
                             </CardContent>
                         </Card>
                     </TabsContent>

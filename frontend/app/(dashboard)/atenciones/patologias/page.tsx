@@ -71,7 +71,7 @@ export default function PatologiasPage() {
         try {
             const [pend, esp, plant] = await Promise.all([
                 api.get<OrdenPendiente[]>("/atenciones/patologia/pendientes"),
-                api.get<Especimen[]>("/atenciones/especimenes"),
+                api.get<Especimen[]>("/atenciones/especimenes/activos"),
                 api.get<PlantillaPatologia[]>("/atenciones/plantillas-patologia"),
             ]);
             setPendientes(pend);
@@ -97,7 +97,7 @@ export default function PatologiasPage() {
         const t = setTimeout(async () => {
             try {
                 const res = await api.get<DiagnosticoCie10[]>(
-                    `/catalogos/diagnosticos?q=${encodeURIComponent(cie10Query)}`
+                    `/catalogos/diagnosticos/search?q=${encodeURIComponent(cie10Query)}`
                 );
                 setCie10Resultados(res);
             } catch {

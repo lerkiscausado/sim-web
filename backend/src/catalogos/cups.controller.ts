@@ -21,8 +21,18 @@ export class CupsController {
   constructor(private readonly cupsService: CupsService) {}
 
   @Get()
-  findAll(@Query('q') q?: string) {
-    return this.cupsService.findAll(q);
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.cupsService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+  }
+
+  /** Sin paginar, para autocompletados. */
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.cupsService.search(q);
   }
 
   @Get(':codigo')

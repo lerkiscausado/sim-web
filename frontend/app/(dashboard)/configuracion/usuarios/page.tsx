@@ -71,7 +71,7 @@ export default function UsuariosSistemaPage() {
         try {
             const [usuariosData, empleadosData] = await Promise.all([
                 api.get<UsuarioSistema[]>("/users"),
-                api.get<Empleado[]>("/seguridad/empleados"),
+                api.get<Empleado[]>("/seguridad/empleados/activos"),
             ]);
             setUsuarios(usuariosData);
             setEmpleados(empleadosData);

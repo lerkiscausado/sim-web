@@ -21,8 +21,18 @@ export class EntidadesController {
   constructor(private readonly entidadesService: EntidadesService) {}
 
   @Get()
-  findAll(@Query('q') q?: string) {
-    return this.entidadesService.findAll(q);
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.entidadesService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+  }
+
+  /** Sin paginar, para selects (formulario de Contratos). */
+  @Get('activas')
+  findActivas() {
+    return this.entidadesService.findActivas();
   }
 
   @Get(':codigo')

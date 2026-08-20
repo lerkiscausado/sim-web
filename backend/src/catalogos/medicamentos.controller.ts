@@ -22,8 +22,12 @@ export class MedicamentosController {
   constructor(private readonly medicamentosService: MedicamentosService) {}
 
   @Get()
-  findAll(@Query('q') q?: string) {
-    return this.medicamentosService.findAll(q);
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.medicamentosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
   }
 
   @Get(':id')

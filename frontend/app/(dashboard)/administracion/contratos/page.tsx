@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Search, Plus, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
     Table,
     TableBody,
@@ -66,11 +67,19 @@ const FORM_INICIAL = {
     contrasena: "",
 };
 
+interface Paginado {
+    data: Contrato[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
 export default function ContratosPage() {
-    const [items, setItems] = useState<Contrato[]>([]);
+    const [result, setResult] = useState<Paginado | null>(null);
     const [entidades, setEntidades] = useState<Entidad[]>([]);
     const [tarifas, setTarifas] = useState<Tarifa[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -80,17 +89,18 @@ export default function ContratosPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
-    const cargar = useCallback(async (q?: string) => {
+    const cargar = useCallback(async (p: number, q?: string) => {
         setLoading(true);
         setError(null);
         try {
-            const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            if (q) qs.set("q", q);
             const [contratosData, entidadesData, tarifasData] = await Promise.all([
-                api.get<Contrato[]>(`/entidades-contratos/contratos${qs}`),
-                api.get<Entidad[]>("/entidades-contratos/entidades"),
+                api.get<Paginado>(`/entidades-contratos/contratos?${qs.toString()}`),
+                api.get<Entidad[]>("/entidades-contratos/entidades/activas"),
                 api.get<Tarifa[]>("/entidades-contratos/tarifas"),
             ]);
-            setItems(contratosData);
+            setResult(contratosData);
             setEntidades(entidadesData);
             setTarifas(tarifasData);
         } catch (err) {
@@ -100,12 +110,20 @@ export default function ContratosPage() {
         }
     }, []);
 
+    function cambiarPagina(p: number) {
+        setPage(p);
+        cargar(p, searchTerm);
+    }
+
     useEffect(() => {
-        cargar();
+        cargar(1);
     }, [cargar]);
 
     useEffect(() => {
-        const t = setTimeout(() => cargar(searchTerm), 300);
+        const t = setTimeout(() => {
+            setPage(1);
+            cargar(1, searchTerm);
+        }, 300);
         return () => clearTimeout(t);
     }, [searchTerm, cargar]);
 
@@ -156,7 +174,7 @@ export default function ContratosPage() {
                 await api.post("/entidades-contratos/contratos", form);
             }
             setDialogOpen(false);
-            await cargar(searchTerm);
+            await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el contrato");
         } finally {
@@ -168,7 +186,7 @@ export default function ContratosPage() {
         const nuevo = c.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
         try {
             await api.patch(`/entidades-contratos/contratos/${c.id}/estado/${nuevo}`);
-            await cargar(searchTerm);
+            await cargar(page, searchTerm);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cambiar el estado");
         }
@@ -224,14 +242,14 @@ export default function ContratosPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {!loading && items.length === 0 && (
+                        {!loading && (!result || result.data.length === 0) && (
                             <TableRow>
                                 <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
                                     No se encontraron contratos.
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items.map((c) => (
+                        {result?.data.map((c) => (
                             <TableRow key={c.id}>
                                 <TableCell className="font-medium">
                                     {c.nombre}
@@ -268,6 +286,10 @@ export default function ContratosPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            {result && (
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+            )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">

@@ -11,8 +11,18 @@ export class DiagnosticosController {
   constructor(private readonly diagnosticosService: DiagnosticosService) {}
 
   @Get()
-  findAll(@Query('q') q?: string) {
-    return this.diagnosticosService.findAll(q);
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.diagnosticosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+  }
+
+  /** Sin paginar, para autocompletados. */
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.diagnosticosService.search(q);
   }
 
   @Get(':codigo')

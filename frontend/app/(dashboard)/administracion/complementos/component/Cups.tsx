@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
     Card,
     CardContent,
@@ -35,9 +36,17 @@ interface CupsItem {
     estado: "ACTIVO" | "INACTIVO";
 }
 
+interface Paginado {
+    data: CupsItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
 export default function Cups() {
-    const [items, setItems] = useState<CupsItem[]>([]);
+    const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -47,13 +56,14 @@ export default function Cups() {
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
-    const cargar = useCallback(async (q?: string) => {
+    const cargar = useCallback(async (p: number, q?: string) => {
         setLoading(true);
         setError(null);
         try {
-            const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-            const data = await api.get<CupsItem[]>(`/catalogos/cups${qs}`);
-            setItems(data);
+            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            if (q) qs.set("q", q);
+            const data = await api.get<Paginado>(`/catalogos/cups?${qs.toString()}`);
+            setResult(data);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cargar el catálogo CUPS");
         } finally {
@@ -62,13 +72,21 @@ export default function Cups() {
     }, []);
 
     useEffect(() => {
-        cargar();
+        cargar(1);
     }, [cargar]);
 
     useEffect(() => {
-        const t = setTimeout(() => cargar(searchTerm), 300);
+        const t = setTimeout(() => {
+            setPage(1);
+            cargar(1, searchTerm);
+        }, 300);
         return () => clearTimeout(t);
     }, [searchTerm, cargar]);
+
+    function cambiarPagina(p: number) {
+        setPage(p);
+        cargar(p, searchTerm);
+    }
 
     function abrirNuevo() {
         setEditando(null);
@@ -98,7 +116,7 @@ export default function Cups() {
                 await api.post("/catalogos/cups", form);
             }
             setDialogOpen(false);
-            await cargar(searchTerm);
+            await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
         } finally {
@@ -110,7 +128,7 @@ export default function Cups() {
         const nuevo = item.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
         try {
             await api.patch(`/catalogos/cups/${item.codigoCups}/estado/${nuevo}`);
-            await cargar(searchTerm);
+            await cargar(page, searchTerm);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cambiar el estado");
         }
@@ -132,8 +150,8 @@ export default function Cups() {
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="px-0">
-                <div className="mb-6 flex items-center gap-2">
+            <CardContent className="px-0 space-y-4">
+                <div className="flex items-center gap-2">
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
@@ -147,7 +165,7 @@ export default function Cups() {
                 </div>
 
                 {error && (
-                    <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+                    <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
                 )}
 
                 <div className="rounded-md border bg-card">
@@ -161,14 +179,14 @@ export default function Cups() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {!loading && items.length === 0 && (
+                            {!loading && (!result || result.data.length === 0) && (
                                 <TableRow>
                                     <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
                                         No se encontraron resultados.
                                     </TableCell>
                                 </TableRow>
                             )}
-                            {items.map((item) => (
+                            {result?.data.map((item) => (
                                 <TableRow key={item.codigoCups} className="hover:bg-muted/30 transition-colors">
                                     <TableCell className="font-medium text-primary">{item.codigoCups}</TableCell>
                                     <TableCell className="max-w-md truncate">{item.nombreCups}</TableCell>
@@ -194,7 +212,9 @@ export default function Cups() {
                     </Table>
                 </div>
 
-                <p className="mt-4 text-sm text-muted-foreground">Mostrando {items.length} registros</p>
+                {result && (
+                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                )}
             </CardContent>
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

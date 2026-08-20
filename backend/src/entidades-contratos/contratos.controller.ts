@@ -18,13 +18,22 @@ import { EstadoActivoInactivo } from '../common/enums/estado.enum';
 
 @Controller('entidades-contratos/contratos')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@RequirePermission('contratos')
 export class ContratosController {
   constructor(private readonly contratosService: ContratosService) {}
 
   @Get()
-  findAll(@Query('q') q?: string) {
-    return this.contratosService.findAll(q);
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.contratosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+  }
+
+  /** Sin paginar, para selects (formulario de Órdenes). */
+  @Get('activos')
+  findActivos() {
+    return this.contratosService.findActivos();
   }
 
   @Get(':id')
@@ -32,16 +41,19 @@ export class ContratosController {
     return this.contratosService.findOne(id);
   }
 
+  @RequirePermission('contratos')
   @Post()
   create(@Body() dto: CreateContratoDto) {
     return this.contratosService.create(dto);
   }
 
+  @RequirePermission('contratos')
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateContratoDto>) {
     return this.contratosService.update(id, dto);
   }
 
+  @RequirePermission('contratos')
   @Patch(':id/estado/:estado')
   cambiarEstado(@Param('id', ParseIntPipe) id: number, @Param('estado') estado: EstadoActivoInactivo) {
     return this.contratosService.cambiarEstado(id, estado);

@@ -139,9 +139,9 @@ export default function OrdenesPage() {
         const cargarLookup = <T,>(tabla: string, setter: (v: T[]) => void) =>
             api.get<T[]>(`/catalogos/lookup/${tabla}`).then(setter).catch(() => setter([]));
 
-        api.get<Contrato[]>("/entidades-contratos/contratos").then(setContratos).catch(() => setContratos([]));
+        api.get<Contrato[]>("/entidades-contratos/contratos/activos").then(setContratos).catch(() => setContratos([]));
         api.get<Sede[]>("/admisiones/sedes").then(setSedes).catch(() => setSedes([]));
-        api.get<Especimen[]>("/atenciones/especimenes").then(setEspecimenes).catch(() => setEspecimenes([]));
+        api.get<Especimen[]>("/atenciones/especimenes/activos").then(setEspecimenes).catch(() => setEspecimenes([]));
         api.get<LookupItem[]>("/catalogos/tipo-estudio").then((r) => setTiposEstudio(r as any)).catch(() => setTiposEstudio([]));
         cargarLookup("ingreso", setIngresos);
         cargarLookup("tipo-afiliado", setTiposAfiliado);
@@ -197,7 +197,7 @@ export default function OrdenesPage() {
         }
         const t = setTimeout(async () => {
             try {
-                const res = await api.get<CupsItem[]>(`/catalogos/cups?q=${encodeURIComponent(cupsQuery)}`);
+                const res = await api.get<CupsItem[]>(`/catalogos/cups/search?q=${encodeURIComponent(cupsQuery)}`);
                 setCupsResultados(res);
             } catch {
                 setCupsResultados([]);

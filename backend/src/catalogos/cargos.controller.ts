@@ -12,14 +12,14 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
-import { EmpleadosService } from './empleados.service';
-import { CreateEmpleadoDto } from './dto/create-empleado.dto';
-import { EstadoActivoInactivo } from '../common/enums/estado.enum';
+import { CargosService } from './cargos.service';
+import { CreateCargoDto } from './dto/create-cargo.dto';
+import { EstadoActivoInactivoEliminado } from '../common/enums/estado.enum';
 
-@Controller('seguridad/empleados')
+@Controller('catalogos/cargos')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-export class EmpleadosController {
-  constructor(private readonly service: EmpleadosService) {}
+export class CargosController {
+  constructor(private readonly service: CargosService) {}
 
   @Get()
   findAll(
@@ -35,26 +35,21 @@ export class EmpleadosController {
     return this.service.findActivos();
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.service.findOne(id);
-  }
-
-  @RequirePermission('empleados')
+  @RequirePermission('cargos')
   @Post()
-  create(@Body() dto: CreateEmpleadoDto) {
+  create(@Body() dto: CreateCargoDto) {
     return this.service.create(dto);
   }
 
-  @RequirePermission('empleados')
+  @RequirePermission('cargos')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateEmpleadoDto>) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreateCargoDto>) {
     return this.service.update(id, dto);
   }
 
-  @RequirePermission('empleados')
+  @RequirePermission('cargos')
   @Patch(':id/estado/:estado')
-  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Param('estado') estado: EstadoActivoInactivo) {
+  cambiarEstado(@Param('id', ParseIntPipe) id: number, @Param('estado') estado: EstadoActivoInactivoEliminado) {
     return this.service.cambiarEstado(id, estado);
   }
 }

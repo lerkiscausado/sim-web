@@ -1,38 +1,46 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Medicamentos } from './entities/medicamentos.entity';
+import { Especialidades } from './entities/especialidades.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
-import { CreateMedicamentoDto } from './dto/create-medicamento.dto';
+import { CreateEspecialidadDto } from './dto/create-especialidad.dto';
 import { paginate } from '../common/pagination';
 
 @Injectable()
-export class MedicamentosService {
+export class EspecialidadesService {
   constructor(
-    @InjectRepository(Medicamentos)
-    private readonly repo: Repository<Medicamentos>,
+    @InjectRepository(Especialidades)
+    private readonly repo: Repository<Especialidades>,
   ) {}
 
   findAll(page = 1, pageSize = 20, q?: string) {
-    const qb = this.repo.createQueryBuilder('m').orderBy('m.nombre', 'ASC');
+    const qb = this.repo.createQueryBuilder('e').orderBy('e.nombreEspecialidad', 'ASC');
     if (q && q.trim().length > 0) {
-      qb.where('m.nombre LIKE :term', { term: `%${q.trim()}%` });
+      qb.where('e.nombreEspecialidad LIKE :term', { term: `%${q.trim()}%` });
     }
     return paginate(qb, page, pageSize);
   }
 
+  findActivas() {
+    return this.repo.find({
+      where: { estado: EstadoActivoInactivo.ACTIVO },
+      order: { nombreEspecialidad: 'ASC' },
+      take: 300,
+    });
+  }
+
   async findOne(id: number) {
     const item = await this.repo.findOne({ where: { id } });
-    if (!item) throw new NotFoundException(`Medicamento ${id} no encontrado`);
+    if (!item) throw new NotFoundException(`Especialidad ${id} no encontrada`);
     return item;
   }
 
-  create(dto: CreateMedicamentoDto) {
+  create(dto: CreateEspecialidadDto) {
     const item = this.repo.create({ ...dto, estado: EstadoActivoInactivo.ACTIVO });
     return this.repo.save(item);
   }
 
-  async update(id: number, dto: Partial<CreateMedicamentoDto>) {
+  async update(id: number, dto: Partial<CreateEspecialidadDto>) {
     const item = await this.findOne(id);
     Object.assign(item, dto);
     return this.repo.save(item);

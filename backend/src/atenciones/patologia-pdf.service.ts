@@ -1,8 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as PDFKit from 'pdfkit';
-const PDFDocument = PDFKit as unknown as new (options?: PDFKit.PDFDocumentOptions) => PDFKit.PDFDocument;
+// pdfkit se distribuye como CommonJS (export = PDFDocument). Con
+// module: "nodenext" del tsconfig, `import * as X` no siempre desenvuelve
+// module.exports correctamente en runtime (compila bien, pero falla al
+// ejecutar con "X is not a constructor"). require() directo es la forma
+// segura de importar este tipo de paquete sin depender de la interop ESM.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const PDFDocument = require('pdfkit') as new (options?: PDFKit.PDFDocumentOptions) => PDFKit.PDFDocument;
 import { Patologia } from './entities/patologia.entity';
 import { Empresa } from '../documentos-soporte/entities/empresa.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';

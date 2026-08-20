@@ -572,7 +572,10 @@ export default function OrdenesPage() {
                                     <TableHead>Contrato / Sede</TableHead>
                                     <TableHead>Comentarios</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
-                                    <TableHead className="w-[50px]" />
+                                    <TableHead
+                                        className="sticky right-0 w-[50px] border-l"
+                                        style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                    />
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -620,7 +623,10 @@ export default function OrdenesPage() {
                                             <TableCell className="py-3 text-center">
                                                 <EstadoBadge estado={o.estado} />
                                             </TableCell>
-                                            <TableCell className="py-3 text-center">
+                                            <TableCell
+                                                className="sticky right-0 border-l py-3 text-center"
+                                                style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                            >
                                                 {o.estado === "ATENDIDO" && (
                                                     <Button
                                                         variant="ghost"

@@ -27,12 +27,29 @@ export class OrdenesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('anio') anio?: string,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+    @Query('idTipoEstudio') idTipoEstudio?: string,
+    @Query('estado') estado?: string,
   ) {
     return this.ordenesService.findAll(
       page ? Number(page) : 1,
       pageSize ? Number(pageSize) : 20,
       q,
+      {
+        anio: anio ? Number(anio) : undefined,
+        fechaInicio,
+        fechaFin,
+        idTipoEstudio: idTipoEstudio ? Number(idTipoEstudio) : undefined,
+        estado,
+      },
     );
+  }
+
+  @Get('anios')
+  findAniosDisponibles() {
+    return this.ordenesService.findAniosDisponibles();
   }
 
   @Get('paciente/:idUsuario')

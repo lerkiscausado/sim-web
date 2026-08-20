@@ -102,6 +102,12 @@ export default function OrdenesPage() {
     const [listadoError, setListadoError] = useState<string | null>(null);
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
+    const [filtroAnio, setFiltroAnio] = useState<string>("");
+    const [filtroFechaInicio, setFiltroFechaInicio] = useState("");
+    const [filtroFechaFin, setFiltroFechaFin] = useState("");
+    const [filtroTipoEstudio, setFiltroTipoEstudio] = useState<string>("");
+    const [filtroEstado, setFiltroEstado] = useState<string>("");
+    const [aniosDisponibles, setAniosDisponibles] = useState<number[]>([]);
 
     // --- búsqueda / selección de paciente ---
     const [searchTerm, setSearchTerm] = useState("");
@@ -142,33 +148,53 @@ export default function OrdenesPage() {
     const [cupsQuery, setCupsQuery] = useState("");
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
 
-    const cargarListado = useCallback(async (page: number, q?: string) => {
-        setListadoLoading(true);
-        setListadoError(null);
-        try {
-            const qs = new URLSearchParams({ page: String(page), pageSize: "15" });
-            if (q) qs.set("q", q);
-            const res = await api.get<OrdenListadoResult>(`/admisiones/ordenes?${qs.toString()}`);
-            setListado(res);
-        } catch (err) {
-            setListadoError(err instanceof ApiError ? err.message : "No se pudo cargar el listado de órdenes");
-        } finally {
-            setListadoLoading(false);
-        }
-    }, []);
+    const cargarListado = useCallback(
+        async (page: number, q?: string, filtros?: { anio?: string; fechaInicio?: string; fechaFin?: string; idTipoEstudio?: string; estado?: string }) => {
+            setListadoLoading(true);
+            setListadoError(null);
+            try {
+                const qs = new URLSearchParams({ page: String(page), pageSize: "15" });
+                if (q) qs.set("q", q);
+                if (filtros?.anio) qs.set("anio", filtros.anio);
+                if (filtros?.fechaInicio) qs.set("fechaInicio", filtros.fechaInicio);
+                if (filtros?.fechaFin) qs.set("fechaFin", filtros.fechaFin);
+                if (filtros?.idTipoEstudio) qs.set("idTipoEstudio", filtros.idTipoEstudio);
+                if (filtros?.estado) qs.set("estado", filtros.estado);
+                const res = await api.get<OrdenListadoResult>(`/admisiones/ordenes?${qs.toString()}`);
+                setListado(res);
+            } catch (err) {
+                setListadoError(err instanceof ApiError ? err.message : "No se pudo cargar el listado de órdenes");
+            } finally {
+                setListadoLoading(false);
+            }
+        },
+        [],
+    );
+
+    const filtrosActuales = {
+        anio: filtroAnio,
+        fechaInicio: filtroFechaInicio,
+        fechaFin: filtroFechaFin,
+        idTipoEstudio: filtroTipoEstudio,
+        estado: filtroEstado,
+    };
 
     useEffect(() => {
-        if (vista === "listado") cargarListado(listadoPage, listadoQuery);
+        if (vista === "listado") cargarListado(listadoPage, listadoQuery, filtrosActuales);
     }, [vista, listadoPage, cargarListado]);
 
     useEffect(() => {
         if (vista !== "listado") return;
         const t = setTimeout(() => {
             setListadoPage(1);
-            cargarListado(1, listadoQuery);
+            cargarListado(1, listadoQuery, filtrosActuales);
         }, 350);
         return () => clearTimeout(t);
-    }, [listadoQuery, vista, cargarListado]);
+    }, [listadoQuery, filtroAnio, filtroFechaInicio, filtroFechaFin, filtroTipoEstudio, filtroEstado, vista, cargarListado]);
+
+    useEffect(() => {
+        api.get<number[]>("/admisiones/ordenes/anios").then(setAniosDisponibles).catch(() => setAniosDisponibles([]));
+    }, []);
 
     // Cargar catálogos de apoyo una vez
     useEffect(() => {
@@ -179,7 +205,9 @@ export default function OrdenesPage() {
         api.get<Sede[]>("/admisiones/sedes").then(setSedes).catch(() => setSedes([]));
         api.get<Especimen[]>("/atenciones/especimenes/activos").then(setEspecimenes).catch(() => setEspecimenes([]));
         api.get<Empleado[]>("/seguridad/empleados/activos").then(setEmpleados).catch(() => setEmpleados([]));
-        api.get<LookupItem[]>("/catalogos/tipo-estudio").then((r) => setTiposEstudio(r as any)).catch(() => setTiposEstudio([]));
+        api.get<{ id: number; nombreTipoEstudio: string }[]>("/catalogos/tipo-estudio")
+            .then((r) => setTiposEstudio(r.map((t) => ({ id: t.id, nombre: t.nombreTipoEstudio }))))
+            .catch(() => setTiposEstudio([]));
         cargarLookup("ingreso", setIngresos);
         cargarLookup("tipo-afiliado", setTiposAfiliado);
         cargarLookup("tipo-usuario", setTiposUsuario);
@@ -304,7 +332,7 @@ export default function OrdenesPage() {
 
     function volverAlListado() {
         setVista("listado");
-        cargarListado(listadoPage, listadoQuery);
+        cargarListado(listadoPage, listadoQuery, filtrosActuales);
     }
 
     async function crearOrden() {
@@ -430,6 +458,87 @@ export default function OrdenesPage() {
                             value={listadoQuery}
                             onChange={(e) => setListadoQuery(e.target.value)}
                         />
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-muted-foreground">Año</label>
+                            <select
+                                className="h-9 w-28 rounded-md border bg-transparent px-3 text-sm"
+                                value={filtroAnio}
+                                onChange={(e) => setFiltroAnio(e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                {aniosDisponibles.map((a) => (
+                                    <option key={a} value={a}>
+                                        {a}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-muted-foreground">Fecha inicio</label>
+                            <Input
+                                type="date"
+                                className="w-40"
+                                value={filtroFechaInicio}
+                                onChange={(e) => setFiltroFechaInicio(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-muted-foreground">Fecha final</label>
+                            <Input
+                                type="date"
+                                className="w-40"
+                                value={filtroFechaFin}
+                                onChange={(e) => setFiltroFechaFin(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-muted-foreground">Estudio</label>
+                            <select
+                                className="h-9 w-48 rounded-md border bg-transparent px-3 text-sm"
+                                value={filtroTipoEstudio}
+                                onChange={(e) => setFiltroTipoEstudio(e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                {tiposEstudio.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-medium text-muted-foreground">Estado</label>
+                            <select
+                                className="h-9 w-40 rounded-md border bg-transparent px-3 text-sm"
+                                value={filtroEstado}
+                                onChange={(e) => setFiltroEstado(e.target.value)}
+                            >
+                                <option value="">Todos</option>
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="PROCESO">Proceso</option>
+                                <option value="ATENDIDO">Atendido</option>
+                                <option value="CANCELADO">Cancelado</option>
+                                <option value="FACTURADO">Facturado</option>
+                            </select>
+                        </div>
+                        {(filtroAnio || filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroEstado) && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setFiltroAnio("");
+                                    setFiltroFechaInicio("");
+                                    setFiltroFechaFin("");
+                                    setFiltroTipoEstudio("");
+                                    setFiltroEstado("");
+                                }}
+                            >
+                                Limpiar filtros
+                            </Button>
+                        )}
                     </div>
 
                     {listadoError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}

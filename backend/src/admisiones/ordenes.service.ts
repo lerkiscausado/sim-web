@@ -119,7 +119,12 @@ export class OrdenesService {
     return guardada;
   }
 
-  async findAll(page = 1, pageSize = 20, q?: string) {
+  async findAll(
+    page = 1,
+    pageSize = 20,
+    q?: string,
+    filtros?: { anio?: number; fechaInicio?: string; fechaFin?: string; idTipoEstudio?: number; estado?: string },
+  ) {
     const take = Math.min(Math.max(pageSize, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
 
@@ -137,14 +142,38 @@ export class OrdenesService {
 
     if (q && q.trim().length > 0) {
       const term = `%${q.trim()}%`;
-      qb.where(
+      qb.andWhere(
         '(o.numeroOrden LIKE :term OR o.consecutivo LIKE :term OR paciente.identificacion LIKE :term OR paciente.primerNombre LIKE :term OR paciente.primerApellido LIKE :term)',
         { term },
       );
     }
 
+    if (filtros?.anio) {
+      qb.andWhere('YEAR(o.fechaIngreso) = :anio', { anio: filtros.anio });
+    }
+    if (filtros?.fechaInicio) {
+      qb.andWhere('o.fechaIngreso >= :fechaInicio', { fechaInicio: filtros.fechaInicio });
+    }
+    if (filtros?.fechaFin) {
+      qb.andWhere('o.fechaIngreso <= :fechaFin', { fechaFin: filtros.fechaFin });
+    }
+    if (filtros?.idTipoEstudio) {
+      qb.andWhere('o.idTipoEstudio = :idTipoEstudio', { idTipoEstudio: filtros.idTipoEstudio });
+    }
+    if (filtros?.estado) {
+      qb.andWhere('o.estado = :estado', { estado: filtros.estado });
+    }
+
     const [data, total] = await qb.getManyAndCount();
     return { data, total, page, pageSize: take };
+  }
+
+  /** Años con órdenes registradas, para poblar el select de año en el listado. */
+  async findAniosDisponibles(): Promise<number[]> {
+    const rows = await this.dataSource.query(
+      'SELECT DISTINCT YEAR(FECHA_INGRESO) AS anio FROM ordenes ORDER BY anio DESC',
+    );
+    return rows.map((r: { anio: number }) => r.anio);
   }
 
   async findOne(id: number) {

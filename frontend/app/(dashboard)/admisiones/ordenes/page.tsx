@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -26,8 +26,9 @@ import type {
     DetalleOrden,
     OrdenListado,
     OrdenListadoResult,
+    Empleado,
 } from "./types";
-import { nombrePaciente } from "./types";
+import { nombrePaciente, sumarDiasHabiles } from "./types";
 
 type Vista = "listado" | "buscar-paciente" | "datos-orden" | "procedimientos";
 
@@ -36,27 +37,39 @@ const HEADER_INICIAL = {
     idSubentidad: undefined as number | undefined,
     idSede: undefined as number | undefined,
     idIngreso: undefined as number | undefined,
+    idEmpleado: undefined as number | undefined,
     idTipoAfiliado: undefined as number | undefined,
     idTipoUsuario: undefined as number | undefined,
     idTipoEstudio: undefined as number | undefined,
     idEspecimen: undefined as number | undefined,
     autorizacion: "",
+    numeroOrden: "",
     fechaOrden: new Date().toISOString().slice(0, 10),
     comentarios: "",
 };
 
 const DETALLE_INICIAL = {
     codigoCups: "",
-    idCausa: undefined as number | undefined,
-    idFinalidadConsulta: undefined as number | undefined,
-    idFinalidadProcedimiento: undefined as number | undefined,
     idAmbito: undefined as number | undefined,
-    idPersonaAtiende: undefined as number | undefined,
-    idTipoDiagnostico: undefined as number | undefined,
-    diagnostico1: "",
-    idFormaRealizacion: undefined as number | undefined,
     tipo: "O",
     valor: undefined as number | undefined,
+    copago: 0,
+};
+
+const PACIENTE_NUEVO_INICIAL = {
+    idTipoIdentificacion: "CC",
+    identificacion: "",
+    primerNombre: "",
+    segundoNombre: "",
+    primerApellido: "",
+    segundoApellido: "",
+    sexo: "F",
+    fechaNacimiento: "",
+    direccion: "",
+    telefono: "",
+    correoElectronico: "",
+    estadoCivil: "SOLTERO",
+    codigoTipoUsuario: 1,
 };
 
 export default function OrdenesPage() {
@@ -74,23 +87,25 @@ export default function OrdenesPage() {
     const [pacientes, setPacientes] = useState<PacienteBusqueda[]>([]);
     const [paciente, setPaciente] = useState<PacienteBusqueda | null>(null);
     const [buscando, setBuscando] = useState(false);
+    const [busquedaHecha, setBusquedaHecha] = useState(false);
+
+    // --- registro rápido de paciente nuevo ---
+    const [mostrarNuevoPaciente, setMostrarNuevoPaciente] = useState(false);
+    const [formPaciente, setFormPaciente] = useState(PACIENTE_NUEVO_INICIAL);
+    const [pacienteError, setPacienteError] = useState<string | null>(null);
+    const [guardandoPaciente, setGuardandoPaciente] = useState(false);
 
     // --- catálogos ---
     const [contratos, setContratos] = useState<Contrato[]>([]);
     const [subentidades, setSubentidades] = useState<LookupItem[]>([]);
     const [sedes, setSedes] = useState<Sede[]>([]);
     const [ingresos, setIngresos] = useState<LookupItem[]>([]);
+    const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [tiposAfiliado, setTiposAfiliado] = useState<LookupItem[]>([]);
     const [tiposUsuario, setTiposUsuario] = useState<LookupItem[]>([]);
     const [tiposEstudio, setTiposEstudio] = useState<LookupItem[]>([]);
     const [especimenes, setEspecimenes] = useState<Especimen[]>([]);
-    const [causas, setCausas] = useState<LookupItem[]>([]);
-    const [finalidadesConsulta, setFinalidadesConsulta] = useState<LookupItem[]>([]);
-    const [finalidadesProcedimiento, setFinalidadesProcedimiento] = useState<LookupItem[]>([]);
     const [ambitos, setAmbitos] = useState<LookupItem[]>([]);
-    const [personasAtiende, setPersonasAtiende] = useState<LookupItem[]>([]);
-    const [tiposDiagnostico, setTiposDiagnostico] = useState<LookupItem[]>([]);
-    const [formasRealizacion, setFormasRealizacion] = useState<LookupItem[]>([]);
 
     // --- orden en curso ---
     const [header, setHeader] = useState(HEADER_INICIAL);
@@ -142,23 +157,19 @@ export default function OrdenesPage() {
         api.get<Contrato[]>("/entidades-contratos/contratos/activos").then(setContratos).catch(() => setContratos([]));
         api.get<Sede[]>("/admisiones/sedes").then(setSedes).catch(() => setSedes([]));
         api.get<Especimen[]>("/atenciones/especimenes/activos").then(setEspecimenes).catch(() => setEspecimenes([]));
+        api.get<Empleado[]>("/seguridad/empleados/activos").then(setEmpleados).catch(() => setEmpleados([]));
         api.get<LookupItem[]>("/catalogos/tipo-estudio").then((r) => setTiposEstudio(r as any)).catch(() => setTiposEstudio([]));
         cargarLookup("ingreso", setIngresos);
         cargarLookup("tipo-afiliado", setTiposAfiliado);
         cargarLookup("tipo-usuario", setTiposUsuario);
-        cargarLookup("causa-externa", setCausas);
-        cargarLookup("finalidad-consulta", setFinalidadesConsulta);
-        cargarLookup("finalidad-procedimiento", setFinalidadesProcedimiento);
         cargarLookup("ambito-procedimiento", setAmbitos);
-        cargarLookup("persona-atiende", setPersonasAtiende);
-        cargarLookup("tipo-diagnostico", setTiposDiagnostico);
-        cargarLookup("forma-realizacion", setFormasRealizacion);
     }, []);
 
     // Buscar paciente con debounce
     useEffect(() => {
         if (searchTerm.trim().length < 3) {
             setPacientes([]);
+            setBusquedaHecha(false);
             return;
         }
         const t = setTimeout(async () => {
@@ -172,6 +183,7 @@ export default function OrdenesPage() {
                 setPacientes([]);
             } finally {
                 setBuscando(false);
+                setBusquedaHecha(true);
             }
         }, 350);
         return () => clearTimeout(t);
@@ -212,6 +224,7 @@ export default function OrdenesPage() {
         setDetalles([]);
         setHeader(HEADER_INICIAL);
         setSearchTerm("");
+        setMostrarNuevoPaciente(false);
         setVista("buscar-paciente");
     }
 
@@ -220,6 +233,35 @@ export default function OrdenesPage() {
         setPacientes([]);
         setSearchTerm("");
         setVista("datos-orden");
+    }
+
+    function abrirRegistroPaciente() {
+        setFormPaciente({ ...PACIENTE_NUEVO_INICIAL, identificacion: searchTerm.trim() });
+        setPacienteError(null);
+        setMostrarNuevoPaciente(true);
+    }
+
+    async function guardarPacienteNuevo() {
+        if (
+            !formPaciente.identificacion ||
+            !formPaciente.primerNombre ||
+            !formPaciente.primerApellido ||
+            !formPaciente.fechaNacimiento
+        ) {
+            setPacienteError("Identificación, nombres, apellido y fecha de nacimiento son obligatorios.");
+            return;
+        }
+        setGuardandoPaciente(true);
+        setPacienteError(null);
+        try {
+            const nuevo = await api.post<PacienteBusqueda>("/pacientes", formPaciente);
+            seleccionarPaciente(nuevo);
+            setMostrarNuevoPaciente(false);
+        } catch (err) {
+            setPacienteError(err instanceof ApiError ? err.message : "No se pudo registrar el paciente");
+        } finally {
+            setGuardandoPaciente(false);
+        }
     }
 
     async function abrirOrdenExistente(o: OrdenListado) {
@@ -251,6 +293,7 @@ export default function OrdenesPage() {
             "idSubentidad",
             "idSede",
             "idIngreso",
+            "idEmpleado",
             "idTipoAfiliado",
             "idTipoUsuario",
             "idTipoEstudio",
@@ -267,6 +310,7 @@ export default function OrdenesPage() {
             const nuevaOrden = await api.post<Orden>("/admisiones/ordenes", {
                 idUsuario: paciente.id,
                 ...header,
+                numeroOrden: header.numeroOrden || undefined,
             });
             setOrden(nuevaOrden);
             setDetalles([]);
@@ -286,20 +330,8 @@ export default function OrdenesPage() {
 
     async function agregarDetalle() {
         if (!orden) return;
-        const requeridos: (keyof typeof detalleForm)[] = [
-            "codigoCups",
-            "idCausa",
-            "idFinalidadConsulta",
-            "idFinalidadProcedimiento",
-            "idAmbito",
-            "idPersonaAtiende",
-            "idTipoDiagnostico",
-            "diagnostico1",
-            "idFormaRealizacion",
-        ];
-        const faltante = requeridos.find((k) => !detalleForm[k]);
-        if (faltante) {
-            setDetalleError("Completa todos los campos obligatorios del procedimiento.");
+        if (!detalleForm.codigoCups || !detalleForm.idAmbito) {
+            setDetalleError("CUPS y Ámbito del Procedimiento son obligatorios.");
             return;
         }
         setGuardandoDetalle(true);
@@ -332,6 +364,7 @@ export default function OrdenesPage() {
         .filter((d) => d.estado !== "CANCELADO")
         .reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0);
 
+    const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
     const totalPaginas = listado ? Math.max(1, Math.ceil(listado.total / listado.pageSize)) : 1;
 
     return (
@@ -366,7 +399,6 @@ export default function OrdenesPage() {
                 )}
             </div>
 
-            {/* Listado */}
             {vista === "listado" && (
                 <div className="space-y-4">
                     <div className="relative max-w-sm">
@@ -386,7 +418,7 @@ export default function OrdenesPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>No. de Orden</TableHead>
-                                    <TableHead>Consecutivo</TableHead>
+                                    <TableHead>Cons. Estudio</TableHead>
                                     <TableHead>Paciente</TableHead>
                                     <TableHead>Entidad o Contrato</TableHead>
                                     <TableHead>Tipo de Estudio</TableHead>
@@ -447,7 +479,6 @@ export default function OrdenesPage() {
                 </div>
             )}
 
-            {/* Paso: buscar paciente */}
             {vista === "buscar-paciente" && (
                 <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
                     <p className="mb-3 text-sm font-medium">Buscar paciente</p>
@@ -457,13 +488,17 @@ export default function OrdenesPage() {
                             placeholder="Identificación o nombre..."
                             className="pl-9"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setMostrarNuevoPaciente(false);
+                            }}
                             autoFocus
                         />
                         {buscando && (
                             <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                         )}
                     </div>
+
                     {pacientes.length > 0 && (
                         <div className="mt-3 divide-y rounded-md border" style={{ borderColor: "var(--border-default)" }}>
                             {pacientes.map((p) => (
@@ -482,10 +517,115 @@ export default function OrdenesPage() {
                             ))}
                         </div>
                     )}
+
+                    {busquedaHecha && !buscando && pacientes.length === 0 && !mostrarNuevoPaciente && (
+                        <div className="mt-3 rounded-md border border-dashed p-4 text-center" style={{ borderColor: "var(--border-default)" }}>
+                            <p className="mb-2 text-sm text-muted-foreground">No se encontró ningún paciente.</p>
+                            <Button size="sm" variant="outline" onClick={abrirRegistroPaciente}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Registrar nuevo paciente
+                            </Button>
+                        </div>
+                    )}
+
+                    {mostrarNuevoPaciente && (
+                        <div className="mt-4 space-y-3 rounded-md border p-4" style={{ borderColor: "var(--border-default)" }}>
+                            <p className="text-sm font-medium">Registrar nuevo paciente</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Tipo de identificación</label>
+                                    <Input
+                                        value={formPaciente.idTipoIdentificacion}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, idTipoIdentificacion: e.target.value.toUpperCase() }))}
+                                        maxLength={2}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Identificación</label>
+                                    <Input
+                                        value={formPaciente.identificacion}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, identificacion: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Primer nombre</label>
+                                    <Input
+                                        value={formPaciente.primerNombre}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, primerNombre: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Segundo nombre</label>
+                                    <Input
+                                        value={formPaciente.segundoNombre}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, segundoNombre: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Primer apellido</label>
+                                    <Input
+                                        value={formPaciente.primerApellido}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, primerApellido: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Segundo apellido</label>
+                                    <Input
+                                        value={formPaciente.segundoApellido}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, segundoApellido: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Sexo</label>
+                                    <select
+                                        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                        value={formPaciente.sexo}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, sexo: e.target.value }))}
+                                    >
+                                        <option value="F">Femenino</option>
+                                        <option value="M">Masculino</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Fecha de nacimiento</label>
+                                    <Input
+                                        type="date"
+                                        value={formPaciente.fechaNacimiento}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, fechaNacimiento: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Teléfono</label>
+                                    <Input
+                                        value={formPaciente.telefono}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, telefono: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Estado civil</label>
+                                    <select
+                                        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                        value={formPaciente.estadoCivil}
+                                        onChange={(e) => setFormPaciente((f) => ({ ...f, estadoCivil: e.target.value }))}
+                                    >
+                                        <option value="SOLTERO">Soltero(a)</option>
+                                        <option value="CASADO">Casado(a)</option>
+                                        <option value="UNION LIBRE">Unión libre</option>
+                                        <option value="DIVORCIADO">Divorciado(a)</option>
+                                        <option value="VIUDO">Viudo(a)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            {pacienteError && <p className="text-sm text-red-600">{pacienteError}</p>}
+                            <Button onClick={guardarPacienteNuevo} disabled={guardandoPaciente}>
+                                {guardandoPaciente && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Registrar y continuar
+                            </Button>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Paso: datos de la orden */}
             {vista === "datos-orden" && paciente && (
                 <div className="space-y-4">
                     <div
@@ -509,16 +649,7 @@ export default function OrdenesPage() {
                         <div className="grid grid-cols-2 gap-3">
                             <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
                             <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
-                            <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
-                            <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
-                            <Selector label="Tipo Afiliado" value={header.idTipoAfiliado} onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))} options={tiposAfiliado} />
-                            <Selector label="Regimen, Tipo Usuario" value={header.idTipoUsuario} onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))} options={tiposUsuario} />
-                            <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
-                            <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Autorizacion</label>
-                                <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
-                            </div>
+                            <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} />
                             <div className="space-y-1.5">
                                 <label className="text-[12.5px] font-medium">Fecha Orden</label>
                                 <Input
@@ -527,6 +658,28 @@ export default function OrdenesPage() {
                                     onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
                                 />
                             </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Autorizacion</label>
+                                <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">No. de Orden (opcional, se sugiere una)</label>
+                                <Input
+                                    value={header.numeroOrden}
+                                    onChange={(e) => setHeader((h) => ({ ...h, numeroOrden: e.target.value }))}
+                                    placeholder="Se genera automáticamente si se deja vacío"
+                                />
+                            </div>
+                            <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
+                            <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
+                            <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
+                                <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
+                            </div>
+                            <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
+                            <Selector label="Tipo Afiliado" value={header.idTipoAfiliado} onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))} options={tiposAfiliado} />
+                            <Selector label="Regimen, Tipo Usuario" value={header.idTipoUsuario} onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))} options={tiposUsuario} />
                         </div>
                         <div className="mt-3 space-y-1.5">
                             <label className="text-[12.5px] font-medium">Comentarios</label>
@@ -542,7 +695,6 @@ export default function OrdenesPage() {
                 </div>
             )}
 
-            {/* Paso: orden creada / abierta + procedimientos */}
             {vista === "procedimientos" && paciente && orden && (
                 <div className="space-y-4">
                     <div
@@ -563,7 +715,15 @@ export default function OrdenesPage() {
                         </div>
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
+                            <p className="font-medium">{orden.id}</p>
+                        </div>
+                        <div className="col-span-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cons. Estudio</p>
                             <p className="font-medium">{orden.consecutivo}</p>
+                        </div>
+                        <div className="col-span-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
+                            <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
                         </div>
                         <div className="col-span-4 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
                             <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
@@ -599,22 +759,7 @@ export default function OrdenesPage() {
                                     </div>
                                 )}
                             </div>
-                            <Selector label="Causa Externa" value={detalleForm.idCausa} onChange={(v) => setDetalleForm((f) => ({ ...f, idCausa: v }))} options={causas} />
-                            <Selector label="Finalidad Consulta" value={detalleForm.idFinalidadConsulta} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadConsulta: v }))} options={finalidadesConsulta} />
-                            <Selector label="Finalidad Procedimiento" value={detalleForm.idFinalidadProcedimiento} onChange={(v) => setDetalleForm((f) => ({ ...f, idFinalidadProcedimiento: v }))} options={finalidadesProcedimiento} />
                             <Selector label="Ambito del Procedimiento" value={detalleForm.idAmbito} onChange={(v) => setDetalleForm((f) => ({ ...f, idAmbito: v }))} options={ambitos} />
-                            <Selector label="Persona que Atiende" value={detalleForm.idPersonaAtiende} onChange={(v) => setDetalleForm((f) => ({ ...f, idPersonaAtiende: v }))} options={personasAtiende} />
-                            <Selector label="Tipo de Diagnóstico" value={detalleForm.idTipoDiagnostico} onChange={(v) => setDetalleForm((f) => ({ ...f, idTipoDiagnostico: v }))} options={tiposDiagnostico} />
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Diagnóstico (CIE10)</label>
-                                <Input
-                                    placeholder="Código, ej: J00"
-                                    value={detalleForm.diagnostico1}
-                                    onChange={(e) => setDetalleForm((f) => ({ ...f, diagnostico1: e.target.value.toUpperCase() }))}
-                                    maxLength={10}
-                                />
-                            </div>
-                            <Selector label="Forma de Realización" value={detalleForm.idFormaRealizacion} onChange={(v) => setDetalleForm((f) => ({ ...f, idFormaRealizacion: v }))} options={formasRealizacion} />
                             <div className="space-y-1.5">
                                 <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
                                 <Input
@@ -622,6 +767,18 @@ export default function OrdenesPage() {
                                     value={detalleForm.valor ?? ""}
                                     onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
                                 />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Copago</label>
+                                <Input
+                                    type="number"
+                                    value={detalleForm.copago ?? 0}
+                                    onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Neto</label>
+                                <Input value={netoPreview.toLocaleString()} disabled />
                             </div>
                         </div>
                         {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
@@ -636,11 +793,11 @@ export default function OrdenesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>CUPS</TableHead>
-                                    <TableHead>Diagnóstico</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                    <TableHead className="text-right">Copago</TableHead>
-                                    <TableHead className="text-right">Neto</TableHead>
+                                    <TableHead>CODIGO</TableHead>
+                                    <TableHead>NOMBRE</TableHead>
+                                    <TableHead className="text-right">VALOR</TableHead>
+                                    <TableHead className="text-right">COPAGO</TableHead>
+                                    <TableHead className="text-right">NETO</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                     <TableHead className="text-right">Acción</TableHead>
                                 </TableRow>
@@ -655,10 +812,8 @@ export default function OrdenesPage() {
                                 )}
                                 {detalles.map((d) => (
                                     <TableRow key={d.id}>
-                                        <TableCell className="font-medium">
-                                            {d.codigoCups} {d.cups?.nombreCups && <span className="text-xs text-muted-foreground">— {d.cups.nombreCups}</span>}
-                                        </TableCell>
-                                        <TableCell>{d.diagnostico1}</TableCell>
+                                        <TableCell className="font-medium">{d.codigoCups}</TableCell>
+                                        <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
                                         <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
                                         <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
                                         <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
@@ -680,7 +835,7 @@ export default function OrdenesPage() {
 
                     {detalles.length > 0 && (
                         <div className="flex justify-end">
-                            <p className="text-sm font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
+                            <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
                         </div>
                     )}
                 </div>

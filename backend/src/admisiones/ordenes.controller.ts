@@ -7,7 +7,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -52,8 +51,8 @@ export class OrdenesController {
   }
 
   @Post()
-  create(@Body() dto: CreateOrdenDto, @Req() req: any) {
-    return this.ordenesService.create(dto, req.user.idEmpleado);
+  create(@Body() dto: CreateOrdenDto) {
+    return this.ordenesService.create(dto);
   }
 
   @Post(':id/detalles')

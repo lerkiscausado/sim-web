@@ -12,6 +12,7 @@ import { Salones } from './entities/salones.entity';
 import { PersonaAtiende } from './entities/persona-atiende.entity';
 import { ConsentimientoInformadoPlantillas } from './entities/consentimiento-informado-plantillas.entity';
 import { TipoEstudio } from '../catalogos/entities/tipo-estudio.entity';
+import { EntregaResultados } from '../atenciones/entities/entrega-resultados.entity';
 import { AgendaService } from './agenda.service';
 import { AgendaController } from './agenda.controller';
 import { SedesService } from './sedes.service';
@@ -34,6 +35,7 @@ import { OrdenesController } from './ordenes.controller';
       PersonaAtiende,
       ConsentimientoInformadoPlantillas,
       TipoEstudio,
+      EntregaResultados,
     ]),
   ],
   providers: [AgendaService, SedesService, OrdenesService],

@@ -7,6 +7,11 @@ export class CreateOrdenDto {
   @IsInt()
   idContrato: number;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  numeroOrden?: string;
+
   @IsInt()
   idSubentidad: number;
 
@@ -15,6 +20,10 @@ export class CreateOrdenDto {
 
   @IsInt()
   idSede: number;
+
+  /** "Médico" en el formulario VB.NET — campo real seleccionable, referencia a empleados. */
+  @IsInt()
+  idEmpleado: number;
 
   @IsOptional()
   @IsString()

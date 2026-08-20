@@ -4,11 +4,44 @@ import { DataSource, Repository } from 'typeorm';
 import { Ordenes, EstadoOrden } from './entities/ordenes.entity';
 import { DetalleOrden, EstadoDetalleOrden } from './entities/detalle-orden.entity';
 import { TipoEstudio } from '../catalogos/entities/tipo-estudio.entity';
+import { EntregaResultados } from '../atenciones/entities/entrega-resultados.entity';
 import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CreateDetalleOrdenDto } from './dto/create-detalle-orden.dto';
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const horaActual = () => new Date().toTimeString().slice(0, 8);
+
+/**
+ * Valores fijos por código para los campos RIPS de detalle_orden que el
+ * formulario VB.NET real (frmOrdenes.vb -> GuardarDetalleOrden()) NO expone
+ * como selects — se guardan siempre igual, sin importar el usuario:
+ *   IdCausa=15, IdFinalidadConsulta=10, IdFinalidadProcedimiento=1,
+ *   IdPersonaAtiende=1, IdTipoDiagnostico=1, IdFormaRealizacion=1.
+ * El único campo RIPS realmente seleccionable en pantalla es "Ámbito del
+ * Procedimiento" (IdAmbito), que sí llega en el DTO.
+ */
+const DETALLE_ORDEN_DEFAULTS_RIPS = {
+  idCausa: 15,
+  idFinalidadConsulta: 10,
+  idFinalidadProcedimiento: 1,
+  idPersonaAtiende: 1,
+  idTipoDiagnostico: 1,
+  idFormaRealizacion: 1,
+};
+
+/** Suma N días hábiles (lunes a viernes) a una fecha ISO (yyyy-mm-dd). */
+function sumarDiasHabiles(fechaISO: string, dias: number): string {
+  const fecha = new Date(fechaISO + 'T00:00:00');
+  let agregados = 0;
+  while (agregados < dias) {
+    fecha.setDate(fecha.getDate() + 1);
+    const diaSemana = fecha.getDay(); // 0=domingo, 6=sábado
+    if (diaSemana !== 0 && diaSemana !== 6) {
+      agregados++;
+    }
+  }
+  return fecha.toISOString().slice(0, 10);
+}
 
 @Injectable()
 export class OrdenesService {
@@ -19,15 +52,18 @@ export class OrdenesService {
     private readonly detalleOrdenRepository: Repository<DetalleOrden>,
     @InjectRepository(TipoEstudio)
     private readonly tipoEstudioRepository: Repository<TipoEstudio>,
+    @InjectRepository(EntregaResultados)
+    private readonly entregaResultadosRepository: Repository<EntregaResultados>,
     private readonly dataSource: DataSource,
   ) {}
 
   /**
-   * Consecutivo = PREFIJO(tipo_estudio) + secuencial de órdenes de ESE tipo de
-   * estudio en el año actual + "-AA". Mismo patrón que usa el VB.NET original
-   * en Patología/Citología (prefijo + GenerarConsecutivo + año corto), pero
-   * generalizado para cualquier tipo de estudio en vez de casos particulares
-   * por sede.
+   * "Cons. Estudio" = PREFIJO(tipo_estudio) + secuencial de órdenes de ESE
+   * tipo de estudio en el año actual + "-AA". Mismo patrón que usa el
+   * VB.NET original en Patología/Citología (prefijo + GenerarConsecutivo +
+   * año corto); se simplifica la variante con offsets 60000/10000/30000
+   * específicos de una sede particular del sistema original, por no ser
+   * generalizable a cualquier despliegue.
    */
   private async generarConsecutivo(idTipoEstudio: number): Promise<string> {
     const tipoEstudio = await this.tipoEstudioRepository.findOne({ where: { id: idTipoEstudio } });
@@ -44,30 +80,43 @@ export class OrdenesService {
     return `${tipoEstudio.prefijo}${count + 1}-${anioCorto}`;
   }
 
-  /** Número de orden visible (correlativo simple global, distinto del consecutivo por tipo de estudio). */
+  /** "No. de Orden": sugerido automáticamente, editable por el usuario en el formulario real. */
   private async generarNumeroOrden(): Promise<string> {
     const total = await this.ordenesRepository.count();
     return String(total + 1).padStart(8, '0');
   }
 
-  async create(dto: CreateOrdenDto, idEmpleado: number): Promise<Ordenes> {
+  async create(dto: CreateOrdenDto): Promise<Ordenes> {
     const consecutivo = await this.generarConsecutivo(dto.idTipoEstudio);
-    const numeroOrden = await this.generarNumeroOrden();
+    const numeroOrdenSugerido = dto.numeroOrden || (await this.generarNumeroOrden());
+    const fechaOrden = dto.fechaOrden ?? hoyISO();
 
     const orden = this.ordenesRepository.create({
       ...dto,
-      idEmpleado,
-      numeroOrden,
+      numeroOrden: numeroOrdenSugerido,
       consecutivo,
       fechaIngreso: hoyISO(),
-      fechaOrden: dto.fechaOrden ?? hoyISO(),
+      fechaOrden,
       hora: horaActual(),
       idFactura: '',
       estado: EstadoOrden.PENDIENTE,
       saldo: 0,
     } as Partial<Ordenes>);
 
-    return this.ordenesRepository.save(orden);
+    const guardada = await this.ordenesRepository.save(orden);
+
+    // Fecha de entrega = fecha de orden + 7 días hábiles (regla de negocio
+    // indicada), guardada en entrega_resultados igual que el VB.NET original
+    // (GuardarEntregaResultados()).
+    const fechaEntrega = sumarDiasHabiles(fechaOrden, 7);
+    const entrega = this.entregaResultadosRepository.create({
+      idOrden: guardada.id,
+      fechaEntrega,
+      tipoEstudio: dto.idTipoEstudio,
+    });
+    await this.entregaResultadosRepository.save(entrega);
+
+    return guardada;
   }
 
   async findAll(page = 1, pageSize = 20, q?: string) {
@@ -133,7 +182,7 @@ export class OrdenesService {
     if (!idTarifa) return null;
 
     const rows = await this.dataSource.query(
-      'SELECT VALOR FROM detalle_tarifa WHERE ID_TARIFA = ? AND CODIGO_CUPS = ? LIMIT 1',
+      'SELECT VALOR FROM detalle_tarifa WHERE ID_TARIFA = ? AND CODIGO_PROCEDIMIENTO = ? LIMIT 1',
       [String(idTarifa), codigoCups],
     );
     return rows?.[0]?.VALOR ?? null;
@@ -156,17 +205,12 @@ export class OrdenesService {
 
     const detalle = this.detalleOrdenRepository.create({
       idOrden: String(orden.id),
-      idCausa: dto.idCausa,
-      idFinalidadConsulta: dto.idFinalidadConsulta,
-      idFinalidadProcedimiento: dto.idFinalidadProcedimiento,
+      ...DETALLE_ORDEN_DEFAULTS_RIPS,
       idAmbito: dto.idAmbito,
-      idPersonaAtiende: dto.idPersonaAtiende,
-      idTipoDiagnostico: dto.idTipoDiagnostico,
-      diagnostico1: dto.diagnostico1,
-      diagnostico2: dto.diagnostico2 ?? null,
-      diagnostico3: dto.diagnostico3 ?? null,
-      diagnostico4: dto.diagnostico4 ?? null,
-      idFormaRealizacion: dto.idFormaRealizacion,
+      diagnostico1: null,
+      diagnostico2: null,
+      diagnostico3: null,
+      diagnostico4: null,
       codigoProcedimiento: dto.codigoCups,
       codigoCups: dto.codigoCups,
       idTipoEstudio: dto.idTipoEstudio,

@@ -35,11 +35,18 @@ export interface CupsItem {
     nombreCups: string;
 }
 
+export interface Empleado {
+    id: number;
+    nombreEmpleado: string;
+    cargo?: { nombreCargo: string };
+}
+
 export interface Orden {
     id: number;
     numeroOrden: string;
     consecutivo: string;
     fechaIngreso: string;
+    fechaOrden: string;
     estado: string;
     idContrato: number;
     idTipoEstudio: number;
@@ -48,13 +55,25 @@ export interface Orden {
 export interface DetalleOrden {
     id: number;
     codigoCups: string;
-    diagnostico1: string;
+    diagnostico1: string | null;
     tipo: string;
     valor: number;
     copago: number | null;
     neto: number | null;
     estado: string;
     cups?: CupsItem;
+}
+
+/** Suma N días hábiles (lunes a viernes) a una fecha ISO — para previsualizar Fecha Entrega. */
+export function sumarDiasHabiles(fechaISO: string, dias: number): string {
+    const fecha = new Date(fechaISO + "T00:00:00");
+    let agregados = 0;
+    while (agregados < dias) {
+        fecha.setDate(fecha.getDate() + 1);
+        const diaSemana = fecha.getDay();
+        if (diaSemana !== 0 && diaSemana !== 6) agregados++;
+    }
+    return fecha.toISOString().slice(0, 10);
 }
 
 export interface OrdenListado {

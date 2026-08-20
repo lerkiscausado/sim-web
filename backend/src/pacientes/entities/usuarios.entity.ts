@@ -9,7 +9,6 @@ import {
 } from 'typeorm';
 import { TipoIdentificacion } from '../../catalogos/entities/tipo-identificacion.entity';
 import { TipoUsuario } from '../../catalogos/entities/tipo-usuario.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('usuarios')
 export class Usuarios {
@@ -38,7 +37,7 @@ export class Usuarios {
   @Column({ name: 'SEGUNDO_APELLIDO', type: 'char', length: 150, nullable: true })
   segundoApellido?: string | null;
 
-  @Column({ name: 'SEXO', type: 'set', enum: ['M', 'F'], transformer: setColumnTransformer })
+  @Column({ name: 'SEXO', type: 'enum', enum: ['M', 'F'] })
   sexo: string;
 
   @Column({ name: 'FECHA_NACIMIENTO', type: 'date' })
@@ -59,10 +58,10 @@ export class Usuarios {
   @Column({ name: 'CORREO_ELECTRONICO', type: 'varchar', length: 750, nullable: true })
   correoElectronico?: string | null;
 
-  @Column({ name: 'ESTADO_CIVIL', type: 'set', enum: ['CASADO', 'SOLTERO', 'DIVORCIADO', 'VIUDO', 'UNION LIBRE'], transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO_CIVIL', type: 'enum', enum: ['CASADO', 'SOLTERO', 'DIVORCIADO', 'VIUDO', 'UNION LIBRE'] })
   estadoCivil: string;
 
-  @Column({ name: 'ZONA', type: 'set', enum: ['R', 'U'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'ZONA', type: 'enum', enum: ['R', 'U'], nullable: true })
   zona?: string | null;
 
   // NOTA: no se declara relación formal con `municipios` porque su PK es

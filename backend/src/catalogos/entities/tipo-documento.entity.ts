@@ -1,6 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('tipo_documento')
 export class TipoDocumento {
@@ -10,7 +9,7 @@ export class TipoDocumento {
   @Column({ name: 'DESCRIPCION', type: 'char', length: 50 })
   descripcion: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
   @CreateDateColumn({ name: 'createdAt' })

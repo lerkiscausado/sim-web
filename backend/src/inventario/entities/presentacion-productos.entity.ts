@@ -1,6 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('presentacion_productos')
 export class PresentacionProductos {
@@ -28,7 +27,7 @@ export class PresentacionProductos {
   @Column({ name: 'FOTO_PRODUCTO', type: 'blob', nullable: true })
   fotoProducto?: Buffer | null;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
   @Column({ name: 'FOTO', type: 'blob', nullable: true })

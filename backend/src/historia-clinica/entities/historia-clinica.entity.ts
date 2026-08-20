@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('historia_clinica')
 export class HistoriaClinica {
@@ -63,22 +62,22 @@ export class HistoriaClinica {
   @Column({ name: 'OTROS_ESTUDIOS', type: 'text', nullable: true })
   otrosEstudios?: string | null;
 
-  @Column({ name: 'TANNER_A', type: 'set', enum: ['-', '1', '2', '3', '4', '5'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'TANNER_A', type: 'enum', enum: ['-', '1', '2', '3', '4', '5'], nullable: true })
   tannerA?: string | null;
 
-  @Column({ name: 'TANNER_B', type: 'set', enum: ['-', '1', '2', '3', '4', '5'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'TANNER_B', type: 'enum', enum: ['-', '1', '2', '3', '4', '5'], nullable: true })
   tannerB?: string | null;
 
-  @Column({ name: 'TANNER_P', type: 'set', enum: ['-', '1', '2', '3', '4', '5'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'TANNER_P', type: 'enum', enum: ['-', '1', '2', '3', '4', '5'], nullable: true })
   tannerP?: string | null;
 
-  @Column({ name: 'TANNER_VT', type: 'set', enum: ['-', '1', '2', '3', '4', '5', '6', '8', '10', '12', '15', '20', '25'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'TANNER_VT', type: 'enum', enum: ['-', '1', '2', '3', '4', '5', '6', '8', '10', '12', '15', '20', '25'], nullable: true })
   tannerVt?: string | null;
 
   @Column({ name: 'TANNER_LP', type: 'varchar', length: 10, nullable: true })
   tannerLp?: string | null;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: ['A', 'C'], nullable: true, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: ['A', 'C'], nullable: true })
   estado?: string | null;
 
   @Column({ name: 'RECOMENDACIONES', type: 'text', nullable: true })

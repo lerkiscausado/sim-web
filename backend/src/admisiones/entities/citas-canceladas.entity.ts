@@ -10,7 +10,6 @@ import {
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { Agenda } from './agenda.entity';
 import { MotivoCancelacionCita } from '../../catalogos/entities/motivo-cancelacion-cita.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('citas_canceladas')
 export class CitasCanceladas {
@@ -37,7 +36,7 @@ export class CitasCanceladas {
   @Column({ name: 'MOTIVO', type: 'char', length: 100 })
   motivo: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
   @CreateDateColumn({ name: 'createdAt' })

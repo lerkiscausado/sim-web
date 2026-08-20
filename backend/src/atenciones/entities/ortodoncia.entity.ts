@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('ortodoncia')
 export class Ortodoncia {
@@ -27,34 +26,34 @@ export class Ortodoncia {
   @Column({ name: 'ANTECEDENTES_PATOLOGICOS', type: 'text' })
   antecedentesPatologicos: string;
 
-  @Column({ name: 'PERFIL', type: 'set', enum: ['RECTO', 'CONCAVO', 'CONVEXO'], transformer: setColumnTransformer })
+  @Column({ name: 'PERFIL', type: 'enum', enum: ['RECTO', 'CONCAVO', 'CONVEXO'] })
   perfil: string;
 
-  @Column({ name: 'FRENTE', type: 'set', enum: ['DEXTROGNATISMO', 'LEVOGNATISMO'], transformer: setColumnTransformer })
+  @Column({ name: 'FRENTE', type: 'enum', enum: ['DEXTROGNATISMO', 'LEVOGNATISMO'] })
   frente: string;
 
-  @Column({ name: 'HIPOTONIA', type: 'set', enum: ['SUPERIOR', 'INFERIOR'], transformer: setColumnTransformer })
+  @Column({ name: 'HIPOTONIA', type: 'enum', enum: ['SUPERIOR', 'INFERIOR'] })
   hipotonia: string;
 
-  @Column({ name: 'HIPERTONIA', type: 'set', enum: ['SUPERIOR', 'INFERIOR'], transformer: setColumnTransformer })
+  @Column({ name: 'HIPERTONIA', type: 'enum', enum: ['SUPERIOR', 'INFERIOR'] })
   hipertonia: string;
 
-  @Column({ name: 'MACROQUELIA', type: 'set', enum: ['SUPERIOR', 'INFERIOR'], transformer: setColumnTransformer })
+  @Column({ name: 'MACROQUELIA', type: 'enum', enum: ['SUPERIOR', 'INFERIOR'] })
   macroquelia: string;
 
-  @Column({ name: 'MICROQUELIA', type: 'set', enum: ['SUPERIOR', 'INFERIOR'], transformer: setColumnTransformer })
+  @Column({ name: 'MICROQUELIA', type: 'enum', enum: ['SUPERIOR', 'INFERIOR'] })
   microquelia: string;
 
-  @Column({ name: 'PROQUELIA', type: 'set', enum: ['SUPERIOR', 'INFERIOR'], transformer: setColumnTransformer })
+  @Column({ name: 'PROQUELIA', type: 'enum', enum: ['SUPERIOR', 'INFERIOR'] })
   proquelia: string;
 
-  @Column({ name: 'FRENILLO_LABIAL_SUPERIOR', type: 'set', enum: ['NORMAL', 'SOBREINSERTADO'], transformer: setColumnTransformer })
+  @Column({ name: 'FRENILLO_LABIAL_SUPERIOR', type: 'enum', enum: ['NORMAL', 'SOBREINSERTADO'] })
   frenilloLabialSuperior: string;
 
-  @Column({ name: 'FRENILLO_LABIAL_INFERIOR', type: 'set', enum: ['NORMAL', 'SOBREINSERTADO'], transformer: setColumnTransformer })
+  @Column({ name: 'FRENILLO_LABIAL_INFERIOR', type: 'enum', enum: ['NORMAL', 'SOBREINSERTADO'] })
   frenilloLabialInferior: string;
 
-  @Column({ name: 'FRENILLO_LINGUAL', type: 'set', enum: ['NORMAL', 'SOBREINSERTADO'], transformer: setColumnTransformer })
+  @Column({ name: 'FRENILLO_LINGUAL', type: 'enum', enum: ['NORMAL', 'SOBREINSERTADO'] })
   frenilloLingual: string;
 
   @Column({ name: 'RESPIRACION_BUCAL', type: 'char', length: 1 })

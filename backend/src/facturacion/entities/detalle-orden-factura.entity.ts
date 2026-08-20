@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('detalle_orden_factura')
 export class DetalleOrdenFactura {
@@ -66,10 +65,10 @@ export class DetalleOrdenFactura {
   @Column({ name: 'NETO', type: 'bigint', nullable: true })
   neto?: number | null;
 
-  @Column({ name: 'TIPO', type: 'set', enum: ['C', 'P', 'U', 'H', 'M', 'A', 'O'], transformer: setColumnTransformer })
+  @Column({ name: 'TIPO', type: 'enum', enum: ['C', 'P', 'U', 'H', 'M', 'A', 'O'] })
   tipo: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: ['PENDIENTE', 'PROCESO', 'ATENDIDO', 'CANCELADO'], transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: ['PENDIENTE', 'PROCESO', 'ATENDIDO', 'CANCELADO'] })
   estado: string;
 
   @Column({ name: 'ID_RELACION', type: 'char', length: 50 })

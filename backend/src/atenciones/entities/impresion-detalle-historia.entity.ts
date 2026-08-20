@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('impresion_detalle_historia')
 export class ImpresionDetalleHistoria {
@@ -42,7 +41,7 @@ export class ImpresionDetalleHistoria {
   @Column({ name: 'DESCRIPCION', type: 'text', nullable: true })
   descripcion?: string | null;
 
-  @Column({ name: 'TABLA', type: 'set', enum: ['R', 'D', 'L', 'M', 'O'], transformer: setColumnTransformer })
+  @Column({ name: 'TABLA', type: 'enum', enum: ['R', 'D', 'L', 'M', 'O'] })
   tabla: string;
 
   @Column({ name: 'ID_EMPLEADO', type: 'int' })

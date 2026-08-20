@@ -13,7 +13,6 @@ import { Empleados } from '../../seguridad/entities/empleados.entity';
 import { Usuarios } from '../../pacientes/entities/usuarios.entity';
 import { TipoEstudio } from '../../catalogos/entities/tipo-estudio.entity';
 import { Contratos } from '../../entidades-contratos/entities/contratos.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 export enum EstadoAgenda {
   CANCELADA = 'CANCELADA',
@@ -85,7 +84,7 @@ export class Agenda {
   @JoinColumn({ name: 'ID_ORDEN' })
   orden?: Ordenes;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoAgenda, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoAgenda })
   estado: EstadoAgenda;
 
   @Column({ name: 'CODIGO_CUPS', type: 'char', length: 10 })

@@ -16,7 +16,6 @@ import { TipoDiagnostico } from '../../catalogos/entities/tipo-diagnostico.entit
 import { FormaRealizacion } from '../../catalogos/entities/forma-realizacion.entity';
 import { Cups } from '../../catalogos/entities/cups.entity';
 import { TipoEstudio } from '../../catalogos/entities/tipo-estudio.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 export enum TipoDetalleOrden {
   C = 'C',
@@ -144,10 +143,10 @@ export class DetalleOrden {
   @Column({ name: 'NETO', type: 'bigint', nullable: true })
   neto?: number | null;
 
-  @Column({ name: 'TIPO', type: 'set', enum: TipoDetalleOrden, transformer: setColumnTransformer })
+  @Column({ name: 'TIPO', type: 'enum', enum: TipoDetalleOrden })
   tipo: TipoDetalleOrden;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoDetalleOrden, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoDetalleOrden })
   estado: EstadoDetalleOrden;
 
   @Column({ name: 'ID_RELACION', type: 'char', length: 50 })

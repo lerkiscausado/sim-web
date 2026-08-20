@@ -17,7 +17,6 @@ import { TipoAfiliado } from '../../catalogos/entities/tipo-afiliado.entity';
 import { TipoUsuario } from '../../catalogos/entities/tipo-usuario.entity';
 import { TipoEstudio } from '../../catalogos/entities/tipo-estudio.entity';
 import { Especimenes } from '../../atenciones/entities/especimenes.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 export enum EstadoOrden {
   PENDIENTE = 'PENDIENTE',
@@ -119,7 +118,7 @@ export class Ordenes {
   @Column({ name: 'CONSECUTIVO', type: 'char', length: 20 })
   consecutivo: string;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoOrden, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoOrden })
   estado: EstadoOrden;
 
   @Column({ name: 'ID_ESPECIMEN', type: 'int' })

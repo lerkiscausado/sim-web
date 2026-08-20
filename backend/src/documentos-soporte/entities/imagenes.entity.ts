@@ -10,7 +10,6 @@ import {
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { Ordenes } from '../../admisiones/entities/ordenes.entity';
 import { DetalleOrden } from '../../admisiones/entities/detalle-orden.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('imagenes')
 export class Imagenes {
@@ -37,7 +36,7 @@ export class Imagenes {
   @Column({ name: 'TEXTO', type: 'char', length: 100, nullable: true })
   texto?: string | null;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
   @CreateDateColumn({ name: 'createdAt' })

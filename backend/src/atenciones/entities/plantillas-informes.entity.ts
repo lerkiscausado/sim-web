@@ -10,7 +10,6 @@ import {
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
 import { TipoEstudio } from '../../catalogos/entities/tipo-estudio.entity';
 import { Especialistas } from '../../seguridad/entities/especialistas.entity';
-import { setColumnTransformer } from '../../common/transformers/set-column.transformer';
 
 @Entity('plantillas_informes')
 export class PlantillasInformes {
@@ -49,7 +48,7 @@ export class PlantillasInformes {
   @Column({ name: 'CAMPO6', type: 'text', nullable: true })
   campo6?: string | null;
 
-  @Column({ name: 'ESTADO', type: 'set', enum: EstadoActivoInactivo, transformer: setColumnTransformer })
+  @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
   @CreateDateColumn({ name: 'createdAt' })

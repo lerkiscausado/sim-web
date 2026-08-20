@@ -28,7 +28,28 @@ import type {
     OrdenListadoResult,
     Empleado,
 } from "./types";
-import { nombrePaciente, sumarDiasHabiles } from "./types";
+import { nombrePaciente, calcularEdad, sumarDiasHabiles } from "./types";
+
+const ESTADO_ESTILOS: Record<string, { bg: string; text: string; dot: string }> = {
+    PENDIENTE: { bg: "#FEF3C7", text: "#92400E", dot: "#D97706" },
+    PROCESO: { bg: "#DBEAFE", text: "#1E40AF", dot: "#2563EB" },
+    ATENDIDO: { bg: "#D1FAE5", text: "#065F46", dot: "#059669" },
+    CANCELADO: { bg: "#FEE2E2", text: "#991B1B", dot: "#DC2626" },
+    FACTURADO: { bg: "#EDE9FE", text: "#5B21B6", dot: "#7C3AED" },
+};
+
+function EstadoBadge({ estado }: { estado: string }) {
+    const estilo = ESTADO_ESTILOS[estado] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
+    return (
+        <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+            style={{ background: estilo.bg, color: estilo.text }}
+        >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: estilo.dot }} />
+            {estado}
+        </span>
+    );
+}
 
 type Vista = "listado" | "buscar-paciente" | "datos-orden" | "procedimientos";
 
@@ -417,44 +438,62 @@ export default function OrdenesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>No. de Orden</TableHead>
-                                    <TableHead>Cons. Estudio</TableHead>
+                                    <TableHead>Orden</TableHead>
                                     <TableHead>Paciente</TableHead>
-                                    <TableHead>Entidad o Contrato</TableHead>
-                                    <TableHead>Tipo de Estudio</TableHead>
-                                    <TableHead>Fecha Ingreso</TableHead>
+                                    <TableHead>Espécimen / Estudio</TableHead>
+                                    <TableHead>Contrato / Sede</TableHead>
+                                    <TableHead>Comentarios</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {!listadoLoading && (!listado || listado.data.length === 0) && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                                             No hay órdenes registradas todavía.
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                {listado?.data.map((o) => (
-                                    <TableRow
-                                        key={o.id}
-                                        className="cursor-pointer hover:bg-muted/40"
-                                        onClick={() => abrirOrdenExistente(o)}
-                                    >
-                                        <TableCell className="font-medium">{o.numeroOrden}</TableCell>
-                                        <TableCell>{o.consecutivo}</TableCell>
-                                        <TableCell>
-                                            {o.paciente
-                                                ? `${o.paciente.primerNombre} ${o.paciente.primerApellido} (${o.paciente.identificacion})`
-                                                : "—"}
-                                        </TableCell>
-                                        <TableCell>{o.contrato?.nombre ?? "—"}</TableCell>
-                                        <TableCell>{o.tipoEstudio?.nombreTipoEstudio ?? "—"}</TableCell>
-                                        <TableCell>{o.fechaIngreso}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant="outline">{o.estado}</Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {listado?.data.map((o) => {
+                                    const p = o.paciente;
+                                    return (
+                                        <TableRow
+                                            key={o.id}
+                                            className="cursor-pointer align-top hover:bg-muted/40"
+                                            onClick={() => abrirOrdenExistente(o)}
+                                        >
+                                            <TableCell className="py-3">
+                                                <p className="font-bold">{o.consecutivo}</p>
+                                                <p className="text-xs text-muted-foreground">{o.fechaIngreso}</p>
+                                            </TableCell>
+                                            <TableCell className="py-3">
+                                                <p className="font-bold">{p ? nombrePaciente(p) : "—"}</p>
+                                                {p && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {p.idTipoIdentificacion}
+                                                        {p.identificacion} · {p.sexo === "M" ? "M" : "F"} ·{" "}
+                                                        {calcularEdad(p.fechaNacimiento)} años
+                                                        {p.telefono ? ` · ${p.telefono}` : ""}
+                                                    </p>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-3 text-sm">
+                                                {o.especimen?.nombre ?? "—"}
+                                                {o.tipoEstudio?.nombreTipoEstudio ? ` - ${o.tipoEstudio.nombreTipoEstudio}` : ""}
+                                            </TableCell>
+                                            <TableCell className="py-3">
+                                                <p className="text-sm">{o.contrato?.nombre ?? "—"}</p>
+                                                <p className="text-xs text-muted-foreground">{o.sede?.nombre ?? "—"}</p>
+                                            </TableCell>
+                                            <TableCell className="max-w-[220px] py-3 text-xs text-muted-foreground">
+                                                <p className="line-clamp-2">{o.comentarios || "—"}</p>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                <EstadoBadge estado={o.estado} />
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

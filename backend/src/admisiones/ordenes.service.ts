@@ -128,6 +128,8 @@ export class OrdenesService {
       .leftJoinAndSelect('o.paciente', 'paciente')
       .leftJoinAndSelect('o.contrato', 'contrato')
       .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
+      .leftJoinAndSelect('o.especimen', 'especimen')
+      .leftJoinAndSelect('o.sede', 'sede')
       .orderBy('o.fechaIngreso', 'DESC')
       .addOrderBy('o.id', 'DESC')
       .take(take)

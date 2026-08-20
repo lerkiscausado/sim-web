@@ -81,10 +81,35 @@ export interface OrdenListado {
     numeroOrden: string;
     consecutivo: string;
     fechaIngreso: string;
+    comentarios: string | null;
     estado: string;
-    paciente?: { identificacion: string; primerNombre: string; primerApellido: string };
+    paciente?: {
+        id: number;
+        identificacion: string;
+        idTipoIdentificacion: string;
+        primerNombre: string;
+        segundoNombre: string | null;
+        primerApellido: string;
+        segundoApellido: string | null;
+        sexo: string;
+        fechaNacimiento: string;
+        telefono: string | null;
+    };
     contrato?: { nombre: string };
     tipoEstudio?: { nombreTipoEstudio: string };
+    especimen?: { nombre: string };
+    sede?: { nombre: string };
+}
+
+export function calcularEdad(fechaNacimientoISO: string): number {
+    const nacimiento = new Date(fechaNacimientoISO);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const m = hoy.getMonth() - nacimiento.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+        edad--;
+    }
+    return edad;
 }
 
 export interface OrdenListadoResult {

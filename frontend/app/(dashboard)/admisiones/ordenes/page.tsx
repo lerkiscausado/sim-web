@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -574,7 +574,7 @@ export default function OrdenesPage() {
                                     <TableHead>Comentarios</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                     <TableHead
-                                        className="sticky right-0 w-[50px] border-l"
+                                        className="sticky right-0 w-[90px] border-l"
                                         style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
                                     />
                                 </TableRow>
@@ -590,11 +590,7 @@ export default function OrdenesPage() {
                                 {listado?.data.map((o) => {
                                     const p = o.paciente;
                                     return (
-                                        <TableRow
-                                            key={o.id}
-                                            className="cursor-pointer align-top hover:bg-muted/40"
-                                            onClick={() => abrirOrdenExistente(o)}
-                                        >
+                                        <TableRow key={o.id} className="align-top hover:bg-muted/40">
                                             <TableCell className="py-3">
                                                 <p className="font-bold">{o.consecutivo}</p>
                                                 <p className="text-xs text-muted-foreground">{o.fechaIngreso}</p>
@@ -625,9 +621,17 @@ export default function OrdenesPage() {
                                                 <EstadoBadge estado={o.estado} />
                                             </TableCell>
                                             <TableCell
-                                                className="sticky right-0 border-l py-3 text-center"
+                                                className="sticky right-0 flex items-center justify-center gap-1 border-l py-3"
                                                 style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
                                             >
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    title="Ver orden"
+                                                    onClick={() => abrirOrdenExistente(o)}
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
                                                 {estadoTexto(o.estado) === "ATENDIDO" && (
                                                     <Button
                                                         variant="ghost"

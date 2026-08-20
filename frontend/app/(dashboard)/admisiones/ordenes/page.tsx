@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { api, ApiError } from "@/lib/api";
+import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import type {
     PacienteBusqueda,
     LookupItem,
@@ -100,6 +100,7 @@ export default function OrdenesPage() {
     const [listado, setListado] = useState<OrdenListadoResult | null>(null);
     const [listadoLoading, setListadoLoading] = useState(true);
     const [listadoError, setListadoError] = useState<string | null>(null);
+    const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
     const [filtroAnio, setFiltroAnio] = useState<string>("");
@@ -335,6 +336,24 @@ export default function OrdenesPage() {
         cargarListado(listadoPage, listadoQuery, filtrosActuales);
     }
 
+    async function imprimirEstudio(o: OrdenListado, e: React.MouseEvent) {
+        e.stopPropagation();
+        setImprimiendoId(o.id);
+        setListadoError(null);
+        try {
+            const url = await apiFetchBlobUrl(`/atenciones/patologia/orden/${o.id}/pdf`);
+            window.open(url, "_blank");
+        } catch (err) {
+            setListadoError(
+                err instanceof ApiError
+                    ? `No se pudo generar el reporte: ${err.message}`
+                    : "No se pudo generar el reporte de este estudio",
+            );
+        } finally {
+            setImprimiendoId(null);
+        }
+    }
+
     async function crearOrden() {
         if (!paciente) return;
         const requeridos: (keyof typeof header)[] = [
@@ -553,12 +572,13 @@ export default function OrdenesPage() {
                                     <TableHead>Contrato / Sede</TableHead>
                                     <TableHead>Comentarios</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
+                                    <TableHead className="w-[50px]" />
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {!listadoLoading && (!listado || listado.data.length === 0) && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                                        <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
                                             No hay órdenes registradas todavía.
                                         </TableCell>
                                     </TableRow>
@@ -599,6 +619,23 @@ export default function OrdenesPage() {
                                             </TableCell>
                                             <TableCell className="py-3 text-center">
                                                 <EstadoBadge estado={o.estado} />
+                                            </TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                {o.estado === "ATENDIDO" && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        title="Imprimir reporte del estudio"
+                                                        disabled={imprimiendoId === o.id}
+                                                        onClick={(e) => imprimirEstudio(o, e)}
+                                                    >
+                                                        {imprimiendoId === o.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Printer className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     );

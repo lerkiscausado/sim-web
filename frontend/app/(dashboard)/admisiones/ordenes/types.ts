@@ -8,6 +8,8 @@ export interface PacienteBusqueda {
     segundoApellido: string | null;
     sexo: string;
     fechaNacimiento: string;
+    telefono?: string | null;
+    correoElectronico?: string | null;
 }
 
 export interface LookupItem {

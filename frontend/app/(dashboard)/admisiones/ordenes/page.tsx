@@ -696,19 +696,31 @@ export default function OrdenesPage() {
                     </div>
 
                     {pacientes.length > 0 && (
-                        <div className="mt-3 divide-y rounded-md border" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {pacientes.map((p) => (
                                 <button
                                     key={p.id}
                                     type="button"
-                                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-muted/40"
                                     onClick={() => seleccionarPaciente(p)}
+                                    className="rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
+                                    style={{ borderColor: "var(--border-default)" }}
                                 >
-                                    <span>{nombrePaciente(p)}</span>
-                                    <span className="text-xs text-muted-foreground">
+                                    <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
+                                        {nombrePaciente(p)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
                                         {p.idTipoIdentificacion}
-                                        {p.identificacion} · {p.sexo === "M" ? "M" : "F"} · {calcularEdad(p.fechaNacimiento)} años
-                                    </span>
+                                        {p.identificacion}
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        Teléfono: {p.telefono || "—"}
+                                    </p>
+                                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                                        Correo: {p.correoElectronico || "—"}
+                                    </p>
                                 </button>
                             ))}
                         </div>

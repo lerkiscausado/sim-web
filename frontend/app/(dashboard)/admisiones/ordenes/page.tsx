@@ -15,6 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
+import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import type {
     PacienteBusqueda,
     LookupItem,
@@ -702,25 +703,28 @@ export default function OrdenesPage() {
                                     key={p.id}
                                     type="button"
                                     onClick={() => seleccionarPaciente(p)}
-                                    className="rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
+                                    className="flex gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
                                     style={{ borderColor: "var(--border-default)" }}
                                 >
-                                    <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                                        {nombrePaciente(p)}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {p.idTipoIdentificacion}
-                                        {p.identificacion}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        Teléfono: {p.telefono || "—"}
-                                    </p>
-                                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                                        Correo: {p.correoElectronico || "—"}
-                                    </p>
+                                    <PacienteAvatar idPaciente={p.id} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
+                                            {nombrePaciente(p)}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            {p.idTipoIdentificacion}
+                                            {p.identificacion}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            Teléfono: {p.telefono || "—"}
+                                        </p>
+                                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                                            Correo: {p.correoElectronico || "—"}
+                                        </p>
+                                    </div>
                                 </button>
                             ))}
                         </div>

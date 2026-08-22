@@ -2,13 +2,16 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
@@ -31,6 +34,16 @@ export class PacientesController {
       pageSize ? Number(pageSize) : 20,
       q,
     );
+  }
+
+  @Get(':id/foto')
+  async getFoto(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const foto = await this.pacientesService.getFoto(id);
+    if (!foto) {
+      throw new NotFoundException('Este paciente no tiene foto cargada');
+    }
+    res.set({ 'Content-Type': foto.contentType, 'Cache-Control': 'private, max-age=300' });
+    res.send(foto.buffer);
   }
 
   @Get(':id')

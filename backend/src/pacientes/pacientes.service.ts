@@ -71,4 +71,41 @@ export class PacientesService {
     Object.assign(paciente, dto);
     return this.repo.save(paciente);
   }
+
+  /** Devuelve la foto (bytes + tipo mime detectado por firma) o null si no tiene una cargada. */
+  async getFoto(id: number): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const row = await this.repo
+      .createQueryBuilder('u')
+      .select('u.foto', 'foto')
+      .where('u.id = :id', { id })
+      .getRawOne<{ foto: Buffer | null }>();
+
+    const buffer = row?.foto;
+    if (!buffer || buffer.length === 0) return null;
+
+    return { buffer, contentType: detectarTipoImagen(buffer) };
+  }
+}
+
+/** Firma (magic bytes) para detectar el formato real de la imagen guardada como blob. */
+function detectarTipoImagen(buffer: Buffer): string {
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return 'image/png';
+  }
+  if (buffer.length >= 6 && buffer.toString('ascii', 0, 6) === 'GIF89a') {
+    return 'image/gif';
+  }
+  if (buffer.length >= 6 && buffer.toString('ascii', 0, 6) === 'GIF87a') {
+    return 'image/gif';
+  }
+  return 'application/octet-stream';
 }

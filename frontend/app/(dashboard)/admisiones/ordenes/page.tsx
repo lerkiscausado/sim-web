@@ -102,10 +102,20 @@ const HEADER_INICIAL = {
 
 const DETALLE_INICIAL = {
     codigoCups: "",
+    nombreCups: "",
     tipo: "O",
     valor: undefined as number | undefined,
     copago: 0,
 };
+
+interface DetalleTemp {
+    tempId: number;
+    codigoCups: string;
+    nombreCups: string;
+    tipo: string;
+    valor: number;
+    copago: number;
+}
 
 /** Busca en un catálogo la opción cuyo nombre contenga el texto (para preseleccionar el valor por defecto). */
 function buscarPorNombre(opciones: LookupItem[], contiene: string) {
@@ -159,6 +169,7 @@ export default function OrdenesPage() {
     const [ordenError, setOrdenError] = useState<string | null>(null);
     const [orden, setOrden] = useState<Orden | null>(null);
     const [detalles, setDetalles] = useState<DetalleOrden[]>([]);
+    const [detallesTemp, setDetallesTemp] = useState<DetalleTemp[]>([]);
 
     // --- formulario de línea (detalle) ---
     const [detalleForm, setDetalleForm] = useState(DETALLE_INICIAL);
@@ -386,6 +397,10 @@ export default function OrdenesPage() {
             setOrdenError("Completa todos los campos obligatorios de la orden.");
             return;
         }
+        if (detallesTemp.length === 0) {
+            setOrdenError("Agrega al menos un estudio antes de registrar la orden.");
+            return;
+        }
         setCreandoOrden(true);
         setOrdenError(null);
         try {
@@ -393,9 +408,19 @@ export default function OrdenesPage() {
                 idUsuario: paciente.id,
                 ...header,
                 numeroOrden: header.numeroOrden || undefined,
+                detalles: detallesTemp.map((d) => ({
+                    codigoCups: d.codigoCups,
+                    idAmbito: header.idAmbito,
+                    idTipoEstudio: header.idTipoEstudio,
+                    tipo: d.tipo,
+                    valor: d.valor,
+                    copago: d.copago,
+                })),
             });
+            const detallesReales = await api.get<DetalleOrden[]>(`/admisiones/ordenes/${nuevaOrden.id}/detalles`);
             setOrden(nuevaOrden);
-            setDetalles([]);
+            setDetalles(detallesReales);
+            setDetallesTemp([]);
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
         } finally {
@@ -404,13 +429,12 @@ export default function OrdenesPage() {
     }
 
     function elegirCups(c: CupsItem) {
-        setDetalleForm((f) => ({ ...f, codigoCups: c.codigoCups }));
+        setDetalleForm((f) => ({ ...f, codigoCups: c.codigoCups, nombreCups: c.nombreCups }));
         setCupsQuery(`${c.codigoCups} — ${c.nombreCups}`);
         setCupsResultados([]);
     }
 
     async function agregarDetalle() {
-        if (!orden) return;
         if (!detalleForm.codigoCups) {
             setDetalleError("Selecciona un CUPS.");
             return;
@@ -422,12 +446,44 @@ export default function OrdenesPage() {
         setGuardandoDetalle(true);
         setDetalleError(null);
         try {
-            const nuevoDetalle = await api.post<DetalleOrden>(`/admisiones/ordenes/${orden.id}/detalles`, {
-                ...detalleForm,
-                idAmbito: header.idAmbito,
-                idTipoEstudio: header.idTipoEstudio ?? orden.idTipoEstudio,
-            });
-            setDetalles((prev) => [...prev, nuevoDetalle]);
+            let valor = detalleForm.valor;
+            if (valor === undefined && header.idContrato) {
+                const tarifa = await api.get<number | null>(
+                    `/admisiones/ordenes/tarifa?idContrato=${header.idContrato}&codigoCups=${detalleForm.codigoCups}`,
+                );
+                if (tarifa !== null) valor = tarifa;
+            }
+            if (valor === undefined) {
+                setDetalleError("No se encontró tarifa pactada para este CUPS. Indica el valor manualmente.");
+                return;
+            }
+            const copago = detalleForm.copago ?? 0;
+
+            if (orden) {
+                // La orden ya existe (se abrió del listado o ya se registró): se agrega directo al backend.
+                const nuevoDetalle = await api.post<DetalleOrden>(`/admisiones/ordenes/${orden.id}/detalles`, {
+                    codigoCups: detalleForm.codigoCups,
+                    idAmbito: header.idAmbito,
+                    idTipoEstudio: header.idTipoEstudio ?? orden.idTipoEstudio,
+                    tipo: detalleForm.tipo,
+                    valor,
+                    copago,
+                });
+                setDetalles((prev) => [...prev, nuevoDetalle]);
+            } else {
+                // Todavía no existe la orden: se agrega a la tabla temporal en memoria.
+                setDetallesTemp((prev) => [
+                    ...prev,
+                    {
+                        tempId: Date.now(),
+                        codigoCups: detalleForm.codigoCups,
+                        nombreCups: detalleForm.nombreCups,
+                        tipo: detalleForm.tipo,
+                        valor,
+                        copago,
+                    },
+                ]);
+            }
             setDetalleForm(DETALLE_INICIAL);
             setCupsQuery("");
         } catch (err) {
@@ -446,9 +502,13 @@ export default function OrdenesPage() {
         }
     }
 
-    const totalOrden = detalles
-        .filter((d) => estadoTexto(d.estado) !== "CANCELADO")
-        .reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0);
+    function quitarDetalleTemp(tempId: number) {
+        setDetallesTemp((prev) => prev.filter((d) => d.tempId !== tempId));
+    }
+
+    const totalOrden = orden
+        ? detalles.filter((d) => estadoTexto(d.estado) !== "CANCELADO").reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0)
+        : detallesTemp.reduce((acc, d) => acc + (d.valor - d.copago), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
     const totalPaginas = listado ? Math.max(1, Math.ceil(listado.total / listado.pageSize)) : 1;
@@ -831,151 +891,177 @@ export default function OrdenesPage() {
                                     <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
                                     <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
                                 </div>
-                                {ordenError && <p className="mt-3 text-sm text-red-600">{ordenError}</p>}
-                                <Button className="mt-4" onClick={crearOrden} disabled={creandoOrden}>
-                                    {creandoOrden && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    <ClipboardPlus className="mr-2 h-4 w-4" />
-                                    Registrar Orden
-                                </Button>
                             </div>
                         )}
 
                         {orden && (
-                            <>
-                                <div
-                                    className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
-                                    style={{ borderColor: "var(--border-default)" }}
-                                >
-                                    <div>
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
-                                        <p className="font-medium">{orden.numeroOrden}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
-                                        <p className="font-medium">{orden.id}</p>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cons. Estudio</p>
-                                        <p className="font-medium">{orden.consecutivo}</p>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
-                                        <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
-                                    </div>
-                                    <div className="col-span-2 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
-                                        <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
-                                        <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
-                                    </div>
+                            <div
+                                className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
+                                style={{ borderColor: "var(--border-default)" }}
+                            >
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
+                                    <p className="font-medium">{orden.numeroOrden}</p>
                                 </div>
-
-                                <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                                    <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="relative col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">CUPS</label>
-                                            <Input
-                                                placeholder="Buscar por código o nombre..."
-                                                value={cupsQuery}
-                                                onChange={(e) => setCupsQuery(e.target.value)}
-                                            />
-                                            {cupsResultados.length > 0 && (
-                                                <div
-                                                    className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                                    style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                                >
-                                                    {cupsResultados.map((c) => (
-                                                        <button
-                                                            key={c.codigoCups}
-                                                            type="button"
-                                                            className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                            onClick={() => elegirCups(c)}
-                                                        >
-                                                            <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
-                                            <Input
-                                                type="number"
-                                                value={detalleForm.valor ?? ""}
-                                                onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Copago</label>
-                                            <Input
-                                                type="number"
-                                                value={detalleForm.copago ?? 0}
-                                                onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
-                                            />
-                                        </div>
-                                        <div className="col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Neto (Valor − Copago)</label>
-                                            <Input value={netoPreview.toLocaleString()} disabled />
-                                        </div>
-                                    </div>
-                                    {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
-                                    <Button className="mt-4" onClick={agregarDetalle} disabled={guardandoDetalle}>
-                                        {guardandoDetalle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Agregar Estudio
-                                    </Button>
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
+                                    <p className="font-medium">{orden.id}</p>
                                 </div>
-
-                                <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>CODIGO</TableHead>
-                                                <TableHead>NOMBRE</TableHead>
-                                                <TableHead className="text-right">VALOR</TableHead>
-                                                <TableHead className="text-right">COPAGO</TableHead>
-                                                <TableHead className="text-right">NETO</TableHead>
-                                                <TableHead className="text-center">Estado</TableHead>
-                                                <TableHead className="text-right">Acción</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {detalles.length === 0 && (
-                                                <TableRow>
-                                                    <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
-                                                        Aún no se han agregado procedimientos.
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                            {detalles.map((d) => (
-                                                <TableRow key={d.id}>
-                                                    <TableCell className="font-medium">{d.codigoCups}</TableCell>
-                                                    <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
-                                                    <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
-                                                    <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
-                                                    <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
-                                                    <TableCell className="text-center">
-                                                        <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {estadoTexto(d.estado) !== "CANCELADO" && (
-                                                            <Button variant="ghost" size="sm" onClick={() => cancelarDetalle(d.id)}>
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
+                                <div className="col-span-2">
+                                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cons. Estudio</p>
+                                    <p className="font-medium">{orden.consecutivo}</p>
                                 </div>
-
-                                {detalles.length > 0 && (
-                                    <div className="flex justify-end">
-                                        <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
-                                    </div>
-                                )}
-                            </>
+                                <div className="col-span-2">
+                                    <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
+                                    <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
+                                </div>
+                                <div className="col-span-2 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
+                                    <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
+                                    <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
+                                </div>
+                            </div>
                         )}
+
+                        <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                            <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="relative col-span-2 space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">CUPS</label>
+                                    <Input
+                                        placeholder="Buscar por código o nombre..."
+                                        value={cupsQuery}
+                                        onChange={(e) => setCupsQuery(e.target.value)}
+                                    />
+                                    {cupsResultados.length > 0 && (
+                                        <div
+                                            className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                            style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                        >
+                                            {cupsResultados.map((c) => (
+                                                <button
+                                                    key={c.codigoCups}
+                                                    type="button"
+                                                    className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                    onClick={() => elegirCups(c)}
+                                                >
+                                                    <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
+                                    <Input
+                                        type="number"
+                                        value={detalleForm.valor ?? ""}
+                                        onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Copago</label>
+                                    <Input
+                                        type="number"
+                                        value={detalleForm.copago ?? 0}
+                                        onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Neto (Valor − Copago)</label>
+                                    <Input value={netoPreview.toLocaleString()} disabled />
+                                </div>
+                            </div>
+                            {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
+                            <Button className="mt-4" onClick={agregarDetalle} disabled={guardandoDetalle}>
+                                {guardandoDetalle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <Plus className="mr-2 h-4 w-4" />
+                                Agregar Estudio
+                            </Button>
+                        </div>
+
+                        <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>CODIGO</TableHead>
+                                        <TableHead>NOMBRE</TableHead>
+                                        <TableHead className="text-right">VALOR</TableHead>
+                                        <TableHead className="text-right">COPAGO</TableHead>
+                                        <TableHead className="text-right">NETO</TableHead>
+                                        <TableHead className="text-center">Estado</TableHead>
+                                        <TableHead className="text-right">Acción</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {!orden && detallesTemp.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
+                                                Aún no se han agregado estudios.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {!orden &&
+                                        detallesTemp.map((d) => (
+                                            <TableRow key={d.tempId}>
+                                                <TableCell className="font-medium">{d.codigoCups}</TableCell>
+                                                <TableCell>{d.nombreCups || "—"}</TableCell>
+                                                <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${d.copago.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${(d.valor - d.copago).toLocaleString()}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant="outline">Por Registrar</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarDetalleTemp(d.tempId)}>
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    {orden && detalles.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
+                                                Aún no se han agregado procedimientos.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {orden &&
+                                        detalles.map((d) => (
+                                            <TableRow key={d.id}>
+                                                <TableCell className="font-medium">{d.codigoCups}</TableCell>
+                                                <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
+                                                <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
+                                                <TableCell className="text-center">
+                                                    <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {estadoTexto(d.estado) !== "CANCELADO" && (
+                                                        <Button variant="ghost" size="sm" onClick={() => cancelarDetalle(d.id)}>
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {(orden ? detalles.length > 0 : detallesTemp.length > 0) && (
+                            <div className="flex items-center justify-between">
+                                <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
+                                {!orden && (
+                                    <Button onClick={crearOrden} disabled={creandoOrden}>
+                                        {creandoOrden && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <ClipboardPlus className="mr-2 h-4 w-4" />
+                                        Registrar Orden
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                        {ordenError && <p className="text-sm text-red-600">{ordenError}</p>}
                     </div>
                 </div>
             )}

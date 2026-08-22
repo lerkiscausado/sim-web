@@ -90,33 +90,76 @@ export class OrdenesService {
     const consecutivo = await this.generarConsecutivo(dto.idTipoEstudio);
     const numeroOrdenSugerido = dto.numeroOrden || (await this.generarNumeroOrden());
     const fechaOrden = dto.fechaOrden ?? hoyISO();
+    const { detalles, ...datosOrden } = dto;
 
-    const orden = this.ordenesRepository.create({
-      ...dto,
-      numeroOrden: numeroOrdenSugerido,
-      consecutivo,
-      fechaIngreso: hoyISO(),
-      fechaOrden,
-      hora: horaActual(),
-      idFactura: '',
-      estado: EstadoOrden.PENDIENTE,
-      saldo: 0,
-    } as Partial<Ordenes>);
+    return this.dataSource.transaction(async (manager) => {
+      const ordenesRepo = manager.withRepository(this.ordenesRepository);
+      const detalleRepo = manager.withRepository(this.detalleOrdenRepository);
+      const entregaRepo = manager.withRepository(this.entregaResultadosRepository);
 
-    const guardada = await this.ordenesRepository.save(orden);
+      const orden = ordenesRepo.create({
+        ...datosOrden,
+        numeroOrden: numeroOrdenSugerido,
+        consecutivo,
+        fechaIngreso: hoyISO(),
+        fechaOrden,
+        hora: horaActual(),
+        idFactura: '',
+        estado: EstadoOrden.PENDIENTE,
+        saldo: 0,
+      } as Partial<Ordenes>);
 
-    // Fecha de entrega = fecha de orden + 7 días hábiles (regla de negocio
-    // indicada), guardada en entrega_resultados igual que el VB.NET original
-    // (GuardarEntregaResultados()).
-    const fechaEntrega = sumarDiasHabiles(fechaOrden, 7);
-    const entrega = this.entregaResultadosRepository.create({
-      idOrden: guardada.id,
-      fechaEntrega,
-      tipoEstudio: dto.idTipoEstudio,
+      const guardada = await ordenesRepo.save(orden);
+
+      // Fecha de entrega = fecha de orden + 7 días hábiles (regla de negocio
+      // indicada), guardada en entrega_resultados igual que el VB.NET original
+      // (GuardarEntregaResultados()).
+      const fechaEntrega = sumarDiasHabiles(fechaOrden, 7);
+      const entrega = entregaRepo.create({
+        idOrden: guardada.id,
+        fechaEntrega,
+        tipoEstudio: dto.idTipoEstudio,
+      });
+      await entregaRepo.save(entrega);
+
+      // Estudios agregados en la misma operación (tabla temporal armada en
+      // el frontend antes de registrar la orden).
+      if (detalles && detalles.length > 0) {
+        for (const detalleDto of detalles) {
+          let valor: number | undefined | null = detalleDto.valor;
+          if (valor === undefined) {
+            valor = await this.buscarValorTarifaPorContrato(dto.idContrato, detalleDto.codigoCups);
+            if (valor === null) {
+              throw new BadRequestException(
+                `No se encontró tarifa pactada para el CUPS ${detalleDto.codigoCups} en el contrato seleccionado. Indique el valor manualmente.`,
+              );
+            }
+          }
+          const copago = detalleDto.copago ?? 0;
+          const fila = detalleRepo.create({
+            idOrden: String(guardada.id),
+            ...DETALLE_ORDEN_DEFAULTS_RIPS,
+            idAmbito: detalleDto.idAmbito,
+            diagnostico1: null,
+            diagnostico2: null,
+            diagnostico3: null,
+            diagnostico4: null,
+            codigoProcedimiento: detalleDto.codigoCups,
+            codigoCups: detalleDto.codigoCups,
+            idTipoEstudio: detalleDto.idTipoEstudio,
+            valor,
+            copago,
+            neto: valor - copago,
+            tipo: detalleDto.tipo as any,
+            estado: EstadoDetalleOrden.PENDIENTE,
+            idRelacion: '',
+          } as Partial<DetalleOrden>);
+          await detalleRepo.save(fila);
+        }
+      }
+
+      return guardada;
     });
-    await this.entregaResultadosRepository.save(entrega);
-
-    return guardada;
   }
 
   async findAll(
@@ -201,13 +244,11 @@ export class OrdenesService {
     });
   }
 
-  /** Busca en detalle_tarifa el valor pactado para (tarifa del contrato de la orden, CUPS). */
-  private async buscarValorTarifa(idOrden: number, codigoCups: string): Promise<number | null> {
-    const orden = await this.ordenesRepository.findOne({ where: { id: idOrden } });
-    if (!orden) return null;
+  /** Busca en detalle_tarifa el valor pactado para (tarifa del contrato, CUPS). Público: se usa antes de que exista la orden. */
+  async buscarValorTarifaPorContrato(idContrato: number, codigoCups: string): Promise<number | null> {
     const contrato = await this.dataSource.query(
       'SELECT ID_TARIFA FROM contratos WHERE ID = ?',
-      [orden.idContrato],
+      [idContrato],
     );
     const idTarifa = contrato?.[0]?.ID_TARIFA;
     if (!idTarifa) return null;
@@ -224,7 +265,7 @@ export class OrdenesService {
 
     let valor = dto.valor;
     if (valor === undefined) {
-      const valorTarifa = await this.buscarValorTarifa(idOrden, dto.codigoCups);
+      const valorTarifa = await this.buscarValorTarifaPorContrato(orden.idContrato, dto.codigoCups);
       if (valorTarifa === null) {
         throw new BadRequestException(
           `No se encontró tarifa pactada para el CUPS ${dto.codigoCups} en el contrato de esta orden. Indique el valor manualmente.`,

@@ -1,4 +1,6 @@
-import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateDetalleOrdenDto } from './create-detalle-orden.dto';
 
 export class CreateOrdenDto {
   @IsInt()
@@ -49,4 +51,11 @@ export class CreateOrdenDto {
   @IsOptional()
   @IsString()
   comentarios?: string;
+
+  /** Estudios (procedimientos) a registrar junto con la orden, en una sola operación. */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateDetalleOrdenDto)
+  detalles?: CreateDetalleOrdenDto[];
 }

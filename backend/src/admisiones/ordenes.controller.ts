@@ -52,6 +52,12 @@ export class OrdenesController {
     return this.ordenesService.findAniosDisponibles();
   }
 
+  /** Consulta el valor pactado en la tarifa del contrato para un CUPS, sin necesitar una orden ya creada. */
+  @Get('tarifa')
+  buscarTarifa(@Query('idContrato') idContrato: string, @Query('codigoCups') codigoCups: string) {
+    return this.ordenesService.buscarValorTarifaPorContrato(Number(idContrato), codigoCups);
+  }
+
   @Get('paciente/:idUsuario')
   findByPaciente(@Param('idUsuario', ParseIntPipe) idUsuario: number) {
     return this.ordenesService.findByPaciente(idUsuario);

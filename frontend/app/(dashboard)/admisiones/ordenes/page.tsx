@@ -707,7 +707,7 @@ export default function OrdenesPage() {
                                     <span>{nombrePaciente(p)}</span>
                                     <span className="text-xs text-muted-foreground">
                                         {p.idTipoIdentificacion}
-                                        {p.identificacion}
+                                        {p.identificacion} · {p.sexo === "M" ? "M" : "F"} · {calcularEdad(p.fechaNacimiento)} años
                                     </span>
                                 </button>
                             ))}

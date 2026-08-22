@@ -61,3 +61,45 @@ export async function apiFetchBlobUrl(path: string): Promise<string> {
     const blob = await res.blob();
     return URL.createObjectURL(blob);
 }
+
+/**
+ * Envía un formulario multipart/form-data (campos + un archivo opcional),
+ * usado para crear/editar registros que incluyen una foto. No se fija
+ * Content-Type a mano: el navegador arma el boundary correcto solo.
+ */
+export async function apiFetchMultipart<T>(
+    path: string,
+    method: "POST" | "PATCH",
+    fields: Record<string, string | number | undefined | null>,
+    file?: { fieldName: string; file: File } | null,
+): Promise<T> {
+    const token = getToken();
+    const headers = new Headers();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(fields)) {
+        if (value !== undefined && value !== null) {
+            formData.append(key, String(value));
+        }
+    }
+    if (file) {
+        formData.append(file.fieldName, file.file);
+    }
+
+    const res = await fetch(`${API_URL}${path}`, { method, headers, body: formData });
+
+    if (!res.ok) {
+        let message = res.statusText;
+        try {
+            const body = await res.json();
+            message = body.message ?? message;
+        } catch {
+            // respuesta sin cuerpo JSON
+        }
+        throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message);
+    }
+
+    if (res.status === 204) return undefined as T;
+    return res.json() as Promise<T>;
+}

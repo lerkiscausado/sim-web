@@ -9,8 +9,11 @@ import {
   Post,
   Query,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -53,13 +56,19 @@ export class PacientesController {
 
   @RequirePermission('usuarios')
   @Post()
-  create(@Body() dto: CreatePacienteDto) {
-    return this.pacientesService.create(dto);
+  @UseInterceptors(FileInterceptor('foto'))
+  create(@Body() dto: CreatePacienteDto, @UploadedFile() foto?: Express.Multer.File) {
+    return this.pacientesService.create(dto, foto?.buffer);
   }
 
   @RequirePermission('usuarios')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: Partial<CreatePacienteDto>) {
-    return this.pacientesService.update(id, dto);
+  @UseInterceptors(FileInterceptor('foto'))
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: Partial<CreatePacienteDto>,
+    @UploadedFile() foto?: Express.Multer.File,
+  ) {
+    return this.pacientesService.update(id, dto, foto?.buffer);
   }
 }

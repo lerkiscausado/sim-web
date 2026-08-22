@@ -1,7 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+    Search,
+    Plus,
+    Loader2,
+    ChevronLeft,
+    ChevronRight,
+    Calendar,
+    Mars,
+    Venus,
+    Phone,
+    MapPin,
+    Mail,
+    IdCard,
+    Pencil,
+    Camera,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -19,7 +34,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { api, ApiError } from "@/lib/api";
+import { api, apiFetchMultipart, ApiError } from "@/lib/api";
+import { PacienteAvatar } from "@/components/ui/paciente-avatar";
+
+interface TipoIdentificacion {
+    id: string;
+    nombreTipoIdentificacion: string;
+}
 
 interface Paciente {
     id: number;
@@ -37,11 +58,6 @@ interface Paciente {
     estadoCivil: string;
     codigoTipoUsuario: number;
     tipoIdentificacion?: { id: string; nombreTipoIdentificacion: string };
-}
-
-interface TipoIdentificacion {
-    id: string;
-    nombreTipoIdentificacion: string;
 }
 
 interface Paginated {
@@ -71,6 +87,15 @@ function nombreCompleto(p: Paciente) {
     return [p.primerNombre, p.segundoNombre, p.primerApellido, p.segundoApellido].filter(Boolean).join(" ");
 }
 
+function calcularEdad(fechaNacimientoISO: string): number {
+    const nacimiento = new Date(fechaNacimientoISO);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const m = hoy.getMonth() - nacimiento.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+    return edad;
+}
+
 export default function PacientesPage() {
     const [result, setResult] = useState<Paginated | null>(null);
     const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
@@ -82,8 +107,11 @@ export default function PacientesPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editando, setEditando] = useState<Paciente | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
+    const [fotoArchivo, setFotoArchivo] = useState<File | null>(null);
+    const [fotoPreview, setFotoPreview] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const cargar = useCallback(async (p: number, q?: string) => {
         setLoading(true);
@@ -120,10 +148,17 @@ export default function PacientesPage() {
         cargar(nueva, searchTerm);
     }
 
+    function limpiarFoto() {
+        setFotoArchivo(null);
+        if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+        setFotoPreview(null);
+    }
+
     function abrirNuevo() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        limpiarFoto();
         setDialogOpen(true);
     }
 
@@ -145,7 +180,16 @@ export default function PacientesPage() {
             codigoTipoUsuario: p.codigoTipoUsuario,
         });
         setFormError(null);
+        limpiarFoto();
         setDialogOpen(true);
+    }
+
+    function elegirFoto(e: React.ChangeEvent<HTMLInputElement>) {
+        const archivo = e.target.files?.[0];
+        if (!archivo) return;
+        setFotoArchivo(archivo);
+        if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+        setFotoPreview(URL.createObjectURL(archivo));
     }
 
     async function guardar() {
@@ -156,12 +200,16 @@ export default function PacientesPage() {
         setGuardando(true);
         setFormError(null);
         try {
+            const archivoFoto = fotoArchivo ? { fieldName: "foto", file: fotoArchivo } : null;
             if (editando) {
-                await api.patch(`/pacientes/${editando.id}`, form);
+                // Tipo de identificación e identificación no se envían: no son editables.
+                const { idTipoIdentificacion, identificacion, ...resto } = form;
+                await apiFetchMultipart(`/pacientes/${editando.id}`, "PATCH", resto, archivoFoto);
             } else {
-                await api.post("/pacientes", form);
+                await apiFetchMultipart("/pacientes", "POST", form, archivoFoto);
             }
             setDialogOpen(false);
+            limpiarFoto();
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el paciente");
@@ -193,55 +241,105 @@ export default function PacientesPage() {
                 </Button>
             </div>
 
-            <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-sm">
+            <div
+                className="flex items-center gap-3 rounded-full border px-2 py-2"
+                style={{ borderColor: "var(--border-default)", background: "var(--surface-raised)" }}
+            >
+                <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                        placeholder="Buscar por identificación o nombre..."
-                        className="pl-9"
+                        placeholder="Buscar por nombre, apellidos o identificación..."
+                        className="rounded-full border-none pl-9 shadow-none focus-visible:ring-0"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                {loading && <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
             </div>
 
             {error && (
                 <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
 
-            <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+            <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-[56px]" />
                             <TableHead>Identificación</TableHead>
                             <TableHead>Nombre completo</TableHead>
-                            <TableHead>Sexo</TableHead>
                             <TableHead>Fecha nacimiento</TableHead>
+                            <TableHead>Edad</TableHead>
+                            <TableHead>Género</TableHead>
                             <TableHead>Teléfono</TableHead>
+                            <TableHead>Dirección</TableHead>
+                            <TableHead>Correo</TableHead>
                             <TableHead className="text-right">Acción</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {!loading && (!result || result.data.length === 0) && (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                                <TableCell colSpan={10} className="h-24 text-center text-sm text-muted-foreground">
                                     No se encontraron pacientes.
                                 </TableCell>
                             </TableRow>
                         )}
                         {result?.data.map((p) => (
                             <TableRow key={p.id}>
-                                <TableCell className="font-medium">
-                                    {p.idTipoIdentificacion}{p.identificacion}
+                                <TableCell className="py-2.5">
+                                    <PacienteAvatar idPaciente={p.id} width={36} />
                                 </TableCell>
-                                <TableCell>{nombreCompleto(p)}</TableCell>
-                                <TableCell>{p.sexo === "M" ? "Masculino" : "Femenino"}</TableCell>
-                                <TableCell>{p.fechaNacimiento}</TableCell>
-                                <TableCell>{p.telefono ?? "—"}</TableCell>
+                                <TableCell className="text-sm">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
+                                        {p.tipoIdentificacion?.nombreTipoIdentificacion ?? p.idTipoIdentificacion} {p.identificacion}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="font-bold" style={{ color: "var(--ink-primary)" }}>
+                                    {nombreCompleto(p)}
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                        {p.fechaNacimiento}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="text-sm">{calcularEdad(p.fechaNacimiento)} años</TableCell>
+                                <TableCell>
+                                    <span
+                                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                                        style={
+                                            p.sexo === "M"
+                                                ? { background: "#DBEAFE", color: "#1E40AF" }
+                                                : { background: "#FCE7F3", color: "#9D174D" }
+                                        }
+                                    >
+                                        {p.sexo === "M" ? <Mars className="h-3 w-3" /> : <Venus className="h-3 w-3" />}
+                                        {p.sexo === "M" ? "HOMBRE" : "MUJER"}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="text-sm">
+                                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                        <Phone className="h-3.5 w-3.5" />
+                                        {p.telefono || "—"}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="max-w-[160px] truncate text-sm">
+                                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                        {p.direccion || "—"}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="max-w-[180px] truncate text-sm">
+                                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                                        {p.correoElectronico || "—"}
+                                    </span>
+                                </TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="sm" onClick={() => abrirEditar(p)}>
-                                        Editar
+                                        <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
                                 </TableCell>
                             </TableRow>
@@ -283,12 +381,46 @@ export default function PacientesPage() {
                     <DialogHeader>
                         <DialogTitle>{editando ? "Editar paciente" : "Nuevo paciente"}</DialogTitle>
                     </DialogHeader>
+
+                    <div className="flex items-center gap-4 py-2">
+                        <div
+                            className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted/40"
+                            style={{ borderColor: "var(--border-default)" }}
+                        >
+                            {fotoPreview ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={fotoPreview} alt="" className="h-full w-full object-cover" />
+                            ) : editando ? (
+                                <PacienteAvatar idPaciente={editando.id} width={80} />
+                            ) : (
+                                <Camera className="h-7 w-7 text-muted-foreground/60" />
+                            )}
+                        </div>
+                        <div>
+                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                                <Camera className="mr-2 h-4 w-4" />
+                                {fotoPreview ? "Cambiar foto" : "Subir foto"}
+                            </Button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={elegirFoto}
+                            />
+                            <p className="mt-1.5 text-[11px] text-muted-foreground">
+                                Si no subes una foto, se guarda un ícono genérico.
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3 py-2">
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Tipo de identificación</label>
                             <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-60"
                                 value={form.idTipoIdentificacion}
+                                disabled={!!editando}
                                 onChange={(e) => setForm((f) => ({ ...f, idTipoIdentificacion: e.target.value }))}
                             >
                                 <option value="">Seleccionar…</option>

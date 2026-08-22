@@ -1,6 +1,8 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as path from 'path';
 import { Usuarios } from './entities/usuarios.entity';
 import { CreatePacienteDto } from './dto/create-paciente.dto';
 
@@ -10,6 +12,8 @@ export interface PaginatedResult<T> {
   page: number;
   pageSize: number;
 }
+
+const DEFAULT_AVATAR_PATH = path.join(__dirname, 'assets', 'default-avatar.png');
 
 @Injectable()
 export class PacientesService {
@@ -52,23 +56,34 @@ export class PacientesService {
     return paciente;
   }
 
-  async create(dto: CreatePacienteDto) {
+  /** Icono genérico guardado como foto real cuando el usuario no sube una propia. */
+  private defaultAvatarBuffer(): Buffer {
+    return fs.readFileSync(DEFAULT_AVATAR_PATH);
+  }
+
+  async create(dto: CreatePacienteDto, fotoBuffer?: Buffer) {
     const existente = await this.repo.findOne({ where: { identificacion: dto.identificacion } });
     if (existente) {
       throw new ConflictException(`Ya existe un paciente con identificación ${dto.identificacion}`);
     }
     const paciente = this.repo.create({
       ...dto,
-      // FOTO es NOT NULL en la BD real sin default; se deja vacía hasta que
-      // se suba una foto (funcionalidad de carga de imagen pendiente).
-      foto: Buffer.alloc(0),
+      // FOTO es NOT NULL en la BD real sin default: si no se sube una foto
+      // propia, se guarda un ícono genérico real (no queda vacía).
+      foto: fotoBuffer && fotoBuffer.length > 0 ? fotoBuffer : this.defaultAvatarBuffer(),
     });
     return this.repo.save(paciente);
   }
 
-  async update(id: number, dto: Partial<CreatePacienteDto>) {
+  async update(id: number, dto: Partial<CreatePacienteDto>, fotoBuffer?: Buffer) {
     const paciente = await this.findOne(id);
-    Object.assign(paciente, dto);
+    // Tipo de identificación e identificación no son editables una vez creado
+    // el paciente (regla pedida explícitamente).
+    const { idTipoIdentificacion, identificacion, ...resto } = dto;
+    Object.assign(paciente, resto);
+    if (fotoBuffer && fotoBuffer.length > 0) {
+      paciente.foto = fotoBuffer;
+    }
     return this.repo.save(paciente);
   }
 

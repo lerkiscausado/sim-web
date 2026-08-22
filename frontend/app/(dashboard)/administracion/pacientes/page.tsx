@@ -32,6 +32,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, apiFetchMultipart, ApiError } from "@/lib/api";
@@ -293,7 +294,7 @@ export default function PacientesPage() {
                                 <TableCell className="text-sm">
                                     <span className="inline-flex items-center gap-1.5">
                                         <IdCard className="h-3.5 w-3.5 text-muted-foreground" />
-                                        {p.tipoIdentificacion?.nombreTipoIdentificacion ?? p.idTipoIdentificacion} {p.identificacion}
+                                        {p.idTipoIdentificacion}{p.identificacion}
                                     </span>
                                 </TableCell>
                                 <TableCell className="font-bold" style={{ color: "var(--ink-primary)" }}>
@@ -380,6 +381,11 @@ export default function PacientesPage() {
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>{editando ? "Editar paciente" : "Nuevo paciente"}</DialogTitle>
+                        <DialogDescription>
+                            {editando
+                                ? "Actualiza los datos de contacto y demográficos del paciente."
+                                : "Completa los datos para registrar un nuevo paciente en el sistema."}
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className="flex items-center gap-4 py-2">

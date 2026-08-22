@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -557,8 +557,8 @@ export default function OrdenesPage() {
                         />
                     </div>
 
-                    <div className="flex flex-wrap items-end gap-3">
-                        <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-end gap-4">
+                        <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Año</label>
                             <select
                                 className="h-9 w-28 rounded-md border bg-transparent px-3 text-sm"
@@ -573,7 +573,7 @@ export default function OrdenesPage() {
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Fecha inicio</label>
                             <Input
                                 type="date"
@@ -582,7 +582,7 @@ export default function OrdenesPage() {
                                 onChange={(e) => setFiltroFechaInicio(e.target.value)}
                             />
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Fecha final</label>
                             <Input
                                 type="date"
@@ -591,7 +591,7 @@ export default function OrdenesPage() {
                                 onChange={(e) => setFiltroFechaFin(e.target.value)}
                             />
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Estudio</label>
                             <select
                                 className="h-9 w-48 rounded-md border bg-transparent px-3 text-sm"
@@ -606,7 +606,7 @@ export default function OrdenesPage() {
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Estado</label>
                             <select
                                 className="h-9 w-40 rounded-md border bg-transparent px-3 text-sm"
@@ -621,21 +621,21 @@ export default function OrdenesPage() {
                                 <option value="FACTURADO">Facturado</option>
                             </select>
                         </div>
-                        {(filtroAnio || filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroEstado) && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setFiltroAnio("");
-                                    setFiltroFechaInicio("");
-                                    setFiltroFechaFin("");
-                                    setFiltroTipoEstudio("");
-                                    setFiltroEstado("");
-                                }}
-                            >
-                                Limpiar filtros
-                            </Button>
-                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!(filtroAnio || filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroEstado)}
+                            onClick={() => {
+                                setFiltroAnio("");
+                                setFiltroFechaInicio("");
+                                setFiltroFechaFin("");
+                                setFiltroTipoEstudio("");
+                                setFiltroEstado("");
+                            }}
+                        >
+                            <X className="mr-1.5 h-3.5 w-3.5" />
+                            Limpiar Filtros
+                        </Button>
                     </div>
 
                     {listadoError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}
@@ -644,11 +644,36 @@ export default function OrdenesPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Orden</TableHead>
-                                    <TableHead>Paciente</TableHead>
-                                    <TableHead>Espécimen / Estudio</TableHead>
-                                    <TableHead>Contrato / Sede</TableHead>
-                                    <TableHead>Comentarios</TableHead>
+                                    <TableHead>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <Hash className="h-3.5 w-3.5" />
+                                            Orden
+                                        </span>
+                                    </TableHead>
+                                    <TableHead>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <User className="h-3.5 w-3.5" />
+                                            Paciente
+                                        </span>
+                                    </TableHead>
+                                    <TableHead>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <TestTube2 className="h-3.5 w-3.5" />
+                                            Espécimen / Estudio
+                                        </span>
+                                    </TableHead>
+                                    <TableHead>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <Building2 className="h-3.5 w-3.5" />
+                                            Contrato / Sede
+                                        </span>
+                                    </TableHead>
+                                    <TableHead>
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <MessageSquare className="h-3.5 w-3.5" />
+                                            Comentarios
+                                        </span>
+                                    </TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                     <TableHead
                                         className="sticky right-0 w-[90px] border-l"
@@ -670,7 +695,10 @@ export default function OrdenesPage() {
                                         <TableRow key={o.id} className="align-top hover:bg-muted/40">
                                             <TableCell className="py-3">
                                                 <p className="font-bold">{o.consecutivo}</p>
-                                                <p className="text-xs text-muted-foreground">{o.fechaIngreso}</p>
+                                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                    <CalendarDays className="h-3 w-3" />
+                                                    {o.fechaIngreso}
+                                                </p>
                                             </TableCell>
                                             <TableCell className="py-3">
                                                 <p className="font-bold">{p ? nombrePaciente(p).toUpperCase() : "—"}</p>

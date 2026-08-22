@@ -59,7 +59,7 @@ function PacienteCard({ p }: { p: PacienteBusqueda }) {
     return (
         <div
             className="flex items-stretch gap-3 rounded-lg border p-4"
-            style={{ borderColor: "var(--border-default)" }}
+            style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
         >
             <PacienteAvatar idPaciente={p.id} />
             <div className="min-w-0 flex-1">
@@ -640,7 +640,7 @@ export default function OrdenesPage() {
 
                     {listadoError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}
 
-                    <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+                    <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -781,7 +781,7 @@ export default function OrdenesPage() {
             )}
 
             {vista === "buscar-paciente" && (
-                <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                     <p className="mb-3 text-sm font-medium">Buscar Paciente</p>
                     <div className="relative max-w-md">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -816,7 +816,7 @@ export default function OrdenesPage() {
                     )}
 
                     {busquedaHecha && !buscando && pacientes.length === 0 && (
-                        <div className="mt-3 rounded-md border border-dashed p-4 text-center" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="mt-3 rounded-md border border-dashed p-4 text-center" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-2 text-sm text-muted-foreground">No se encontró ningún paciente.</p>
                             <Button size="sm" variant="outline" onClick={() => setDialogPacienteOpen(true)}>
                                 <UserPlus className="mr-2 h-4 w-4" />
@@ -838,7 +838,7 @@ export default function OrdenesPage() {
                             </Button>
                         )}
 
-                        <div className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-sm font-medium">Clasificación</p>
                             <div className="space-y-3">
                                 <Selector
@@ -884,7 +884,7 @@ export default function OrdenesPage() {
                     {/* Columna derecha: 70% */}
                     <div className="col-span-10 space-y-4 lg:col-span-7">
                         {!orden && (
-                            <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                            <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                 <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
                                 <div className="grid grid-cols-2 gap-3">
                                     <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
@@ -925,7 +925,7 @@ export default function OrdenesPage() {
                         {orden && (
                             <div
                                 className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
-                                style={{ borderColor: "var(--border-default)" }}
+                                style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
                             >
                                 <div>
                                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
@@ -943,14 +943,14 @@ export default function OrdenesPage() {
                                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
                                     <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
                                 </div>
-                                <div className="col-span-2 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
+                                <div className="col-span-2 flex items-center justify-between border-t pt-3" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
                                     <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
                                 </div>
                             </div>
                         )}
 
-                        <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="relative col-span-2 space-y-1.5">
@@ -1010,7 +1010,7 @@ export default function OrdenesPage() {
                             </Button>
                         </div>
 
-                        <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <Table>
                                 <TableHeader>
                                     <TableRow>

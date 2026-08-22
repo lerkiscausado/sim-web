@@ -164,7 +164,7 @@ export function PacienteFormDialog({
                 <div className="flex items-center gap-4 py-2">
                     <div
                         className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted/40"
-                        style={{ borderColor: "var(--border-default)" }}
+                        style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
                     >
                         {fotoPreview ? (
                             // eslint-disable-next-line @next/next/no-img-element

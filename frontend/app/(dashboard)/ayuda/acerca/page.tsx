@@ -36,7 +36,7 @@ export default function AcercaDePage() {
                 </p>
             </div>
 
-            <div className="rounded-lg border p-6" style={{ borderColor: "var(--border-default)" }}>
+            <div className="rounded-lg border p-6" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <div className="flex items-start justify-between gap-6">
                     <div>
                         <div className="flex items-center gap-2.5">
@@ -81,7 +81,7 @@ export default function AcercaDePage() {
                     </div>
                 </div>
 
-                <div className="mt-6 border-t pt-4 text-center" style={{ borderColor: "var(--border-default)" }}>
+                <div className="mt-6 border-t pt-4 text-center" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                     <p className="text-sm font-medium" style={{ color: "var(--ink-primary)" }}>
                         Versión Web — basada en SIM 5.1.0.1
                     </p>

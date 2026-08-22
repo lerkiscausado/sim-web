@@ -192,7 +192,7 @@ export default function UsuariosSistemaPage() {
             {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
-            <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -315,7 +315,7 @@ export default function UsuariosSistemaPage() {
                         <DialogDescription>Datos de acceso y privilegios del sistema</DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-2 gap-3 border-b pb-4" style={{ borderColor: "var(--border-default)" }}>
+                    <div className="grid grid-cols-2 gap-3 border-b pb-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Usuario</label>
                             <Input
@@ -357,7 +357,7 @@ export default function UsuariosSistemaPage() {
                                 const keys = cat.permisos.map((p) => p.key);
                                 const todosMarcados = keys.every((k) => permisosEdit[k]);
                                 return (
-                                    <div key={cat.titulo} className="rounded-md border p-3" style={{ borderColor: "var(--border-default)" }}>
+                                    <div key={cat.titulo} className="rounded-md border p-3" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                         <div className="mb-2 flex items-center justify-between">
                                             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                                                 {cat.titulo}

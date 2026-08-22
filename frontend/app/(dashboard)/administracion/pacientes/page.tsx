@@ -153,7 +153,7 @@ export default function PacientesPage() {
                 <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
             )}
 
-            <div className="overflow-hidden rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+            <div className="overflow-hidden rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
                         <TableRow>

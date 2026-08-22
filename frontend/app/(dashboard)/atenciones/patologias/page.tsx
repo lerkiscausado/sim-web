@@ -230,7 +230,7 @@ export default function PatologiasPage() {
                 </p>
             )}
 
-            <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
                         <TableRow>

@@ -238,7 +238,7 @@ export default function PacientesPage() {
                 </div>
                 <Button size="sm" onClick={abrirNuevo}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Nuevo paciente
+                    Nuevo Paciente
                 </Button>
             </div>
 
@@ -298,7 +298,7 @@ export default function PacientesPage() {
                                     </span>
                                 </TableCell>
                                 <TableCell className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                                    {nombreCompleto(p)}
+                                    {nombreCompleto(p).toUpperCase()}
                                 </TableCell>
                                 <TableCell className="text-sm">
                                     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -380,7 +380,7 @@ export default function PacientesPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar paciente" : "Nuevo paciente"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Paciente" : "Nuevo Paciente"}</DialogTitle>
                         <DialogDescription>
                             {editando
                                 ? "Actualiza los datos de contacto y demográficos del paciente."

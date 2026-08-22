@@ -597,7 +597,7 @@ export default function OrdenesPage() {
                                                 <p className="text-xs text-muted-foreground">{o.fechaIngreso}</p>
                                             </TableCell>
                                             <TableCell className="py-3">
-                                                <p className="font-bold">{p ? nombrePaciente(p) : "—"}</p>
+                                                <p className="font-bold">{p ? nombrePaciente(p).toUpperCase() : "—"}</p>
                                                 {p && (
                                                     <p className="text-xs text-muted-foreground">
                                                         {p.idTipoIdentificacion}
@@ -678,7 +678,7 @@ export default function OrdenesPage() {
 
             {vista === "buscar-paciente" && (
                 <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                    <p className="mb-3 text-sm font-medium">Buscar paciente</p>
+                    <p className="mb-3 text-sm font-medium">Buscar Paciente</p>
                     <div className="relative max-w-md">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
@@ -709,7 +709,7 @@ export default function OrdenesPage() {
                                     <PacienteAvatar idPaciente={p.id} />
                                     <div className="min-w-0 flex-1">
                                         <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                                            {nombrePaciente(p)}
+                                            {nombrePaciente(p).toUpperCase()}
                                         </p>
                                         <p className="mt-1 text-xs text-muted-foreground">
                                             {p.idTipoIdentificacion}
@@ -742,7 +742,7 @@ export default function OrdenesPage() {
 
                     {mostrarNuevoPaciente && (
                         <div className="mt-4 space-y-3 rounded-md border p-4" style={{ borderColor: "var(--border-default)" }}>
-                            <p className="text-sm font-medium">Registrar nuevo paciente</p>
+                            <p className="text-sm font-medium">Registrar Nuevo Paciente</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
                                     <label className="text-[12.5px] font-medium">Tipo de identificación</label>
@@ -831,7 +831,7 @@ export default function OrdenesPage() {
                             {pacienteError && <p className="text-sm text-red-600">{pacienteError}</p>}
                             <Button onClick={guardarPacienteNuevo} disabled={guardandoPaciente}>
                                 {guardandoPaciente && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Registrar y continuar
+                                Registrar y Continuar
                             </Button>
                         </div>
                     )}
@@ -845,19 +845,19 @@ export default function OrdenesPage() {
                         style={{ borderColor: "var(--border-default)" }}
                     >
                         <div>
-                            <p className="font-medium">{nombrePaciente(paciente)}</p>
+                            <p className="font-medium">{nombrePaciente(paciente).toUpperCase()}</p>
                             <p className="text-xs text-muted-foreground">
                                 {paciente.idTipoIdentificacion}
                                 {paciente.identificacion}
                             </p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setVista("buscar-paciente")}>
-                            Cambiar paciente
+                            Cambiar Paciente
                         </Button>
                     </div>
 
                     <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                        <p className="mb-3 text-sm font-medium">Datos de la orden</p>
+                        <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
                         <div className="grid grid-cols-2 gap-3">
                             <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
                             <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
@@ -915,7 +915,7 @@ export default function OrdenesPage() {
                     >
                         <div className="col-span-2">
                             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Paciente</p>
-                            <p className="font-medium">{nombrePaciente(paciente)}</p>
+                            <p className="font-medium">{nombrePaciente(paciente).toUpperCase()}</p>
                             <p className="text-xs text-muted-foreground">
                                 {paciente.idTipoIdentificacion}
                                 {paciente.identificacion}

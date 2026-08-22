@@ -950,10 +950,13 @@ export default function OrdenesPage() {
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                            <div className="mt-3 grid grid-cols-3 gap-3">
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
+                                    <label className="text-[12.5px] font-medium">Valor</label>
                                     <Input
                                         type="number"
+                                        placeholder="Tarifa del contrato"
                                         value={detalleForm.valor ?? ""}
                                         onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
                                     />
@@ -966,8 +969,8 @@ export default function OrdenesPage() {
                                         onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
                                     />
                                 </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Neto (Valor − Copago)</label>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Neto</label>
                                     <Input value={netoPreview.toLocaleString()} disabled />
                                 </div>
                             </div>

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
+import { PacienteFormDialog, type Paciente as PacienteCompleto, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
 import type {
     PacienteBusqueda,
     LookupItem,
@@ -79,22 +80,6 @@ const DETALLE_INICIAL = {
     copago: 0,
 };
 
-const PACIENTE_NUEVO_INICIAL = {
-    idTipoIdentificacion: "CC",
-    identificacion: "",
-    primerNombre: "",
-    segundoNombre: "",
-    primerApellido: "",
-    segundoApellido: "",
-    sexo: "F",
-    fechaNacimiento: "",
-    direccion: "",
-    telefono: "",
-    correoElectronico: "",
-    estadoCivil: "SOLTERO",
-    codigoTipoUsuario: 1,
-};
-
 export default function OrdenesPage() {
     const [vista, setVista] = useState<Vista>("listado");
 
@@ -120,10 +105,8 @@ export default function OrdenesPage() {
     const [busquedaHecha, setBusquedaHecha] = useState(false);
 
     // --- registro rápido de paciente nuevo ---
-    const [mostrarNuevoPaciente, setMostrarNuevoPaciente] = useState(false);
-    const [formPaciente, setFormPaciente] = useState(PACIENTE_NUEVO_INICIAL);
-    const [pacienteError, setPacienteError] = useState<string | null>(null);
-    const [guardandoPaciente, setGuardandoPaciente] = useState(false);
+    const [dialogPacienteOpen, setDialogPacienteOpen] = useState(false);
+    const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
 
     // --- catálogos ---
     const [contratos, setContratos] = useState<Contrato[]>([]);
@@ -215,6 +198,7 @@ export default function OrdenesPage() {
         cargarLookup("tipo-afiliado", setTiposAfiliado);
         cargarLookup("tipo-usuario", setTiposUsuario);
         cargarLookup("ambito-procedimiento", setAmbitos);
+        api.get<TipoIdentificacion[]>("/catalogos/tipo-identificacion").then(setTiposIdentificacion).catch(() => setTiposIdentificacion([]));
     }, []);
 
     // Buscar paciente con debounce
@@ -276,7 +260,7 @@ export default function OrdenesPage() {
         setDetalles([]);
         setHeader(HEADER_INICIAL);
         setSearchTerm("");
-        setMostrarNuevoPaciente(false);
+        setDialogPacienteOpen(false);
         setVista("buscar-paciente");
     }
 
@@ -287,33 +271,8 @@ export default function OrdenesPage() {
         setVista("datos-orden");
     }
 
-    function abrirRegistroPaciente() {
-        setFormPaciente({ ...PACIENTE_NUEVO_INICIAL, identificacion: searchTerm.trim() });
-        setPacienteError(null);
-        setMostrarNuevoPaciente(true);
-    }
-
-    async function guardarPacienteNuevo() {
-        if (
-            !formPaciente.identificacion ||
-            !formPaciente.primerNombre ||
-            !formPaciente.primerApellido ||
-            !formPaciente.fechaNacimiento
-        ) {
-            setPacienteError("Identificación, nombres, apellido y fecha de nacimiento son obligatorios.");
-            return;
-        }
-        setGuardandoPaciente(true);
-        setPacienteError(null);
-        try {
-            const nuevo = await api.post<PacienteBusqueda>("/pacientes", formPaciente);
-            seleccionarPaciente(nuevo);
-            setMostrarNuevoPaciente(false);
-        } catch (err) {
-            setPacienteError(err instanceof ApiError ? err.message : "No se pudo registrar el paciente");
-        } finally {
-            setGuardandoPaciente(false);
-        }
+    function alGuardarPacienteNuevo(nuevo: PacienteCompleto) {
+        seleccionarPaciente(nuevo);
     }
 
     async function abrirOrdenExistente(o: OrdenListado) {
@@ -687,7 +646,7 @@ export default function OrdenesPage() {
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
-                                setMostrarNuevoPaciente(false);
+                                setDialogPacienteOpen(false);
                             }}
                             autoFocus
                         />
@@ -730,108 +689,12 @@ export default function OrdenesPage() {
                         </div>
                     )}
 
-                    {busquedaHecha && !buscando && pacientes.length === 0 && !mostrarNuevoPaciente && (
+                    {busquedaHecha && !buscando && pacientes.length === 0 && (
                         <div className="mt-3 rounded-md border border-dashed p-4 text-center" style={{ borderColor: "var(--border-default)" }}>
                             <p className="mb-2 text-sm text-muted-foreground">No se encontró ningún paciente.</p>
-                            <Button size="sm" variant="outline" onClick={abrirRegistroPaciente}>
+                            <Button size="sm" variant="outline" onClick={() => setDialogPacienteOpen(true)}>
                                 <UserPlus className="mr-2 h-4 w-4" />
-                                Registrar nuevo paciente
-                            </Button>
-                        </div>
-                    )}
-
-                    {mostrarNuevoPaciente && (
-                        <div className="mt-4 space-y-3 rounded-md border p-4" style={{ borderColor: "var(--border-default)" }}>
-                            <p className="text-sm font-medium">Registrar Nuevo Paciente</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Tipo de identificación</label>
-                                    <Input
-                                        value={formPaciente.idTipoIdentificacion}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, idTipoIdentificacion: e.target.value.toUpperCase() }))}
-                                        maxLength={2}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Identificación</label>
-                                    <Input
-                                        value={formPaciente.identificacion}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, identificacion: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Primer nombre</label>
-                                    <Input
-                                        value={formPaciente.primerNombre}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, primerNombre: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Segundo nombre</label>
-                                    <Input
-                                        value={formPaciente.segundoNombre}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, segundoNombre: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Primer apellido</label>
-                                    <Input
-                                        value={formPaciente.primerApellido}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, primerApellido: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Segundo apellido</label>
-                                    <Input
-                                        value={formPaciente.segundoApellido}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, segundoApellido: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Sexo</label>
-                                    <select
-                                        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                        value={formPaciente.sexo}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, sexo: e.target.value }))}
-                                    >
-                                        <option value="F">Femenino</option>
-                                        <option value="M">Masculino</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Fecha de nacimiento</label>
-                                    <Input
-                                        type="date"
-                                        value={formPaciente.fechaNacimiento}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, fechaNacimiento: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Teléfono</label>
-                                    <Input
-                                        value={formPaciente.telefono}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, telefono: e.target.value }))}
-                                    />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Estado civil</label>
-                                    <select
-                                        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                        value={formPaciente.estadoCivil}
-                                        onChange={(e) => setFormPaciente((f) => ({ ...f, estadoCivil: e.target.value }))}
-                                    >
-                                        <option value="SOLTERO">Soltero(a)</option>
-                                        <option value="CASADO">Casado(a)</option>
-                                        <option value="UNION LIBRE">Unión libre</option>
-                                        <option value="DIVORCIADO">Divorciado(a)</option>
-                                        <option value="VIUDO">Viudo(a)</option>
-                                    </select>
-                                </div>
-                            </div>
-                            {pacienteError && <p className="text-sm text-red-600">{pacienteError}</p>}
-                            <Button onClick={guardarPacienteNuevo} disabled={guardandoPaciente}>
-                                {guardandoPaciente && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Registrar y Continuar
+                                Registrar Nuevo Paciente
                             </Button>
                         </div>
                     )}
@@ -1052,6 +915,15 @@ export default function OrdenesPage() {
                     )}
                 </div>
             )}
+
+            <PacienteFormDialog
+                open={dialogPacienteOpen}
+                onOpenChange={setDialogPacienteOpen}
+                editando={null}
+                tiposIdentificacion={tiposIdentificacion}
+                identificacionSugerida={searchTerm}
+                onSaved={alGuardarPacienteNuevo}
+            />
         </div>
     );
 }

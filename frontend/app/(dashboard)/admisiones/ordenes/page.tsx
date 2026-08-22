@@ -54,7 +54,33 @@ function EstadoBadge({ estado }: { estado: string | string[] }) {
     );
 }
 
-type Vista = "listado" | "buscar-paciente" | "datos-orden" | "procedimientos";
+/** Misma tarjeta que se usa en los resultados de búsqueda de paciente (foto + datos), reutilizada al ya tener el paciente seleccionado. */
+function PacienteCard({ p }: { p: PacienteBusqueda }) {
+    return (
+        <div
+            className="flex items-stretch gap-3 rounded-lg border p-4"
+            style={{ borderColor: "var(--border-default)" }}
+        >
+            <PacienteAvatar idPaciente={p.id} />
+            <div className="min-w-0 flex-1">
+                <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
+                    {nombrePaciente(p).toUpperCase()}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    {p.idTipoIdentificacion}
+                    {p.identificacion}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Teléfono: {p.telefono || "—"}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">Correo: {p.correoElectronico || "—"}</p>
+            </div>
+        </div>
+    );
+}
+
+type Vista = "listado" | "buscar-paciente" | "orden";
 
 const HEADER_INICIAL = {
     idContrato: undefined as number | undefined,
@@ -66,6 +92,8 @@ const HEADER_INICIAL = {
     idTipoUsuario: undefined as number | undefined,
     idTipoEstudio: undefined as number | undefined,
     idEspecimen: undefined as number | undefined,
+    idAmbito: undefined as number | undefined,
+    idFinalidadConsulta: undefined as number | undefined,
     autorizacion: "",
     numeroOrden: "",
     fechaOrden: new Date().toISOString().slice(0, 10),
@@ -74,11 +102,15 @@ const HEADER_INICIAL = {
 
 const DETALLE_INICIAL = {
     codigoCups: "",
-    idAmbito: undefined as number | undefined,
     tipo: "O",
     valor: undefined as number | undefined,
     copago: 0,
 };
+
+/** Busca en un catálogo la opción cuyo nombre contenga el texto (para preseleccionar el valor por defecto). */
+function buscarPorNombre(opciones: LookupItem[], contiene: string) {
+    return opciones.find((o) => o.nombre?.toUpperCase().includes(contiene));
+}
 
 export default function OrdenesPage() {
     const [vista, setVista] = useState<Vista>("listado");
@@ -119,6 +151,7 @@ export default function OrdenesPage() {
     const [tiposEstudio, setTiposEstudio] = useState<LookupItem[]>([]);
     const [especimenes, setEspecimenes] = useState<Especimen[]>([]);
     const [ambitos, setAmbitos] = useState<LookupItem[]>([]);
+    const [finalidadesConsulta, setFinalidadesConsulta] = useState<LookupItem[]>([]);
 
     // --- orden en curso ---
     const [header, setHeader] = useState(HEADER_INICIAL);
@@ -198,8 +231,28 @@ export default function OrdenesPage() {
         cargarLookup("tipo-afiliado", setTiposAfiliado);
         cargarLookup("tipo-usuario", setTiposUsuario);
         cargarLookup("ambito-procedimiento", setAmbitos);
+        cargarLookup("finalidad-consulta", setFinalidadesConsulta);
         api.get<TipoIdentificacion[]>("/catalogos/tipo-identificacion").then(setTiposIdentificacion).catch(() => setTiposIdentificacion([]));
     }, []);
+
+    // Preselecciona los valores por defecto pedidos: Tipo Afiliado = Cotizante,
+    // Regimen/Tipo Usuario = Contributivo, Ámbito = Ambulatorio, Finalidad = No Aplica.
+    useEffect(() => {
+        const def = buscarPorNombre(tiposAfiliado, "COTIZANTE");
+        if (def) setHeader((h) => (h.idTipoAfiliado ? h : { ...h, idTipoAfiliado: Number(def.id) }));
+    }, [tiposAfiliado]);
+    useEffect(() => {
+        const def = buscarPorNombre(tiposUsuario, "CONTRIBUTIVO");
+        if (def) setHeader((h) => (h.idTipoUsuario ? h : { ...h, idTipoUsuario: Number(def.id) }));
+    }, [tiposUsuario]);
+    useEffect(() => {
+        const def = buscarPorNombre(ambitos, "AMBULATORIO");
+        if (def) setHeader((h) => (h.idAmbito ? h : { ...h, idAmbito: Number(def.id) }));
+    }, [ambitos]);
+    useEffect(() => {
+        const def = buscarPorNombre(finalidadesConsulta, "NO APLICA");
+        if (def) setHeader((h) => (h.idFinalidadConsulta ? h : { ...h, idFinalidadConsulta: Number(def.id) }));
+    }, [finalidadesConsulta]);
 
     // Buscar paciente con debounce
     useEffect(() => {
@@ -268,7 +321,7 @@ export default function OrdenesPage() {
         setPaciente(p);
         setPacientes([]);
         setSearchTerm("");
-        setVista("datos-orden");
+        setVista("orden");
     }
 
     function alGuardarPacienteNuevo(nuevo: PacienteCompleto) {
@@ -286,7 +339,7 @@ export default function OrdenesPage() {
             setOrden(ordenCompleta);
             setDetalles(detallesOrden);
             setHeader((h) => ({ ...h, idTipoEstudio: ordenCompleta.idTipoEstudio }));
-            setVista("procedimientos");
+            setVista("orden");
         } catch (err) {
             setListadoError(err instanceof ApiError ? err.message : "No se pudo abrir la orden");
         }
@@ -343,7 +396,6 @@ export default function OrdenesPage() {
             });
             setOrden(nuevaOrden);
             setDetalles([]);
-            setVista("procedimientos");
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
         } finally {
@@ -359,8 +411,12 @@ export default function OrdenesPage() {
 
     async function agregarDetalle() {
         if (!orden) return;
-        if (!detalleForm.codigoCups || !detalleForm.idAmbito) {
-            setDetalleError("CUPS y Ámbito del Procedimiento son obligatorios.");
+        if (!detalleForm.codigoCups) {
+            setDetalleError("Selecciona un CUPS.");
+            return;
+        }
+        if (!header.idAmbito) {
+            setDetalleError("Selecciona el Ámbito del Procedimiento en la columna izquierda.");
             return;
         }
         setGuardandoDetalle(true);
@@ -368,6 +424,7 @@ export default function OrdenesPage() {
         try {
             const nuevoDetalle = await api.post<DetalleOrden>(`/admisiones/ordenes/${orden.id}/detalles`, {
                 ...detalleForm,
+                idAmbito: header.idAmbito,
                 idTipoEstudio: header.idTipoEstudio ?? orden.idTipoEstudio,
             });
             setDetalles((prev) => [...prev, nuevoDetalle]);
@@ -662,28 +719,9 @@ export default function OrdenesPage() {
                                     key={p.id}
                                     type="button"
                                     onClick={() => seleccionarPaciente(p)}
-                                    className="flex items-stretch gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
-                                    style={{ borderColor: "var(--border-default)" }}
+                                    className="text-left transition-opacity hover:opacity-80"
                                 >
-                                    <PacienteAvatar idPaciente={p.id} />
-                                    <div className="min-w-0 flex-1">
-                                        <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                                            {nombrePaciente(p).toUpperCase()}
-                                        </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            {p.idTipoIdentificacion}
-                                            {p.identificacion}
-                                        </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
-                                        </p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Teléfono: {p.telefono || "—"}
-                                        </p>
-                                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                                            Correo: {p.correoElectronico || "—"}
-                                        </p>
-                                    </div>
+                                    <PacienteCard p={p} />
                                 </button>
                             ))}
                         </div>
@@ -701,218 +739,244 @@ export default function OrdenesPage() {
                 </div>
             )}
 
-            {vista === "datos-orden" && paciente && (
-                <div className="space-y-4">
-                    <div
-                        className="flex items-center justify-between rounded-lg border px-5 py-3"
-                        style={{ borderColor: "var(--border-default)" }}
-                    >
-                        <div>
-                            <p className="font-medium">{nombrePaciente(paciente).toUpperCase()}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {paciente.idTipoIdentificacion}
-                                {paciente.identificacion}
-                            </p>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => setVista("buscar-paciente")}>
-                            Cambiar Paciente
-                        </Button>
-                    </div>
+            {vista === "orden" && paciente && (
+                <div className="grid grid-cols-10 gap-4">
+                    {/* Columna izquierda: 30% */}
+                    <div className="col-span-10 space-y-4 lg:col-span-3">
+                        <PacienteCard p={paciente} />
+                        {!orden && (
+                            <Button variant="ghost" size="sm" onClick={() => setVista("buscar-paciente")}>
+                                Cambiar Paciente
+                            </Button>
+                        )}
 
-                    <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                        <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
-                            <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
-                            <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} />
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Fecha Orden</label>
-                                <Input
-                                    type="date"
-                                    value={header.fechaOrden}
-                                    onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
+                        <div className="rounded-lg border p-4" style={{ borderColor: "var(--border-default)" }}>
+                            <p className="mb-3 text-sm font-medium">Clasificación</p>
+                            <div className="space-y-3">
+                                <Selector
+                                    label="Tipo Afiliado"
+                                    value={header.idTipoAfiliado}
+                                    onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))}
+                                    options={tiposAfiliado}
+                                    disabled={!!orden}
                                 />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Autorizacion</label>
-                                <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">No. de Orden (opcional, se sugiere una)</label>
-                                <Input
-                                    value={header.numeroOrden}
-                                    onChange={(e) => setHeader((h) => ({ ...h, numeroOrden: e.target.value }))}
-                                    placeholder="Se genera automáticamente si se deja vacío"
+                                <Selector
+                                    label="Regimen, Tipo Usuario"
+                                    value={header.idTipoUsuario}
+                                    onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))}
+                                    options={tiposUsuario}
+                                    disabled={!!orden}
                                 />
+                                <Selector
+                                    label="Ambito del Procedimiento"
+                                    value={header.idAmbito}
+                                    onChange={(v) => setHeader((h) => ({ ...h, idAmbito: v }))}
+                                    options={ambitos}
+                                />
+                                <Selector
+                                    label="Finalidad"
+                                    value={header.idFinalidadConsulta}
+                                    onChange={(v) => setHeader((h) => ({ ...h, idFinalidadConsulta: v }))}
+                                    options={finalidadesConsulta}
+                                    disabled={!!orden}
+                                />
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Comentarios</label>
+                                    <Textarea
+                                        rows={4}
+                                        value={header.comentarios}
+                                        disabled={!!orden}
+                                        onChange={(e) => setHeader((h) => ({ ...h, comentarios: e.target.value }))}
+                                    />
+                                </div>
                             </div>
-                            <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
-                            <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
-                            <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
-                                <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
-                            </div>
-                            <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
-                            <Selector label="Tipo Afiliado" value={header.idTipoAfiliado} onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))} options={tiposAfiliado} />
-                            <Selector label="Regimen, Tipo Usuario" value={header.idTipoUsuario} onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))} options={tiposUsuario} />
-                        </div>
-                        <div className="mt-3 space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Comentarios</label>
-                            <Textarea rows={2} value={header.comentarios} onChange={(e) => setHeader((h) => ({ ...h, comentarios: e.target.value }))} />
-                        </div>
-                        {ordenError && <p className="mt-3 text-sm text-red-600">{ordenError}</p>}
-                        <Button className="mt-4" onClick={crearOrden} disabled={creandoOrden}>
-                            {creandoOrden && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <ClipboardPlus className="mr-2 h-4 w-4" />
-                            Registrar orden
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {vista === "procedimientos" && paciente && orden && (
-                <div className="space-y-4">
-                    <div
-                        className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
-                        style={{ borderColor: "var(--border-default)" }}
-                    >
-                        <div className="col-span-2">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Paciente</p>
-                            <p className="font-medium">{nombrePaciente(paciente).toUpperCase()}</p>
-                            <p className="text-xs text-muted-foreground">
-                                {paciente.idTipoIdentificacion}
-                                {paciente.identificacion}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
-                            <p className="font-medium">{orden.numeroOrden}</p>
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
-                            <p className="font-medium">{orden.id}</p>
-                        </div>
-                        <div className="col-span-2">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cons. Estudio</p>
-                            <p className="font-medium">{orden.consecutivo}</p>
-                        </div>
-                        <div className="col-span-2">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
-                            <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
-                        </div>
-                        <div className="col-span-4 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
-                            <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
-                            <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
                         </div>
                     </div>
 
-                    <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
-                        <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="relative col-span-2 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">CUPS</label>
-                                <Input
-                                    placeholder="Buscar por código o nombre..."
-                                    value={cupsQuery}
-                                    onChange={(e) => setCupsQuery(e.target.value)}
-                                />
-                                {cupsResultados.length > 0 && (
-                                    <div
-                                        className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                        style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                    >
-                                        {cupsResultados.map((c) => (
-                                            <button
-                                                key={c.codigoCups}
-                                                type="button"
-                                                className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                onClick={() => elegirCups(c)}
-                                            >
-                                                <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                            </button>
-                                        ))}
+                    {/* Columna derecha: 70% */}
+                    <div className="col-span-10 space-y-4 lg:col-span-7">
+                        {!orden && (
+                            <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                                <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
+                                    <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Fecha de Toma de Muestra</label>
+                                        <Input
+                                            type="date"
+                                            value={header.fechaOrden}
+                                            onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
+                                        />
+                                    </div>
+                                    <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
+                                        <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Autorizacion</label>
+                                        <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">No. de Orden (opcional, se sugiere una)</label>
+                                        <Input
+                                            value={header.numeroOrden}
+                                            onChange={(e) => setHeader((h) => ({ ...h, numeroOrden: e.target.value }))}
+                                            placeholder="Se genera automáticamente si se deja vacío"
+                                        />
+                                    </div>
+                                    <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
+                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : "" }` }))} />
+                                    <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
+                                    <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
+                                </div>
+                                {ordenError && <p className="mt-3 text-sm text-red-600">{ordenError}</p>}
+                                <Button className="mt-4" onClick={crearOrden} disabled={creandoOrden}>
+                                    {creandoOrden && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    <ClipboardPlus className="mr-2 h-4 w-4" />
+                                    Registrar Orden
+                                </Button>
+                            </div>
+                        )}
+
+                        {orden && (
+                            <>
+                                <div
+                                    className="grid grid-cols-4 gap-4 rounded-lg border px-5 py-4"
+                                    style={{ borderColor: "var(--border-default)" }}
+                                >
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
+                                        <p className="font-medium">{orden.numeroOrden}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Consecutivo Orden</p>
+                                        <p className="font-medium">{orden.id}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cons. Estudio</p>
+                                        <p className="font-medium">{orden.consecutivo}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Fecha Entrega</p>
+                                        <p className="font-medium">{sumarDiasHabiles(orden.fechaOrden, 7)}</p>
+                                    </div>
+                                    <div className="col-span-2 flex items-center justify-between border-t pt-3" style={{ borderColor: "var(--border-default)" }}>
+                                        <p className="text-xs text-muted-foreground">Fecha Ingreso: {orden.fechaIngreso}</p>
+                                        <Badge variant="outline">{estadoTexto(orden.estado)}</Badge>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-lg border p-5" style={{ borderColor: "var(--border-default)" }}>
+                                    <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="relative col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">CUPS</label>
+                                            <Input
+                                                placeholder="Buscar por código o nombre..."
+                                                value={cupsQuery}
+                                                onChange={(e) => setCupsQuery(e.target.value)}
+                                            />
+                                            {cupsResultados.length > 0 && (
+                                                <div
+                                                    className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                                    style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                                >
+                                                    {cupsResultados.map((c) => (
+                                                        <button
+                                                            key={c.codigoCups}
+                                                            type="button"
+                                                            className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                            onClick={() => elegirCups(c)}
+                                                        >
+                                                            <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
+                                            <Input
+                                                type="number"
+                                                value={detalleForm.valor ?? ""}
+                                                onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Copago</label>
+                                            <Input
+                                                type="number"
+                                                value={detalleForm.copago ?? 0}
+                                                onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
+                                            />
+                                        </div>
+                                        <div className="col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Neto (Valor − Copago)</label>
+                                            <Input value={netoPreview.toLocaleString()} disabled />
+                                        </div>
+                                    </div>
+                                    {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
+                                    <Button className="mt-4" onClick={agregarDetalle} disabled={guardandoDetalle}>
+                                        {guardandoDetalle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Estudio
+                                    </Button>
+                                </div>
+
+                                <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>CODIGO</TableHead>
+                                                <TableHead>NOMBRE</TableHead>
+                                                <TableHead className="text-right">VALOR</TableHead>
+                                                <TableHead className="text-right">COPAGO</TableHead>
+                                                <TableHead className="text-right">NETO</TableHead>
+                                                <TableHead className="text-center">Estado</TableHead>
+                                                <TableHead className="text-right">Acción</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {detalles.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
+                                                        Aún no se han agregado procedimientos.
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                            {detalles.map((d) => (
+                                                <TableRow key={d.id}>
+                                                    <TableCell className="font-medium">{d.codigoCups}</TableCell>
+                                                    <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
+                                                    <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        {estadoTexto(d.estado) !== "CANCELADO" && (
+                                                            <Button variant="ghost" size="sm" onClick={() => cancelarDetalle(d.id)}>
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {detalles.length > 0 && (
+                                    <div className="flex justify-end">
+                                        <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
                                     </div>
                                 )}
-                            </div>
-                            <Selector label="Ambito del Procedimiento" value={detalleForm.idAmbito} onChange={(v) => setDetalleForm((f) => ({ ...f, idAmbito: v }))} options={ambitos} />
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Valor (se calcula con la tarifa del contrato si se deja vacío)</label>
-                                <Input
-                                    type="number"
-                                    value={detalleForm.valor ?? ""}
-                                    onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Copago</label>
-                                <Input
-                                    type="number"
-                                    value={detalleForm.copago ?? 0}
-                                    onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Neto</label>
-                                <Input value={netoPreview.toLocaleString()} disabled />
-                            </div>
-                        </div>
-                        {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
-                        <Button className="mt-4" onClick={agregarDetalle} disabled={guardandoDetalle}>
-                            {guardandoDetalle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Plus className="mr-2 h-4 w-4" />
-                            Agregar procedimiento
-                        </Button>
+                            </>
+                        )}
                     </div>
-
-                    <div className="rounded-lg border" style={{ borderColor: "var(--border-default)" }}>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>CODIGO</TableHead>
-                                    <TableHead>NOMBRE</TableHead>
-                                    <TableHead className="text-right">VALOR</TableHead>
-                                    <TableHead className="text-right">COPAGO</TableHead>
-                                    <TableHead className="text-right">NETO</TableHead>
-                                    <TableHead className="text-center">Estado</TableHead>
-                                    <TableHead className="text-right">Acción</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {detalles.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-20 text-center text-sm text-muted-foreground">
-                                            Aún no se han agregado procedimientos.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                                {detalles.map((d) => (
-                                    <TableRow key={d.id}>
-                                        <TableCell className="font-medium">{d.codigoCups}</TableCell>
-                                        <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
-                                        <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {estadoTexto(d.estado) !== "CANCELADO" && (
-                                                <Button variant="ghost" size="sm" onClick={() => cancelarDetalle(d.id)}>
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {detalles.length > 0 && (
-                        <div className="flex justify-end">
-                            <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
-                        </div>
-                    )}
                 </div>
             )}
 

@@ -1,4 +1,5 @@
 import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreatePacienteDto {
   @IsString()
@@ -74,6 +75,7 @@ export class CreatePacienteDto {
   @MaxLength(45)
   codigoMunicipio?: string;
 
+  @Type(() => Number)
   @IsInt()
   codigoTipoUsuario: number;
 

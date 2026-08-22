@@ -703,7 +703,7 @@ export default function OrdenesPage() {
                                     key={p.id}
                                     type="button"
                                     onClick={() => seleccionarPaciente(p)}
-                                    className="flex gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
+                                    className="flex items-stretch gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-muted/40"
                                     style={{ borderColor: "var(--border-default)" }}
                                 >
                                     <PacienteAvatar idPaciente={p.id} />

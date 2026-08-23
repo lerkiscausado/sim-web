@@ -226,9 +226,8 @@ export default function UsuariosSistemaPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => abrirEditar(u)}>
-                                        <UserCog className="mr-1.5 h-3.5 w-3.5" />
-                                        Editar
+                                    <Button variant="ghost" size="sm" title="Editar" onClick={() => abrirEditar(u)}>
+                                        <UserCog className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
                                 </TableCell>
                             </TableRow>

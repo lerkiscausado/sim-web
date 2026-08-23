@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -274,11 +274,20 @@ export default function ContratosPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => abrirEditar(c)}>
-                                        Editar
+                                    <Button variant="ghost" size="sm" title="Editar" onClick={() => abrirEditar(c)}>
+                                        <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => toggleEstado(c)}>
-                                        {c.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        title={c.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                        onClick={() => toggleEstado(c)}
+                                    >
+                                        {c.estado === "ACTIVO" ? (
+                                            <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
+                                        ) : (
+                                            <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />
+                                        )}
                                     </Button>
                                 </TableCell>
                             </TableRow>

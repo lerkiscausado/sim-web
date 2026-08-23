@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -236,11 +236,21 @@ export default function Empleados() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => abrirEditar(item)}>
-                                            Editar
+                                        <Button variant="ghost" size="sm" className="h-8 px-2" title="Editar" onClick={() => abrirEditar(item)}>
+                                            <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                         </Button>
-                                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => toggleEstado(item)}>
-                                            {item.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 px-2"
+                                            title={item.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                            onClick={() => toggleEstado(item)}
+                                        >
+                                            {item.estado === "ACTIVO" ? (
+                                                <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
+                                            ) : (
+                                                <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />
+                                            )}
                                         </Button>
                                     </TableCell>
                                 </TableRow>

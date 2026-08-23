@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -180,8 +180,8 @@ export default function Cie10() {
                                     <TableCell className="font-medium text-primary">{item.codigoDiagnostico}</TableCell>
                                     <TableCell className="max-w-md truncate">{item.nombreDiagnostico ?? "—"}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => abrirEditar(item)}>
-                                            Editar
+                                        <Button variant="ghost" size="sm" className="h-8 px-2" title="Editar" onClick={() => abrirEditar(item)}>
+                                            <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                         </Button>
                                     </TableCell>
                                 </TableRow>

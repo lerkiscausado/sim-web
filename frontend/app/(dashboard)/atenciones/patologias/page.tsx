@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw, Eye } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, IdCard, TestTube2, FlaskConical, CalendarDays } from "lucide-react";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -234,12 +234,12 @@ export default function PatologiasPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Orden</TableHead>
-                            <TableHead>Paciente</TableHead>
-                            <TableHead>Identificación</TableHead>
-                            <TableHead>Espécimen</TableHead>
-                            <TableHead>Estudio</TableHead>
-                            <TableHead>Fecha ingreso</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Orden</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Paciente</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Identificación</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Espécimen</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />Estudio</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Fecha ingreso</span></TableHead>
                             <TableHead className="text-right">Acción</TableHead>
                         </TableRow>
                     </TableHeader>

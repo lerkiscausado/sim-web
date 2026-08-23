@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, Hash, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -173,8 +173,8 @@ export default function Cups() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="w-[120px] font-bold">Código</TableHead>
-                                <TableHead className="font-bold">Descripción</TableHead>
+                                <TableHead className="w-[120px] font-bold"><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Código</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Descripción</span></TableHead>
                                 <TableHead className="w-[100px] font-bold text-center">Estado</TableHead>
                                 <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>

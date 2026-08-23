@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Hash, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -163,8 +163,8 @@ export default function Cie10() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="w-[120px] font-bold">Código</TableHead>
-                                <TableHead className="font-bold">Descripción</TableHead>
+                                <TableHead className="w-[120px] font-bold"><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Código</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Descripción</span></TableHead>
                                 <TableHead className="w-[100px] text-right font-bold">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, Pill } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -171,7 +171,7 @@ export default function Medicamentos() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="font-bold">Nombre</TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><Pill className="h-3.5 w-3.5" />Nombre</span></TableHead>
                                 <TableHead className="w-[100px] font-bold text-center">Estado</TableHead>
                                 <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>

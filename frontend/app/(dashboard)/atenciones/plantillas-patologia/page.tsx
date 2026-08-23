@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, Eye } from "lucide-react";
+import { Plus, Loader2, Trash2, Eye, FileText, Stethoscope } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
 import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
@@ -136,8 +136,8 @@ export default function PlantillasPatologiaPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Diagnóstico (vista previa)</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Nombre</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Stethoscope className="h-3.5 w-3.5" />Diagnóstico (vista previa)</span></TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>

@@ -8,6 +8,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Calendar,
+    CalendarDays,
     Mars,
     Venus,
     Phone,
@@ -15,6 +16,7 @@ import {
     Mail,
     IdCard,
     Pencil,
+    User,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -158,14 +160,14 @@ export default function PacientesPage() {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[56px]" />
-                            <TableHead>Identificación</TableHead>
-                            <TableHead>Nombre completo</TableHead>
-                            <TableHead>Fecha nacimiento</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Identificación</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Nombre completo</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Fecha nacimiento</span></TableHead>
                             <TableHead>Edad</TableHead>
                             <TableHead>Género</TableHead>
-                            <TableHead>Teléfono</TableHead>
-                            <TableHead>Dirección</TableHead>
-                            <TableHead>Correo</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />Teléfono</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />Dirección</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />Correo</span></TableHead>
                             <TableHead className="text-right">Acción</TableHead>
                         </TableRow>
                     </TableHeader>

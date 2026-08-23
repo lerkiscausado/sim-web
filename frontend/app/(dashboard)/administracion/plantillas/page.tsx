@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2, FlaskConical, User, Eye } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
     Table,
@@ -184,9 +184,9 @@ export default function PlantillasPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Tipo de estudio</TableHead>
-                            <TableHead>Especialista</TableHead>
-                            <TableHead>Vista previa</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />Tipo de estudio</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Especialista</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />Vista previa</span></TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>

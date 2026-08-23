@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, Hash, Building2, IdCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -183,9 +183,9 @@ export default function Entidades() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="w-[140px] font-bold">Código</TableHead>
-                                <TableHead className="font-bold">Razón Social</TableHead>
-                                <TableHead className="w-[140px] font-bold">NIT</TableHead>
+                                <TableHead className="w-[140px] font-bold"><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Código</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />Razón Social</span></TableHead>
+                                <TableHead className="w-[140px] font-bold"><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />NIT</span></TableHead>
                                 <TableHead className="w-[100px] font-bold text-center">Estado</TableHead>
                                 <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Loader2, UserCog, Eye, EyeOff } from "lucide-react";
+import { Plus, Loader2, UserCog, Eye, EyeOff, User, Briefcase, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,10 +196,10 @@ export default function UsuariosSistemaPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Empleado</TableHead>
-                            <TableHead>Cargo</TableHead>
-                            <TableHead>Usuario</TableHead>
-                            <TableHead className="text-center">Admin</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Empleado</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" />Cargo</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><UserCog className="h-3.5 w-3.5" />Usuario</span></TableHead>
+                            <TableHead className="text-center"><span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Admin</span></TableHead>
                             <TableHead className="text-center">Estado</TableHead>
                             <TableHead className="text-right">Acción</TableHead>
                         </TableRow>

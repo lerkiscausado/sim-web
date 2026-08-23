@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, User, Briefcase, GraduationCap, IdCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -206,10 +206,10 @@ export default function Empleados() {
                     <Table>
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="font-bold">Nombre</TableHead>
-                                <TableHead className="font-bold">Cargo</TableHead>
-                                <TableHead className="font-bold">Especialidad</TableHead>
-                                <TableHead className="font-bold">Registro Médico</TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Nombre</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" />Cargo</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5" />Especialidad</span></TableHead>
+                                <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Registro Médico</span></TableHead>
                                 <TableHead className="w-[100px] font-bold text-center">Estado</TableHead>
                                 <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>

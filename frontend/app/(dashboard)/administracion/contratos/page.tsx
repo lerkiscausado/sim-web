@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -233,11 +233,11 @@ export default function ContratosPage() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Contrato</TableHead>
-                            <TableHead>Entidad</TableHead>
-                            <TableHead>Tipo</TableHead>
-                            <TableHead>Vigencia</TableHead>
-                            <TableHead>Tarifa</TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Contrato</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" />Entidad</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Tag className="h-3.5 w-3.5" />Tipo</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Vigencia</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><DollarSign className="h-3.5 w-3.5" />Tarifa</span></TableHead>
                             <TableHead className="text-center">Estado</TableHead>
                             <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>

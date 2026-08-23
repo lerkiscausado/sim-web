@@ -195,7 +195,7 @@ export default function UsuariosSistemaPage() {
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/50">
                             <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Empleado</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" />Cargo</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><UserCog className="h-3.5 w-3.5" />Usuario</span></TableHead>

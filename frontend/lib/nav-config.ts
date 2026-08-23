@@ -18,6 +18,7 @@ import {
     FileText,
     Layout,
     Puzzle,
+    DollarSign,
     BarChart,
     UserCog,
     LifeBuoy,
@@ -67,8 +68,10 @@ export const navConfig: NavItem[] = [
             { label: "Pacientes", href: "/administracion/pacientes", icon: Users, description: "Directorio y expedientes de los pacientes registrados." },
             { label: "Facturación", href: "/administracion/facturacion", icon: Receipt, description: "Generación y gestión de facturas y cobros." },
             { label: "Contratos", href: "/administracion/contratos", icon: FileText, description: "Administración de contratos con entidades y aseguradoras." },
+            { label: "Tarifas", href: "/administracion/tarifas", icon: DollarSign, description: "Gestión de tarifas para la facturación de contratos." },
             { label: "Plantillas", href: "/administracion/plantillas", icon: Layout, description: "Diseño y gestión de plantillas de documentos." },
             { label: "Complementos", href: "/administracion/complementos", icon: Puzzle, description: "Módulos y extensiones adicionales del sistema." },
+            { label: "Talento Humano", href: "/administracion/talento-humano", icon: Users, description: "Gestión de cargos y empleados." },
         ],
     },
     {
@@ -77,7 +80,6 @@ export const navConfig: NavItem[] = [
         children: [
             { label: "Reportes", href: "/configuracion/reportes", icon: BarChart, description: "Personalización de reportes y dashboards." },
             { label: "Usuarios de Sistema", href: "/configuracion/usuarios", icon: UserCog, description: "Gestión de usuarios, roles y permisos de acceso." },
-            { label: "Talento Humano", href: "/configuracion/talento-humano", icon: Users, description: "Gestión de cargos y empleados." },
         ],
     },
     {
@@ -111,9 +113,10 @@ export const breadcrumbLabels: Record<string, string> = {
     contratos: "Contratos",
     plantillas: "Plantillas",
     complementos: "Complementos",
+    tarifas: "Tarifas",
+    "talento-humano": "Talento Humano",
     configuracion: "Configuración",
     usuarios: "Usuarios de Sistema",
-    "talento-humano": "Talento Humano",
     ayuda: "Ayuda",
     soporte: "Soporte Técnico",
     tutoriales: "Tutoriales",

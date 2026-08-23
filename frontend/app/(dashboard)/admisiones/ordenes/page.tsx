@@ -643,7 +643,7 @@ export default function OrdenesPage() {
                     <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                         <Table>
                             <TableHeader>
-                                <TableRow>
+                                <TableRow className="bg-muted/50">
                                     <TableHead>
                                         <span className="inline-flex items-center gap-1.5">
                                             <Hash className="h-3.5 w-3.5" />
@@ -1013,7 +1013,7 @@ export default function OrdenesPage() {
                         <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
+                                    <TableRow className="bg-muted/50">
                                         <TableHead>CODIGO</TableHead>
                                         <TableHead>NOMBRE</TableHead>
                                         <TableHead className="text-right">VALOR</TableHead>

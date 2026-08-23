@@ -233,7 +233,7 @@ export default function PatologiasPage() {
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/50">
                             <TableHead><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Orden</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Paciente</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Identificación</span></TableHead>

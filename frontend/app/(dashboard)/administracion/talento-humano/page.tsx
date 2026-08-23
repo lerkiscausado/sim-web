@@ -16,7 +16,7 @@ export default function TalentoHumanoPage() {
         <>
             <div className="flex flex-col gap-6 pb-6">
                 <ModulePlaceholder
-                    module="Configuración"
+                    module="Administración"
                     title="Talento Humano"
                     description="Gestión de cargos y del personal asistencial y administrativo."
                 />

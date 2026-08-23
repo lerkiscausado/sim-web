@@ -158,7 +158,7 @@ export default function PacientesPage() {
             <div className="overflow-hidden rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/50">
                             <TableHead className="w-[56px]" />
                             <TableHead><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Identificación</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Nombre completo</span></TableHead>

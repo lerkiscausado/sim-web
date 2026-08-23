@@ -183,7 +183,7 @@ export default function PlantillasPage() {
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/50">
                             <TableHead><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />Tipo de estudio</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Especialista</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><Eye className="h-3.5 w-3.5" />Vista previa</span></TableHead>

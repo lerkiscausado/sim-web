@@ -135,7 +135,7 @@ export default function PlantillasPatologiaPage() {
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow>
+                        <TableRow className="bg-muted/50">
                             <TableHead><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Nombre</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><Stethoscope className="h-3.5 w-3.5" />Diagnóstico (vista previa)</span></TableHead>
                             <TableHead className="text-right">Acciones</TableHead>

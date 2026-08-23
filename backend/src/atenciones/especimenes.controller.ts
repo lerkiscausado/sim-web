@@ -64,8 +64,17 @@ export class PlantillasPatologiaController {
   constructor(private readonly plantillasService: PlantillasPatologiaService) {}
 
   @Get()
-  findAll() {
-    return this.plantillasService.findAll();
+  findAll(
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('q') q?: string,
+  ) {
+    // Compatibilidad: sin 'page' devuelve el arreglo plano (usado por el
+    // selector de plantillas en Patología); con 'page' devuelve paginado.
+    if (page === undefined) {
+      return this.plantillasService.findAll();
+    }
+    return this.plantillasService.findAllPaginado(Number(page), pageSize ? Number(pageSize) : 20, q);
   }
 
   @Get(':id')

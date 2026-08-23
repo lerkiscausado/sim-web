@@ -18,12 +18,14 @@ interface HtmlPreviewDialogProps {
     onOpenChange: (open: boolean) => void;
     titulo: string;
     secciones: Seccion[];
+    /** Clase de ancho máximo del modal (Tailwind), por defecto max-w-2xl. */
+    maxWidthClassName?: string;
 }
 
-export function HtmlPreviewDialog({ open, onOpenChange, titulo, secciones }: HtmlPreviewDialogProps) {
+export function HtmlPreviewDialog({ open, onOpenChange, titulo, secciones, maxWidthClassName = "max-w-2xl" }: HtmlPreviewDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+            <DialogContent className={`max-h-[85vh] overflow-y-auto ${maxWidthClassName}`}>
                 <DialogHeader>
                     <DialogTitle>Vista previa — {titulo}</DialogTitle>
                 </DialogHeader>

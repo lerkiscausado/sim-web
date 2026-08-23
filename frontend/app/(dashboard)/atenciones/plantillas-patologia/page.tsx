@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, Eye, FileText, Stethoscope, Pencil } from "lucide-react";
+import { Plus, Loader2, Trash2, Eye, FileText, Stethoscope, Pencil, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
 import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
     Table,
     TableBody,
@@ -32,10 +33,19 @@ interface PlantillaPatologia {
     diagnostico: string;
 }
 
+interface Paginado {
+    data: PlantillaPatologia[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
 const FORM_INICIAL = { nombre: "", macro: "", micro: "", diagnostico: "" };
 
 export default function PlantillasPatologiaPage() {
-    const [items, setItems] = useState<PlantillaPatologia[]>([]);
+    const [result, setResult] = useState<Paginado | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,12 +56,14 @@ export default function PlantillasPatologiaPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
-    const cargar = useCallback(async () => {
+    const cargar = useCallback(async (p: number, q?: string) => {
         setLoading(true);
         setError(null);
         try {
-            const data = await api.get<PlantillaPatologia[]>("/atenciones/plantillas-patologia");
-            setItems(data);
+            const qs = new URLSearchParams({ page: String(p), pageSize: "15" });
+            if (q) qs.set("q", q);
+            const data = await api.get<Paginado>(`/atenciones/plantillas-patologia?${qs.toString()}`);
+            setResult(data);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cargar la lista de plantillas");
         } finally {
@@ -60,8 +72,21 @@ export default function PlantillasPatologiaPage() {
     }, []);
 
     useEffect(() => {
-        cargar();
+        cargar(1);
     }, [cargar]);
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            setPage(1);
+            cargar(1, searchTerm);
+        }, 350);
+        return () => clearTimeout(t);
+    }, [searchTerm, cargar]);
+
+    function cambiarPagina(p: number) {
+        setPage(p);
+        cargar(p, searchTerm);
+    }
 
     function abrirNuevo() {
         setEditando(null);
@@ -91,7 +116,7 @@ export default function PlantillasPatologiaPage() {
                 await api.post("/atenciones/plantillas-patologia", form);
             }
             setDialogOpen(false);
-            await cargar();
+            await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la plantilla");
         } finally {
@@ -102,7 +127,7 @@ export default function PlantillasPatologiaPage() {
     async function eliminar(p: PlantillaPatologia) {
         try {
             await api.delete(`/atenciones/plantillas-patologia/${p.id}`);
-            await cargar();
+            await cargar(page, searchTerm);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo eliminar la plantilla");
         }
@@ -125,11 +150,21 @@ export default function PlantillasPatologiaPage() {
                 </div>
                 <Button size="sm" onClick={abrirNuevo}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Nueva plantilla
+                    Nueva Plantilla
                 </Button>
             </div>
 
-            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar por nombre..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+            </div>
+
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -142,14 +177,14 @@ export default function PlantillasPatologiaPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {!loading && items.length === 0 && (
+                        {!loading && (!result || result.data.length === 0) && (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center text-sm text-muted-foreground">
-                                    No hay plantillas registradas todavía.
+                                    No se encontraron plantillas.
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items.map((p) => (
+                        {result?.data.map((p) => (
                             <TableRow key={p.id}>
                                 <TableCell className="font-medium">{p.nombre}</TableCell>
                                 <TableCell className="max-w-md truncate text-xs text-muted-foreground">
@@ -171,6 +206,10 @@ export default function PlantillasPatologiaPage() {
                     </TableBody>
                 </Table>
             </div>
+
+            {result && (
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+            )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
@@ -233,6 +272,7 @@ export default function PlantillasPatologiaPage() {
                 open={!!previewItem}
                 onOpenChange={(open) => !open && setPreviewItem(null)}
                 titulo={previewItem?.nombre || "Plantilla"}
+                maxWidthClassName="max-w-4xl"
                 secciones={[
                     { titulo: "Descripción macroscópica", html: previewItem?.macro ?? "" },
                     { titulo: "Descripción microscópica", html: previewItem?.micro ?? "" },

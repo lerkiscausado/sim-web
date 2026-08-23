@@ -30,9 +30,19 @@ export class PatologiaService {
   }
 
   /**
-   * Órdenes pendientes de informe de patología: en estado PENDIENTE y sin
-   * registro en `patologia` todavía. Equivalente conceptual a la grilla
-   * "Pacientes a atender" del formulario original.
+   * Cola de trabajo de Patología: réplica exacta de DOrdenes.ListarPatologias()
+   * del VB.NET original (frmPatologiaCD -> _dOrdenes.ListarPatologias).
+   *
+   * Dos correcciones importantes sobre la versión anterior (que filtraba
+   * solo ESTADO='PENDIENTE' y excluía las que ya tenían informe):
+   * - El filtro real es ESTADO NOT IN ('ATENDIDO','CANCELADO','FACTURADO')
+   *   -- es decir, incluye PENDIENTE Y PROCESO, no solo PENDIENTE.
+   * - El original NO excluye las órdenes que ya tienen un registro en
+   *   `patologia`; siguen apareciendo en la grilla para poder editarlas
+   *   (el formulario carga el informe existente si ya existe, igual que
+   *   ya hace abrirOrden() en el frontend).
+   * - Filtro adicional real: tipo_estudio.PREFIJO NOT IN ('CV','CB') --
+   *   excluye los estudios de Citología, que tienen su propio módulo.
    */
   async findPendientes(idSede?: number) {
     const qb = this.ordenesRepository
@@ -40,16 +50,32 @@ export class PatologiaService {
       .leftJoinAndSelect('o.paciente', 'paciente')
       .leftJoinAndSelect('o.especimen', 'especimen')
       .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
-      .where('o.estado = :estado', { estado: EstadoOrden.PENDIENTE })
-      .andWhere(
-        'NOT EXISTS (SELECT 1 FROM patologia p WHERE p.ID_ORDEN = o.ID)',
-      );
+      .where('o.estado NOT IN (:...estadosExcluidos)', {
+        estadosExcluidos: [EstadoOrden.ATENDIDO, EstadoOrden.CANCELADO, EstadoOrden.FACTURADO],
+      })
+      .andWhere('tipoEstudio.prefijo NOT IN (:...prefijosExcluidos)', {
+        prefijosExcluidos: ['CV', 'CB'],
+      });
 
     if (idSede) {
       qb.andWhere('o.idSede = :idSede', { idSede });
     }
 
-    return qb.orderBy('o.fechaIngreso', 'ASC').getMany();
+    const ordenes = await qb.orderBy('o.fechaIngreso', 'ASC').getMany();
+    if (ordenes.length === 0) return [];
+
+    // Indicador adicional (no está en el VB.NET original, pero es útil): si
+    // la orden ya tiene un informe guardado, para distinguir en pantalla
+    // "pendiente de informar" de "ya tiene informe, clic para revisar/editar".
+    const ids = ordenes.map((o) => o.id);
+    const conInforme = await this.patologiaRepository
+      .createQueryBuilder('p')
+      .select('p.idOrden', 'idOrden')
+      .where('p.idOrden IN (:...ids)', { ids })
+      .getRawMany<{ idOrden: number }>();
+    const idsConInforme = new Set(conInforme.map((r) => Number(r.idOrden)));
+
+    return ordenes.map((o) => ({ ...o, tieneInforme: idsConInforme.has(o.id) }));
   }
 
   /** Equivalente a DPatologia.ListarPatologiasPaciente(): resultados ya entregables de un paciente. */

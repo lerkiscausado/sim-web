@@ -5,6 +5,7 @@ export interface OrdenPendiente {
     fechaIngreso: string;
     idEspecimen: number;
     idUsuario: number;
+    tieneInforme?: boolean;
     paciente?: {
         id: number;
         identificacion: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, IdCard, TestTube2, FlaskConical, CalendarDays, ArrowLeft } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft } from "lucide-react";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -469,39 +469,61 @@ export default function PatologiasPage() {
                         <TableRow className="bg-muted/50">
                             <TableHead><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Orden</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Paciente</span></TableHead>
-                            <TableHead><span className="inline-flex items-center gap-1.5"><IdCard className="h-3.5 w-3.5" />Identificación</span></TableHead>
-                            <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Espécimen</span></TableHead>
-                            <TableHead><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />Estudio</span></TableHead>
-                            <TableHead><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Fecha ingreso</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Espécimen / Estudio</span></TableHead>
+                            <TableHead className="text-center">Estado</TableHead>
                             <TableHead className="text-center">Acción</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {!loading && pendientes.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={7} className="py-8 text-center text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                                <TableCell colSpan={5} className="py-8 text-center text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                                     No hay órdenes pendientes de informe.
                                 </TableCell>
                             </TableRow>
                         )}
-                        {pendientes.map((orden) => (
-                            <TableRow key={orden.id}>
-                                <TableCell className="font-medium">{orden.numeroOrden}</TableCell>
-                                <TableCell className="font-bold">{nombrePaciente(orden.paciente).toUpperCase()}</TableCell>
-                                <TableCell>{orden.paciente?.identificacion ?? "—"}</TableCell>
-                                <TableCell>
-                                    <Badge variant="secondary">{orden.especimen?.nombre ?? "—"}</Badge>
-                                </TableCell>
-                                <TableCell>{orden.tipoEstudio?.nombreTipoEstudio ?? "—"}</TableCell>
-                                <TableCell>{orden.fechaIngreso}</TableCell>
-                                <TableCell className="text-center">
-                                    <Button size="sm" onClick={() => abrirOrden(orden)}>
-                                        <Microscope size={14} />
-                                        Informar
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+                        {pendientes.map((orden) => {
+                            const p = orden.paciente;
+                            return (
+                                <TableRow key={orden.id} className="align-top hover:bg-muted/40">
+                                    <TableCell className="py-3">
+                                        <p className="font-bold">{orden.consecutivo}</p>
+                                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <CalendarDays className="h-3 w-3" />
+                                            {orden.fechaIngreso}
+                                        </p>
+                                    </TableCell>
+                                    <TableCell className="py-3">
+                                        <p className="font-bold">{nombrePaciente(p).toUpperCase()}</p>
+                                        {p && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {p.idTipoIdentificacion}
+                                                {p.identificacion} · {p.sexo === "M" ? "M" : "F"} ·{" "}
+                                                {calcularEdad(p.fechaNacimiento)} años
+                                                {p.telefono ? ` · ${p.telefono}` : ""}
+                                            </p>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="py-3 text-sm">
+                                        {orden.especimen?.nombre ?? "—"}
+                                        {orden.tipoEstudio?.nombreTipoEstudio ? ` - ${orden.tipoEstudio.nombreTipoEstudio}` : ""}
+                                    </TableCell>
+                                    <TableCell className="py-3 text-center">
+                                        {orden.tieneInforme ? (
+                                            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100/80 border-blue-200">Con informe</Badge>
+                                        ) : (
+                                            <Badge variant="secondary">Pendiente</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="py-3 text-center">
+                                        <Button size="sm" onClick={() => abrirOrden(orden)}>
+                                            <Microscope size={14} />
+                                            Informar
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </div>

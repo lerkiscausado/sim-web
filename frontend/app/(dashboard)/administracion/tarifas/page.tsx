@@ -23,7 +23,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
-import { DetalleTarifaDialog } from "./DetalleTarifaDialog";
+import { DetalleTarifaView } from "./DetalleTarifaView";
 
 interface TarifaItem {
     id: number;
@@ -130,7 +130,16 @@ export default function TarifasPage() {
         }
     }
 
-    return (
+    return detalleAbierto ? (
+        <DetalleTarifaView
+            idTarifa={detalleAbierto.id}
+            nombreTarifa={detalleAbierto.nombreTarifa}
+            onVolver={() => {
+                setDetalleAbierto(null);
+                cargar(page, searchTerm);
+            }}
+        />
+    ) : (
         <div className="space-y-5">
             <div
                 className="flex items-center justify-between rounded-lg border px-6 py-5"
@@ -255,15 +264,6 @@ export default function TarifasPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {detalleAbierto && (
-                <DetalleTarifaDialog
-                    open={!!detalleAbierto}
-                    onOpenChange={(open) => !open && setDetalleAbierto(null)}
-                    idTarifa={detalleAbierto.id}
-                    nombreTarifa={detalleAbierto.nombreTarifa}
-                />
-            )}
         </div>
     );
 }

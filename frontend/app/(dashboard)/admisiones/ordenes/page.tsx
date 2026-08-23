@@ -675,10 +675,8 @@ export default function OrdenesPage() {
                                         </span>
                                     </TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
-                                    <TableHead
-                                        className="sticky right-0 w-[90px] border-l"
-                                        style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                    />
+                                    <TableHead className="text-center">Acciones</TableHead>
+
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -726,8 +724,7 @@ export default function OrdenesPage() {
                                                 <EstadoBadge estado={o.estado} />
                                             </TableCell>
                                             <TableCell
-                                                className="sticky right-0 border-l py-3 text-center"
-                                                style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                                className="sticky right-0 py-3 text-center"
                                             >
                                                 <div className="flex items-center justify-center gap-1">
                                                     <Button
@@ -917,7 +914,7 @@ export default function OrdenesPage() {
                                         />
                                     </div>
                                     <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
-                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : "" }` }))} />
+                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} />
                                     <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
                                     <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
                                 </div>

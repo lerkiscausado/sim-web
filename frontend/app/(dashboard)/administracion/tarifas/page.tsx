@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, DollarSign, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, DollarSign, Pencil, Ban, CheckCircle2, ListTree } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -23,6 +23,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { DetalleTarifaDialog } from "./DetalleTarifaDialog";
 
 interface TarifaItem {
     id: number;
@@ -45,6 +46,7 @@ export default function TarifasPage() {
     const [error, setError] = useState<string | null>(null);
 
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [detalleAbierto, setDetalleAbierto] = useState<TarifaItem | null>(null);
     const [editando, setEditando] = useState<TarifaItem | null>(null);
     const [form, setForm] = useState({ nombreTarifa: "" });
     const [formError, setFormError] = useState<string | null>(null);
@@ -196,6 +198,9 @@ export default function TarifasPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
+                                    <Button variant="ghost" size="sm" className="h-8 px-2" title="Ver Detalle" onClick={() => setDetalleAbierto(item)}>
+                                        <ListTree className="h-3.5 w-3.5" style={{ color: "#2563EB" }} />
+                                    </Button>
                                     <Button variant="ghost" size="sm" className="h-8 px-2" title="Editar" onClick={() => abrirEditar(item)}>
                                         <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
@@ -250,6 +255,15 @@ export default function TarifasPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {detalleAbierto && (
+                <DetalleTarifaDialog
+                    open={!!detalleAbierto}
+                    onOpenChange={(open) => !open && setDetalleAbierto(null)}
+                    idTarifa={detalleAbierto.id}
+                    nombreTarifa={detalleAbierto.nombreTarifa}
+                />
+            )}
         </div>
     );
 }

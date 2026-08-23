@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { EstadoActivoInactivo } from '../../common/enums/estado.enum';
+import { Cups } from '../../catalogos/entities/cups.entity';
 
 @Entity('detalle_tarifa')
 export class DetalleTarifa {
@@ -17,6 +18,10 @@ export class DetalleTarifa {
 
   @Column({ name: 'CODIGO_CUPS', type: 'char', length: 12 })
   codigoCups: string;
+
+  @ManyToOne(() => Cups)
+  @JoinColumn({ name: 'CODIGO_CUPS', referencedColumnName: 'codigoCups' })
+  cups?: Cups;
 
   @Column({ name: 'VALOR', type: 'bigint' })
   valor: number;

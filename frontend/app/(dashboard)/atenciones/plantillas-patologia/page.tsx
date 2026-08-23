@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, Eye, FileText, Stethoscope } from "lucide-react";
+import { Plus, Loader2, Trash2, Eye, FileText, Stethoscope, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
 import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
@@ -156,14 +156,14 @@ export default function PlantillasPatologiaPage() {
                                     {htmlToPlainText(p.diagnostico) || "—"}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => setPreviewItem(p)}>
+                                    <Button variant="ghost" size="sm" title="Vista previa" onClick={() => setPreviewItem(p)}>
                                         <Eye className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => abrirEditar(p)}>
-                                        Editar
+                                    <Button variant="ghost" size="sm" title="Editar" onClick={() => abrirEditar(p)}>
+                                        <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => eliminar(p)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
+                                    <Button variant="ghost" size="sm" title="Eliminar" onClick={() => eliminar(p)}>
+                                        <Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                     </Button>
                                 </TableCell>
                             </TableRow>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, FlaskConical, User, Eye } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
+import { Plus, Loader2, Trash2, FlaskConical, User, Eye, Pencil } from "lucide-react";
+import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
+import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import {
     Table,
     TableBody,
@@ -78,6 +79,7 @@ export default function PlantillasPage() {
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const [previewItem, setPreviewItem] = useState<Plantilla | null>(null);
 
     const cargar = useCallback(async () => {
         setLoading(true);
@@ -173,7 +175,7 @@ export default function PlantillasPage() {
                 </div>
                 <Button size="sm" onClick={abrirNuevo}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Nueva plantilla
+                    Nueva Plantilla
                 </Button>
             </div>
 
@@ -203,14 +205,17 @@ export default function PlantillasPage() {
                                 <TableCell>{p.tipoEstudio?.nombreTipoEstudio ?? `#${p.idTipoEstudio}`}</TableCell>
                                 <TableCell>{p.especialista?.nombre ?? `#${p.idEspecialista}`}</TableCell>
                                 <TableCell className="max-w-sm truncate text-xs text-muted-foreground">
-                                    {p.campo1 || p.campo2 || "—"}
+                                    {htmlToPlainText(p.campo1 || p.campo2 || "") || "—"}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="ghost" size="sm" onClick={() => abrirEditar(p)}>
-                                        Editar
+                                    <Button variant="ghost" size="sm" title="Vista previa" onClick={() => setPreviewItem(p)}>
+                                        <Eye className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => eliminar(p)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
+                                    <Button variant="ghost" size="sm" title="Editar" onClick={() => abrirEditar(p)}>
+                                        <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
+                                    </Button>
+                                    <Button variant="ghost" size="sm" title="Eliminar" onClick={() => eliminar(p)}>
+                                        <Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                     </Button>
                                 </TableCell>
                             </TableRow>
@@ -261,10 +266,10 @@ export default function PlantillasPage() {
                         {CAMPOS.map(({ key, label }) => (
                             <div key={key} className="space-y-1.5">
                                 <label className="text-[12.5px] font-medium">{label}</label>
-                                <Textarea
+                                <RichTextEditor
                                     rows={2}
                                     value={form[key] as string}
-                                    onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                                    onChange={(html) => setForm((f) => ({ ...f, [key]: html }))}
                                 />
                             </div>
                         ))}
@@ -278,6 +283,16 @@ export default function PlantillasPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <HtmlPreviewDialog
+                open={!!previewItem}
+                onOpenChange={(open) => !open && setPreviewItem(null)}
+                titulo={previewItem?.tipoEstudio?.nombreTipoEstudio ?? "Plantilla"}
+                secciones={CAMPOS.map(({ key, label }) => ({
+                    titulo: label,
+                    html: (previewItem?.[key as keyof Plantilla] as string) ?? "",
+                }))}
+            />
         </div>
     );
 }

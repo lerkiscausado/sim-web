@@ -726,32 +726,34 @@ export default function OrdenesPage() {
                                                 <EstadoBadge estado={o.estado} />
                                             </TableCell>
                                             <TableCell
-                                                className="sticky right-0 flex items-center justify-center gap-1 border-l py-3"
+                                                className="sticky right-0 border-l py-3 text-center"
                                                 style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
                                             >
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    title="Ver orden"
-                                                    onClick={() => abrirOrdenExistente(o)}
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                {estadoTexto(o.estado) === "ATENDIDO" && (
+                                                <div className="flex items-center justify-center gap-1">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        title="Imprimir reporte del estudio"
-                                                        disabled={imprimiendoId === o.id}
-                                                        onClick={(e) => imprimirEstudio(o, e)}
+                                                        title="Ver orden"
+                                                        onClick={() => abrirOrdenExistente(o)}
                                                     >
-                                                        {imprimiendoId === o.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <Printer className="h-4 w-4" />
-                                                        )}
+                                                        <Eye className="h-4 w-4" />
                                                     </Button>
-                                                )}
+                                                    {estadoTexto(o.estado) === "ATENDIDO" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            title="Imprimir reporte del estudio"
+                                                            disabled={imprimiendoId === o.id}
+                                                            onClick={(e) => imprimirEstudio(o, e)}
+                                                        >
+                                                            {imprimiendoId === o.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Printer className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     );

@@ -44,7 +44,7 @@ export class PatologiaService {
    * - Filtro adicional real: tipo_estudio.PREFIJO NOT IN ('CV','CB') --
    *   excluye los estudios de Citología, que tienen su propio módulo.
    */
-  async findPendientes(idSede?: number) {
+  async findPendientes(idSede?: number, q?: string) {
     const qb = this.ordenesRepository
       .createQueryBuilder('o')
       .leftJoinAndSelect('o.paciente', 'paciente')
@@ -59,6 +59,16 @@ export class PatologiaService {
 
     if (idSede) {
       qb.andWhere('o.idSede = :idSede', { idSede });
+    }
+
+    if (q && q.trim().length > 0) {
+      const term = `%${q.trim()}%`;
+      qb.andWhere(
+        '(o.numeroOrden LIKE :term OR o.consecutivo LIKE :term OR paciente.identificacion LIKE :term ' +
+          'OR paciente.primerNombre LIKE :term OR paciente.segundoNombre LIKE :term ' +
+          'OR paciente.primerApellido LIKE :term OR paciente.segundoApellido LIKE :term)',
+        { term },
+      );
     }
 
     const ordenes = await qb.orderBy('o.fechaIngreso', 'ASC').getMany();

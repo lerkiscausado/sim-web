@@ -28,8 +28,8 @@ export class PatologiaController {
   ) {}
 
   @Get('pendientes')
-  findPendientes(@Query('idSede') idSede?: string) {
-    return this.patologiaService.findPendientes(idSede ? Number(idSede) : undefined);
+  findPendientes(@Query('idSede') idSede?: string, @Query('q') q?: string) {
+    return this.patologiaService.findPendientes(idSede ? Number(idSede) : undefined, q);
   }
 
   @Get('orden/:idOrden')

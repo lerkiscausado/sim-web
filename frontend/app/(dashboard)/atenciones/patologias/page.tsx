@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search } from "lucide-react";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,7 @@ export default function PatologiasPage() {
     const [plantillas, setPlantillas] = useState<PlantillaPatologia[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const [ordenActiva, setOrdenActiva] = useState<OrdenPendiente | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
@@ -88,12 +89,13 @@ export default function PatologiasPage() {
     const [informeGuardado, setInformeGuardado] = useState<InformePatologia | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
 
-    const cargarPendientes = useCallback(async () => {
+    const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
         setError(null);
         try {
+            const qs = q ? `?q=${encodeURIComponent(q)}` : "";
             const [pend, esp, plant] = await Promise.all([
-                api.get<OrdenPendiente[]>("/atenciones/patologia/pendientes"),
+                api.get<OrdenPendiente[]>(`/atenciones/patologia/pendientes${qs}`),
                 api.get<Especimen[]>("/atenciones/especimenes/activos"),
                 api.get<PlantillaPatologia[]>("/atenciones/plantillas-patologia"),
             ]);
@@ -108,8 +110,12 @@ export default function PatologiasPage() {
     }, []);
 
     useEffect(() => {
-        cargarPendientes();
-    }, [cargarPendientes]);
+        const t = setTimeout(() => {
+            cargarPendientes(searchTerm);
+        }, 350);
+        return () => clearTimeout(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchTerm]);
 
     // Búsqueda CIE10 con debounce simple
     useEffect(() => {
@@ -166,7 +172,7 @@ export default function PatologiasPage() {
     function volverAlListado() {
         setVista("listado");
         setOrdenActiva(null);
-        cargarPendientes();
+        cargarPendientes(searchTerm);
     }
 
     function aplicarPlantilla(id: string) {
@@ -448,7 +454,7 @@ export default function PatologiasPage() {
                         Órdenes pendientes de informe de patología
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={cargarPendientes} disabled={loading}>
+                <Button variant="outline" size="sm" onClick={() => cargarPendientes(searchTerm)} disabled={loading}>
                     <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
                     Actualizar
                 </Button>
@@ -462,6 +468,17 @@ export default function PatologiasPage() {
                     {error}
                 </p>
             )}
+
+            <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    placeholder="Buscar por orden, nombre o identificación..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+            </div>
 
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>

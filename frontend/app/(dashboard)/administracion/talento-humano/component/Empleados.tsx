@@ -47,7 +47,7 @@ interface EmpleadoItem {
     idCargo: number;
     idEspecialidad: number;
     registroMedico: string | null;
-    estado: "ACTIVO" | "INACTIVO";
+    estado: "A" | "I";
     cargo?: Cargo;
     especialidad?: Especialidad;
 }
@@ -161,7 +161,7 @@ export default function Empleados() {
     }
 
     async function toggleEstado(item: EmpleadoItem) {
-        const nuevo = item.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+        const nuevo = item.estado === "A" ? "I" : "A";
         try {
             await api.patch(`/seguridad/empleados/${item.id}/estado/${nuevo}`);
             await cargar(page, searchTerm);
@@ -230,10 +230,10 @@ export default function Empleados() {
                                     <TableCell>{item.registroMedico ?? "—"}</TableCell>
                                     <TableCell className="text-center">
                                         <Badge
-                                            className={`font-medium ${item.estado === "ACTIVO" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
-                                            variant={item.estado === "ACTIVO" ? "default" : "destructive"}
+                                            className={`font-medium ${item.estado === "A" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
+                                            variant={item.estado === "A" ? "default" : "destructive"}
                                         >
-                                            {item.estado === "ACTIVO" ? "Activo" : "Inactivo"}
+                                            {item.estado === "A" ? "Activo" : "Inactivo"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -244,10 +244,10 @@ export default function Empleados() {
                                             variant="ghost"
                                             size="sm"
                                             className="h-8 px-2"
-                                            title={item.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                            title={item.estado === "A" ? "Desactivar" : "Activar"}
                                             onClick={() => toggleEstado(item)}
                                         >
-                                            {item.estado === "ACTIVO" ? (
+                                            {item.estado === "A" ? (
                                                 <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                             ) : (
                                                 <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />

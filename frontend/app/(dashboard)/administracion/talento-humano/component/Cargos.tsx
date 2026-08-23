@@ -34,7 +34,7 @@ import { api, ApiError } from "@/lib/api";
 interface CargoItem {
     id: number;
     nombreCargo: string;
-    estado: "ACTIVO" | "INACTIVO" | "ELIMINADO";
+    estado: "A" | "I" | "E";
 }
 
 interface Paginado {
@@ -126,7 +126,7 @@ export default function Cargos() {
     }
 
     async function toggleEstado(item: CargoItem) {
-        const nuevo = item.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+        const nuevo = item.estado === "A" ? "I" : "A";
         try {
             await api.patch(`/catalogos/cargos/${item.id}/estado/${nuevo}`);
             await cargar(page, searchTerm);
@@ -189,10 +189,10 @@ export default function Cargos() {
                                     <TableCell className="font-semibold">{item.nombreCargo}</TableCell>
                                     <TableCell className="text-center">
                                         <Badge
-                                            className={`font-medium ${item.estado === "ACTIVO" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
-                                            variant={item.estado === "ACTIVO" ? "default" : "destructive"}
+                                            className={`font-medium ${item.estado === "A" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
+                                            variant={item.estado === "A" ? "default" : "destructive"}
                                         >
-                                            {item.estado === "ACTIVO" ? "Activo" : "Inactivo"}
+                                            {item.estado === "A" ? "Activo" : "Inactivo"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
@@ -203,10 +203,10 @@ export default function Cargos() {
                                             variant="ghost"
                                             size="sm"
                                             className="h-8 px-2"
-                                            title={item.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                            title={item.estado === "A" ? "Desactivar" : "Activar"}
                                             onClick={() => toggleEstado(item)}
                                         >
-                                            {item.estado === "ACTIVO" ? (
+                                            {item.estado === "A" ? (
                                                 <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                             ) : (
                                                 <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />

@@ -34,7 +34,7 @@ interface UsuarioSistema {
     id: number;
     idEmpleado: number;
     usuario: string;
-    estado: "ACTIVO" | "INACTIVO" | "ELIMINADO";
+    estado: "A" | "I" | "E";
     admin: "1" | "0";
     empleado?: Empleado;
     [permiso: string]: unknown;
@@ -123,7 +123,7 @@ export default function UsuariosSistemaPage() {
 
     function abrirEditar(u: UsuarioSistema) {
         setEditando(u);
-        setFormEdit({ usuario: u.usuario, pass: "", admin: u.admin === "1", activo: u.estado === "ACTIVO" });
+        setFormEdit({ usuario: u.usuario, pass: "", admin: u.admin === "1", activo: u.estado === "A" });
         const permisos: Record<string, boolean> = {};
         for (const cat of CATEGORIAS_PERMISOS) {
             for (const p of cat.permisos) {
@@ -221,8 +221,8 @@ export default function UsuariosSistemaPage() {
                                     {u.admin === "1" && <Badge>Admin</Badge>}
                                 </TableCell>
                                 <TableCell className="text-center">
-                                    <Badge variant={u.estado === "ACTIVO" ? "default" : "destructive"}>
-                                        {u.estado === "ACTIVO" ? "Activo" : "Inactivo"}
+                                    <Badge variant={u.estado === "A" ? "default" : "destructive"}>
+                                        {u.estado === "A" ? "Activo" : "Inactivo"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">

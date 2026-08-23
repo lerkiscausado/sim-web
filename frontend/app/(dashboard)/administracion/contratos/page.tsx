@@ -48,7 +48,7 @@ interface Contrato {
     idLicencia: number;
     usuario: string;
     contrasena: string;
-    estado: "ACTIVO" | "INACTIVO";
+    estado: "A" | "I";
     entidad?: Entidad;
     tarifa?: Tarifa;
 }
@@ -184,7 +184,7 @@ export default function ContratosPage() {
     }
 
     async function toggleEstado(c: Contrato) {
-        const nuevo = c.estado === "ACTIVO" ? "INACTIVO" : "ACTIVO";
+        const nuevo = c.estado === "A" ? "I" : "A";
         try {
             await api.patch(`/entidades-contratos/contratos/${c.id}/estado/${nuevo}`);
             await cargar(page, searchTerm);
@@ -268,10 +268,10 @@ export default function ContratosPage() {
                                 <TableCell>{c.tarifa?.nombreTarifa ?? "—"}</TableCell>
                                 <TableCell className="text-center">
                                     <Badge
-                                        className={`font-medium ${c.estado === "ACTIVO" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
-                                        variant={c.estado === "ACTIVO" ? "default" : "destructive"}
+                                        className={`font-medium ${c.estado === "A" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}`}
+                                        variant={c.estado === "A" ? "default" : "destructive"}
                                     >
-                                        {c.estado === "ACTIVO" ? "Activo" : "Inactivo"}
+                                        {c.estado === "A" ? "Activo" : "Inactivo"}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -281,10 +281,10 @@ export default function ContratosPage() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        title={c.estado === "ACTIVO" ? "Desactivar" : "Activar"}
+                                        title={c.estado === "A" ? "Desactivar" : "Activar"}
                                         onClick={() => toggleEstado(c)}
                                     >
-                                        {c.estado === "ACTIVO" ? (
+                                        {c.estado === "A" ? (
                                             <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                         ) : (
                                             <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />

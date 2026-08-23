@@ -30,7 +30,7 @@ export class PatologiaService {
   }
 
   /**
-   * Órdenes pendientes de informe de patología: en proceso/atendidas sin
+   * Órdenes pendientes de informe de patología: en estado PENDIENTE y sin
    * registro en `patologia` todavía. Equivalente conceptual a la grilla
    * "Pacientes a atender" del formulario original.
    */
@@ -40,9 +40,7 @@ export class PatologiaService {
       .leftJoinAndSelect('o.paciente', 'paciente')
       .leftJoinAndSelect('o.especimen', 'especimen')
       .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
-      .where('o.estado IN (:...estados)', {
-        estados: [EstadoOrden.PROCESO, EstadoOrden.ATENDIDO],
-      })
+      .where('o.estado = :estado', { estado: EstadoOrden.PENDIENTE })
       .andWhere(
         'NOT EXISTS (SELECT 1 FROM patologia p WHERE p.ID_ORDEN = o.ID)',
       );

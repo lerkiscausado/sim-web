@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, IdCard, TestTube2, FlaskConical, CalendarDays } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, IdCard, TestTube2, FlaskConical, CalendarDays, ArrowLeft } from "lucide-react";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import { Badge } from "@/components/ui/badge";
+import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import {
     Table,
     TableBody,
@@ -17,14 +18,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
 import type {
     OrdenPendiente,
     Especimen,
@@ -33,7 +26,7 @@ import type {
     InformePatologia,
     UpsertPatologiaPayload,
 } from "./types";
-import { nombrePaciente } from "./types";
+import { nombrePaciente, calcularEdad } from "./types";
 
 const FORM_INICIAL = {
     tipoMuestra: "",
@@ -47,7 +40,37 @@ const FORM_INICIAL = {
     idEspecimen: undefined as number | undefined,
 };
 
+/** Misma tarjeta de paciente (foto + datos) usada en Pacientes y Órdenes. */
+function PacienteCard({ p }: { p: OrdenPendiente["paciente"] }) {
+    if (!p) return null;
+    return (
+        <div
+            className="flex items-stretch gap-3 rounded-lg border p-4"
+            style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
+        >
+            <PacienteAvatar idPaciente={p.id} />
+            <div className="min-w-0 flex-1">
+                <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
+                    {nombrePaciente(p).toUpperCase()}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    {p.idTipoIdentificacion}
+                    {p.identificacion}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Teléfono: {p.telefono || "—"}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">Correo: {p.correoElectronico || "—"}</p>
+            </div>
+        </div>
+    );
+}
+
+type Vista = "listado" | "informe";
+
 export default function PatologiasPage() {
+    const [vista, setVista] = useState<Vista>("listado");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
     const [especimenes, setEspecimenes] = useState<Especimen[]>([]);
     const [plantillas, setPlantillas] = useState<PlantillaPatologia[]>([]);
@@ -114,6 +137,7 @@ export default function PatologiasPage() {
         setForm({ ...FORM_INICIAL, idEspecimen: orden.idEspecimen });
         setCie10Query("");
         setCie10Nombre("");
+        setVista("informe");
 
         try {
             const existente = await api.get<InformePatologia | null>(
@@ -137,6 +161,12 @@ export default function PatologiasPage() {
         } catch {
             // no hay informe previo todavía, se deja el formulario en blanco
         }
+    }
+
+    function volverAlListado() {
+        setVista("listado");
+        setOrdenActiva(null);
+        cargarPendientes();
     }
 
     function aplicarPlantilla(id: string) {
@@ -174,7 +204,6 @@ export default function PatologiasPage() {
             };
             const guardado = await api.post<InformePatologia>("/atenciones/patologia", payload);
             setInformeGuardado(guardado);
-            await cargarPendientes();
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el informe");
         } finally {
@@ -199,6 +228,210 @@ export default function PatologiasPage() {
         () => especimenes.map((e) => ({ value: String(e.id), label: e.nombre })),
         [especimenes]
     );
+
+    if (vista === "informe" && ordenActiva) {
+        return (
+            <div className="space-y-5">
+                <div
+                    className="flex items-center justify-between rounded-lg border px-6 py-5"
+                    style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
+                >
+                    <div>
+                        <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
+                            Atenciones · Patologías
+                        </span>
+                        <h1 style={{ color: "var(--ink-primary)" }}>Informe de Patología — Orden {ordenActiva.numeroOrden}</h1>
+                        <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                            Captura de macroscópica, microscópica y diagnóstico
+                        </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={volverAlListado}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Volver al Listado
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-10 gap-4">
+                    <div className="col-span-10 space-y-4 lg:col-span-3">
+                        <PacienteCard p={ordenActiva.paciente} />
+
+                        {plantillas.length > 0 && (
+                            <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                <label className="text-[12.5px] font-medium">Plantilla rápida</label>
+                                <select
+                                    className="mt-1.5 h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                    defaultValue=""
+                                    onChange={(e) => aplicarPlantilla(e.target.value)}
+                                >
+                                    <option value="" disabled>
+                                        Elegir plantilla…
+                                    </option>
+                                    {plantillas.map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.nombre}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="col-span-10 space-y-4 lg:col-span-7">
+                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Tipo de muestra</label>
+                                    <Input
+                                        value={form.tipoMuestra}
+                                        onChange={(e) => setForm((f) => ({ ...f, tipoMuestra: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Sitio de lesión</label>
+                                    <Input
+                                        value={form.sitioLesion}
+                                        onChange={(e) => setForm((f) => ({ ...f, sitioLesion: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Estudio solicitado</label>
+                                    <Input
+                                        value={form.solicitado}
+                                        onChange={(e) => setForm((f) => ({ ...f, solicitado: e.target.value }))}
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-1.5">
+                                    <label className="text-[12.5px] font-medium">Espécimen</label>
+                                    <select
+                                        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                        value={form.idEspecimen ?? ""}
+                                        onChange={(e) =>
+                                            setForm((f) => ({ ...f, idEspecimen: Number(e.target.value) || undefined }))
+                                        }
+                                    >
+                                        <option value="">Sin cambio</option>
+                                        {especimenesOptions.map((o) => (
+                                            <option key={o.value} value={o.value}>
+                                                {o.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="mt-3 space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Descripción macroscópica</label>
+                                <RichTextEditor
+                                    rows={3}
+                                    value={form.descripcionMacroscopica}
+                                    onChange={(html) => setForm((f) => ({ ...f, descripcionMacroscopica: html }))}
+                                />
+                            </div>
+
+                            <div className="mt-3 space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Descripción microscópica</label>
+                                <RichTextEditor
+                                    rows={3}
+                                    value={form.descripcionMicroscopica}
+                                    onChange={(html) => setForm((f) => ({ ...f, descripcionMicroscopica: html }))}
+                                />
+                            </div>
+
+                            <div className="mt-3 space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Diagnóstico</label>
+                                <RichTextEditor
+                                    rows={3}
+                                    value={form.diagnostico}
+                                    onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))}
+                                />
+                            </div>
+
+                            <div className="relative mt-3 space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Código CIE10</label>
+                                <Input
+                                    placeholder="Buscar por código o nombre…"
+                                    value={cie10Query}
+                                    onChange={(e) => setCie10Query(e.target.value)}
+                                />
+                                {cie10Nombre && (
+                                    <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
+                                        {form.codigoDiagnostico} — {cie10Nombre}
+                                    </p>
+                                )}
+                                {cie10Resultados.length > 0 && (
+                                    <div
+                                        className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                        style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                    >
+                                        {cie10Resultados.map((d) => (
+                                            <button
+                                                key={d.codigoDiagnostico}
+                                                type="button"
+                                                className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                onClick={() => elegirCie10(d)}
+                                            >
+                                                <span className="font-semibold">{d.codigoDiagnostico}</span> —{" "}
+                                                {d.nombreDiagnostico}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-3 space-y-1.5">
+                                <label className="text-[12.5px] font-medium">Observaciones</label>
+                                <Textarea
+                                    rows={2}
+                                    value={form.observaciones}
+                                    onChange={(e) => setForm((f) => ({ ...f, observaciones: e.target.value }))}
+                                />
+                            </div>
+
+                            {formError && (
+                                <p
+                                    className="mt-3 rounded-md px-3 py-2 text-[12.5px]"
+                                    style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}
+                                >
+                                    {formError}
+                                </p>
+                            )}
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {(form.descripcionMacroscopica || form.descripcionMicroscopica || form.diagnostico) && (
+                                    <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+                                        <Eye size={14} />
+                                        Vista previa
+                                    </Button>
+                                )}
+                                {informeGuardado && (
+                                    <Button variant="outline" onClick={descargarPdf} disabled={generandoPdf}>
+                                        {generandoPdf ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
+                                        Descargar PDF
+                                    </Button>
+                                )}
+                                <Button onClick={guardarInforme} disabled={guardando}>
+                                    {guardando && <Loader2 className="animate-spin" size={14} />}
+                                    Guardar Informe
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <HtmlPreviewDialog
+                    open={previewOpen}
+                    onOpenChange={setPreviewOpen}
+                    titulo={`Orden ${ordenActiva.numeroOrden}`}
+                    maxWidthClassName="max-w-4xl"
+                    secciones={[
+                        { titulo: "Descripción macroscópica", html: form.descripcionMacroscopica },
+                        { titulo: "Descripción microscópica", html: form.descripcionMicroscopica },
+                        { titulo: "Diagnóstico", html: form.diagnostico },
+                    ]}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-5">
@@ -240,7 +473,7 @@ export default function PatologiasPage() {
                             <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Espécimen</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><FlaskConical className="h-3.5 w-3.5" />Estudio</span></TableHead>
                             <TableHead><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" />Fecha ingreso</span></TableHead>
-                            <TableHead className="text-right">Acción</TableHead>
+                            <TableHead className="text-center">Acción</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -254,14 +487,14 @@ export default function PatologiasPage() {
                         {pendientes.map((orden) => (
                             <TableRow key={orden.id}>
                                 <TableCell className="font-medium">{orden.numeroOrden}</TableCell>
-                                <TableCell>{nombrePaciente(orden.paciente)}</TableCell>
+                                <TableCell className="font-bold">{nombrePaciente(orden.paciente).toUpperCase()}</TableCell>
                                 <TableCell>{orden.paciente?.identificacion ?? "—"}</TableCell>
                                 <TableCell>
                                     <Badge variant="secondary">{orden.especimen?.nombre ?? "—"}</Badge>
                                 </TableCell>
                                 <TableCell>{orden.tipoEstudio?.nombreTipoEstudio ?? "—"}</TableCell>
                                 <TableCell>{orden.fechaIngreso}</TableCell>
-                                <TableCell className="text-right">
+                                <TableCell className="text-center">
                                     <Button size="sm" onClick={() => abrirOrden(orden)}>
                                         <Microscope size={14} />
                                         Informar
@@ -272,191 +505,6 @@ export default function PatologiasPage() {
                     </TableBody>
                 </Table>
             </div>
-
-            <Dialog open={!!ordenActiva} onOpenChange={(open) => !open && setOrdenActiva(null)}>
-                <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>
-                            Informe de patología — Orden {ordenActiva?.numeroOrden}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Paciente: {nombrePaciente(ordenActiva?.paciente)} · {ordenActiva?.paciente?.identificacion}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-2">
-                        {plantillas.length > 0 && (
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Plantilla rápida</label>
-                                <select
-                                    className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                    defaultValue=""
-                                    onChange={(e) => aplicarPlantilla(e.target.value)}
-                                >
-                                    <option value="" disabled>
-                                        Elegir plantilla…
-                                    </option>
-                                    {plantillas.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Tipo de muestra</label>
-                                <Input
-                                    value={form.tipoMuestra}
-                                    onChange={(e) => setForm((f) => ({ ...f, tipoMuestra: e.target.value }))}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Sitio de lesión</label>
-                                <Input
-                                    value={form.sitioLesion}
-                                    onChange={(e) => setForm((f) => ({ ...f, sitioLesion: e.target.value }))}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Estudio solicitado</label>
-                            <Input
-                                value={form.solicitado}
-                                onChange={(e) => setForm((f) => ({ ...f, solicitado: e.target.value }))}
-                            />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Espécimen</label>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                value={form.idEspecimen ?? ""}
-                                onChange={(e) =>
-                                    setForm((f) => ({ ...f, idEspecimen: Number(e.target.value) || undefined }))
-                                }
-                            >
-                                <option value="">Sin cambio</option>
-                                {especimenesOptions.map((o) => (
-                                    <option key={o.value} value={o.value}>
-                                        {o.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción macroscópica</label>
-                            <RichTextEditor
-                                rows={3}
-                                value={form.descripcionMacroscopica}
-                                onChange={(html) => setForm((f) => ({ ...f, descripcionMacroscopica: html }))}
-                            />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción microscópica</label>
-                            <RichTextEditor
-                                rows={3}
-                                value={form.descripcionMicroscopica}
-                                onChange={(html) => setForm((f) => ({ ...f, descripcionMicroscopica: html }))}
-                            />
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Diagnóstico</label>
-                            <RichTextEditor
-                                rows={3}
-                                value={form.diagnostico}
-                                onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))}
-                            />
-                        </div>
-
-                        <div className="relative space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Código CIE10</label>
-                            <Input
-                                placeholder="Buscar por código o nombre…"
-                                value={cie10Query}
-                                onChange={(e) => setCie10Query(e.target.value)}
-                            />
-                            {cie10Nombre && (
-                                <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
-                                    {form.codigoDiagnostico} — {cie10Nombre}
-                                </p>
-                            )}
-                            {cie10Resultados.length > 0 && (
-                                <div
-                                    className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                    style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                >
-                                    {cie10Resultados.map((d) => (
-                                        <button
-                                            key={d.codigoDiagnostico}
-                                            type="button"
-                                            className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                            onClick={() => elegirCie10(d)}
-                                        >
-                                            <span className="font-semibold">{d.codigoDiagnostico}</span> —{" "}
-                                            {d.nombreDiagnostico}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Observaciones</label>
-                            <Textarea
-                                rows={2}
-                                value={form.observaciones}
-                                onChange={(e) => setForm((f) => ({ ...f, observaciones: e.target.value }))}
-                            />
-                        </div>
-
-                        {formError && (
-                            <p
-                                className="rounded-md px-3 py-2 text-[12.5px]"
-                                style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}
-                            >
-                                {formError}
-                            </p>
-                        )}
-                    </div>
-
-                    <DialogFooter className="gap-2">
-                        {(form.descripcionMacroscopica || form.descripcionMicroscopica || form.diagnostico) && (
-                            <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
-                                <Eye size={14} />
-                                Vista previa
-                            </Button>
-                        )}
-                        {informeGuardado && (
-                            <Button variant="outline" onClick={descargarPdf} disabled={generandoPdf}>
-                                {generandoPdf ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
-                                Descargar PDF
-                            </Button>
-                        )}
-                        <Button onClick={guardarInforme} disabled={guardando}>
-                            {guardando && <Loader2 className="animate-spin" size={14} />}
-                            Guardar informe
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <HtmlPreviewDialog
-                open={previewOpen}
-                onOpenChange={setPreviewOpen}
-                titulo={`Orden ${ordenActiva?.numeroOrden ?? ""}`}
-                secciones={[
-                    { titulo: "Descripción macroscópica", html: form.descripcionMacroscopica },
-                    { titulo: "Descripción microscópica", html: form.descripcionMicroscopica },
-                    { titulo: "Diagnóstico", html: form.diagnostico },
-                ]}
-            />
         </div>
     );
 }

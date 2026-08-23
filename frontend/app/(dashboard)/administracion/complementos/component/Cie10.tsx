@@ -25,6 +25,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -198,7 +199,8 @@ export default function Cie10() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar diagnóstico" : "Nuevo diagnóstico CIE10"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Diagnóstico" : "Nuevo Diagnóstico CIE10"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza la descripción de este diagnóstico." : "Registra un nuevo código CIE10 en el catálogo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

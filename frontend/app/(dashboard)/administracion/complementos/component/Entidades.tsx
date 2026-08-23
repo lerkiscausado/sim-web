@@ -26,6 +26,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -242,7 +243,8 @@ export default function Entidades() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar entidad" : "Nueva entidad"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Entidad" : "Nueva Entidad"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza los datos de contacto de la entidad." : "Registra una nueva entidad (EPS, ARL o convenio)."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

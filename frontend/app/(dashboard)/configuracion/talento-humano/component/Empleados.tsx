@@ -26,6 +26,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -267,7 +268,8 @@ export default function Empleados() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar empleado" : "Nuevo empleado"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Empleado" : "Nuevo Empleado"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza los datos del empleado." : "Registra un nuevo empleado asistencial o administrativo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

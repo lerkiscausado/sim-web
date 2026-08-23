@@ -19,6 +19,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -174,7 +175,8 @@ export default function PlantillasPatologiaPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar plantilla" : "Nueva plantilla de patología"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Plantilla" : "Nueva Plantilla de Patología"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza el texto macro, micro o diagnóstico de esta plantilla." : "Crea una nueva plantilla de macro, micro o diagnóstico."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

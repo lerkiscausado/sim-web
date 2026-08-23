@@ -17,6 +17,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -221,7 +222,8 @@ export default function PlantillasPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar plantilla" : "Nueva plantilla"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Plantilla" : "Nueva Plantilla"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza el contenido de esta plantilla de informe." : "Crea una nueva plantilla de informe."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="grid grid-cols-2 gap-3">

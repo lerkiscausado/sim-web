@@ -26,6 +26,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -226,7 +227,8 @@ export default function Especimenes() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar espécimen" : "Nuevo espécimen"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Espécimen" : "Nuevo Espécimen"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza el nombre del espécimen." : "Registra un nuevo tipo de muestra."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

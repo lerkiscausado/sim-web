@@ -26,6 +26,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -230,7 +231,8 @@ export default function Cups() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar código CUPS" : "Nuevo código CUPS"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Código CUPS" : "Nuevo Código CUPS"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza la descripción de este código." : "Registra un nuevo código CUPS en el catálogo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

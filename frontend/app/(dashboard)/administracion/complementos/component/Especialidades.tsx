@@ -26,6 +26,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -226,7 +227,8 @@ export default function Especialidades() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar especialidad" : "Nueva especialidad"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Especialidad" : "Nueva Especialidad"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza el nombre de la especialidad." : "Registra una nueva especialidad médica."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="space-y-1.5">

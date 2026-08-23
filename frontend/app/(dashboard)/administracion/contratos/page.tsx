@@ -19,6 +19,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
@@ -303,7 +304,8 @@ export default function ContratosPage() {
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>{editando ? "Editar contrato" : "Nuevo contrato"}</DialogTitle>
+                        <DialogTitle>{editando ? "Editar Contrato" : "Nuevo Contrato"}</DialogTitle>
+                        <DialogDescription>{editando ? "Actualiza los datos y la tarifa del contrato." : "Registra un nuevo contrato con una entidad."}</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-2">
                         <div className="space-y-1.5">

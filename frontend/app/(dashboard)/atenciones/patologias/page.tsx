@@ -332,11 +332,15 @@ export default function PatologiasPage() {
                             </div>
                         )}
 
-                        {estudiosAnteriores.length > 0 && (
-                            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                                <p className="border-b px-4 py-3 text-[12.5px] font-medium" style={{ borderColor: "var(--border-default)" }}>
-                                    Estudios Anteriores
+                        <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                            <p className="border-b px-4 py-3 text-[12.5px] font-medium" style={{ borderColor: "var(--border-default)" }}>
+                                Estudios Anteriores
+                            </p>
+                            {estudiosAnteriores.length === 0 ? (
+                                <p className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
+                                    Este paciente no tiene estudios anteriores finalizados.
                                 </p>
+                            ) : (
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/50">
@@ -370,8 +374,8 @@ export default function PatologiasPage() {
                                         ))}
                                     </TableBody>
                                 </Table>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     <div className="col-span-10 space-y-4 lg:col-span-7">

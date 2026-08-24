@@ -88,3 +88,18 @@ export function calcularEdad(fechaNacimientoISO: string): number {
     if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
     return edad;
 }
+
+export interface EstudioAnterior {
+    id: number;
+    descripcionMacroscopica: string;
+    descripcionMicroscopica: string;
+    diagnostico: string;
+    orden: {
+        id: number;
+        consecutivo: string;
+        numeroOrden: string;
+        fechaIngreso: string;
+        especimen?: { id: number; nombre: string };
+        tipoEstudio?: { id: number; nombreTipoEstudio: string };
+    };
+}

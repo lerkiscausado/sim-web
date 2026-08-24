@@ -25,6 +25,7 @@ import type {
     DiagnosticoCie10,
     InformePatologia,
     UpsertPatologiaPayload,
+    EstudioAnterior,
 } from "./types";
 import { nombrePaciente, calcularEdad } from "./types";
 
@@ -89,6 +90,10 @@ export default function PatologiasPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [informeGuardado, setInformeGuardado] = useState<InformePatologia | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [plantillaQuery, setPlantillaQuery] = useState("");
+    const [plantillaResultadosAbiertos, setPlantillaResultadosAbiertos] = useState(false);
+    const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
+    const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
 
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
@@ -144,7 +149,15 @@ export default function PatologiasPage() {
         setForm({ ...FORM_INICIAL, idEspecimen: orden.idEspecimen });
         setCie10Query("");
         setCie10Nombre("");
+        setPlantillaQuery("");
+        setPlantillaResultadosAbiertos(false);
+        setEstudiosAnteriores([]);
         setVista("informe");
+
+        api
+            .get<EstudioAnterior[]>(`/atenciones/patologia/paciente/${orden.idUsuario}/estudios-anteriores`)
+            .then(setEstudiosAnteriores)
+            .catch(() => setEstudiosAnteriores([]));
 
         try {
             const existente = await api.get<InformePatologia | null>(
@@ -237,6 +250,12 @@ export default function PatologiasPage() {
         [especimenes]
     );
 
+    const plantillasFiltradas = useMemo(() => {
+        const q = plantillaQuery.trim().toLowerCase();
+        if (!q) return plantillas;
+        return plantillas.filter((p) => p.nombre.toLowerCase().includes(q));
+    }, [plantillas, plantillaQuery]);
+
     if (vista === "informe" && ordenActiva) {
         return (
             <div className="space-y-5">
@@ -277,20 +296,74 @@ export default function PatologiasPage() {
                         {plantillas.length > 0 && (
                             <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                 <label className="text-[12.5px] font-medium">Plantilla rápida</label>
-                                <select
-                                    className="mt-1.5 h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                    defaultValue=""
-                                    onChange={(e) => aplicarPlantilla(e.target.value)}
-                                >
-                                    <option value="" disabled>
-                                        Elegir plantilla…
-                                    </option>
-                                    {plantillas.map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.nombre}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="relative mt-1.5">
+                                    <Input
+                                        placeholder="Buscar plantilla…"
+                                        value={plantillaQuery}
+                                        onChange={(e) => {
+                                            setPlantillaQuery(e.target.value);
+                                            setPlantillaResultadosAbiertos(true);
+                                        }}
+                                        onFocus={() => setPlantillaResultadosAbiertos(true)}
+                                        onBlur={() => setTimeout(() => setPlantillaResultadosAbiertos(false), 150)}
+                                    />
+                                    {plantillaResultadosAbiertos && plantillasFiltradas.length > 0 && (
+                                        <div
+                                            className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                            style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                        >
+                                            {plantillasFiltradas.map((p) => (
+                                                <button
+                                                    key={p.id}
+                                                    type="button"
+                                                    className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                    onClick={() => {
+                                                        aplicarPlantilla(String(p.id));
+                                                        setPlantillaQuery(p.nombre);
+                                                        setPlantillaResultadosAbiertos(false);
+                                                    }}
+                                                >
+                                                    {p.nombre}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {estudiosAnteriores.length > 0 && (
+                            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                <p className="border-b px-4 py-3 text-[12.5px] font-medium" style={{ borderColor: "var(--border-default)" }}>
+                                    Estudios Anteriores
+                                </p>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/50">
+                                            <TableHead>Orden</TableHead>
+                                            <TableHead>Espécimen / Estudio</TableHead>
+                                            <TableHead className="text-right">Acción</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {estudiosAnteriores.map((e) => (
+                                            <TableRow key={e.id}>
+                                                <TableCell className="text-sm font-medium">{e.orden.consecutivo}</TableCell>
+                                                <TableCell className="text-xs">
+                                                    {e.orden.especimen?.nombre ?? "—"}
+                                                    {e.orden.tipoEstudio?.nombreTipoEstudio
+                                                        ? ` - ${e.orden.tipoEstudio.nombreTipoEstudio}`
+                                                        : ""}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" title="Vista previa" onClick={() => setPreviewAnterior(e)}>
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
                             </div>
                         )}
                     </div>
@@ -446,6 +519,18 @@ export default function PatologiasPage() {
                         { titulo: "Descripción macroscópica", html: form.descripcionMacroscopica },
                         { titulo: "Descripción microscópica", html: form.descripcionMicroscopica },
                         { titulo: "Diagnóstico", html: form.diagnostico },
+                    ]}
+                />
+
+                <HtmlPreviewDialog
+                    open={!!previewAnterior}
+                    onOpenChange={(open) => !open && setPreviewAnterior(null)}
+                    titulo={`Orden ${previewAnterior?.orden.consecutivo ?? ""}`}
+                    maxWidthClassName="max-w-4xl"
+                    secciones={[
+                        { titulo: "Descripción macroscópica", html: previewAnterior?.descripcionMacroscopica ?? "" },
+                        { titulo: "Descripción microscópica", html: previewAnterior?.descripcionMicroscopica ?? "" },
+                        { titulo: "Diagnóstico", html: previewAnterior?.diagnostico ?? "" },
                     ]}
                 />
             </div>

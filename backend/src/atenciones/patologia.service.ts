@@ -102,12 +102,17 @@ export class PatologiaService {
   }
 
   /** Equivalente a DPatologia.ListarEstudiosAnteriores(): historial de estudios atendidos de un paciente. */
+  /**
+   * Historial de estudios anteriores del paciente (para el 'plantilla rápida'
+   * al capturar un nuevo informe): solo estudios ya finalizados (ATENDIDO),
+   * del más reciente al más antiguo.
+   */
   async estudiosAnteriores(idUsuario: number) {
-    return this.ordenesRepository
-      .createQueryBuilder('o')
-      .innerJoinAndSelect('o.especimen', 'especimen')
-      .innerJoin('patologia', 'p', 'p.ID_ORDEN = o.ID')
-      .addSelect(['p.diagnostico'])
+    return this.patologiaRepository
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.orden', 'o')
+      .leftJoinAndSelect('o.especimen', 'especimen')
+      .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
       .where('o.idUsuario = :idUsuario', { idUsuario })
       .andWhere('o.estado = :estado', { estado: EstadoOrden.ATENDIDO })
       .orderBy('o.fechaIngreso', 'DESC')

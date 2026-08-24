@@ -536,11 +536,11 @@ export default function PatologiasPage() {
                     open={!!previewAnterior}
                     onOpenChange={(open) => !open && setPreviewAnterior(null)}
                     titulo={`Orden ${previewAnterior?.orden.consecutivo ?? ""}`}
-                    maxWidthClassName="max-w-4xl"
+                    maxWidthClassName="max-w-[67.2rem]"
                     secciones={[
                         { titulo: "Descripción macroscópica", html: previewAnterior?.descripcionMacroscopica ?? "" },
                         { titulo: "Descripción microscópica", html: previewAnterior?.descripcionMicroscopica ?? "" },
-                        { titulo: "Diagnóstico", html: previewAnterior?.diagnostico ?? "" },
+                        { titulo: "Diagnóstico", html: previewAnterior?.diagnostico ?? "", destacado: true },
                     ]}
                 />
             </div>

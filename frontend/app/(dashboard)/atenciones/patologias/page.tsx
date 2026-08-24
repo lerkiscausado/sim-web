@@ -340,15 +340,21 @@ export default function PatologiasPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-muted/50">
-                                            <TableHead>Orden</TableHead>
-                                            <TableHead>Espécimen / Estudio</TableHead>
+                                            <TableHead><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Orden</span></TableHead>
+                                            <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Espécimen / Estudio</span></TableHead>
                                             <TableHead className="text-right">Acción</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {estudiosAnteriores.map((e) => (
                                             <TableRow key={e.id}>
-                                                <TableCell className="text-sm font-medium">{e.orden.consecutivo}</TableCell>
+                                                <TableCell className="py-2.5">
+                                                    <p className="text-sm font-bold">{e.orden.consecutivo}</p>
+                                                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                        <CalendarDays className="h-3 w-3" />
+                                                        {e.orden.fechaIngreso}
+                                                    </p>
+                                                </TableCell>
                                                 <TableCell className="text-xs">
                                                     {e.orden.especimen?.nombre ?? "—"}
                                                     {e.orden.tipoEstudio?.nombreTipoEstudio

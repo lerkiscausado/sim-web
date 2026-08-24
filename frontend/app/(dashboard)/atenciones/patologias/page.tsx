@@ -38,6 +38,7 @@ const FORM_INICIAL = {
     observaciones: "",
     codigoDiagnostico: "",
     idEspecimen: undefined as number | undefined,
+    fechaSalida: new Date().toISOString().slice(0, 10),
 };
 
 /** Misma tarjeta de paciente (foto + datos) usada en Pacientes y Órdenes. */
@@ -160,6 +161,7 @@ export default function PatologiasPage() {
                     observaciones: existente.observaciones ?? "",
                     codigoDiagnostico: existente.codigoDiagnostico,
                     idEspecimen: orden.idEspecimen,
+                    fechaSalida: existente.fechaSalida,
                 });
                 setCie10Query(existente.codigoDiagnostico);
                 setInformeGuardado(existente);
@@ -246,10 +248,21 @@ export default function PatologiasPage() {
                         <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                             Atenciones · Patologías
                         </span>
-                        <h1 style={{ color: "var(--ink-primary)" }}>Informe de Patología — Orden {ordenActiva.numeroOrden}</h1>
-                        <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                            Captura de macroscópica, microscópica y diagnóstico
-                        </p>
+                        <h1 style={{ color: "var(--ink-primary)" }}>Informe de Patología — Orden {ordenActiva.consecutivo}</h1>
+                        <div className="mt-2 flex flex-wrap items-center gap-4">
+                            <p className="text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                                Fecha de ingreso: <span className="font-medium">{ordenActiva.fechaIngreso}</span>
+                            </p>
+                            <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                                Fecha de salida:
+                                <Input
+                                    type="date"
+                                    className="h-8 w-auto"
+                                    value={form.fechaSalida}
+                                    onChange={(e) => setForm((f) => ({ ...f, fechaSalida: e.target.value }))}
+                                />
+                            </label>
+                        </div>
                     </div>
                     <Button variant="outline" size="sm" onClick={volverAlListado}>
                         <ArrowLeft className="mr-2 h-4 w-4" />

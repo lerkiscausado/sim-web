@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UpsertPatologiaDto {
   @IsInt()
@@ -42,4 +42,9 @@ export class UpsertPatologiaDto {
   @IsString()
   @IsOptional()
   codigoPatologia?: string;
+
+  /** Editable por el usuario; si no se envía, se usa la fecha de hoy. */
+  @IsDateString()
+  @IsOptional()
+  fechaSalida?: string;
 }

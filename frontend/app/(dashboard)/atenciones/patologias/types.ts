@@ -70,6 +70,7 @@ export interface UpsertPatologiaPayload {
     codigoDiagnostico: string;
     idEspecimen?: number;
     codigoPatologia?: string;
+    fechaSalida?: string;
 }
 
 export function nombrePaciente(p?: OrdenPendiente["paciente"]) {

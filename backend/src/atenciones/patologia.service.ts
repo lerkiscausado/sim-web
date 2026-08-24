@@ -138,7 +138,7 @@ export class PatologiaService {
         observaciones: dto.observaciones ?? '',
         codigoDiagnostico: dto.codigoDiagnostico,
         idEmpleado,
-        fechaSalida: hoyISO(),
+        fechaSalida: dto.fechaSalida ?? hoyISO(),
         estado: EstadoActivoInactivo.ACTIVO,
         codigoPatologia: dto.codigoPatologia ?? patologia.codigoPatologia,
       });
@@ -146,7 +146,7 @@ export class PatologiaService {
       patologia = this.patologiaRepository.create({
         idOrden: dto.idOrden,
         fecha: hoyISO(),
-        fechaSalida: hoyISO(),
+        fechaSalida: dto.fechaSalida ?? hoyISO(),
         tipoMuestra: dto.tipoMuestra,
         sitioLesion: dto.sitioLesion,
         solicitado: dto.solicitado,

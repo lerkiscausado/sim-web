@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Ordenes } from '../../admisiones/entities/ordenes.entity';
 
 @Entity('citologia')
 export class Citologia {
@@ -7,6 +8,10 @@ export class Citologia {
 
   @Column({ name: 'ID_ORDEN', type: 'int' })
   idOrden: number;
+
+  @ManyToOne(() => Ordenes)
+  @JoinColumn({ name: 'ID_ORDEN' })
+  orden?: Ordenes;
 
   @Column({ name: 'FECHA', type: 'date' })
   fecha: string;

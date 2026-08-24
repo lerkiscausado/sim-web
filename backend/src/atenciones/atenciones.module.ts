@@ -5,6 +5,8 @@ import { Especimenes } from './entities/especimenes.entity';
 import { PlantillasPatologia } from './entities/plantillas-patologia.entity';
 import { PlantillasInformes } from './entities/plantillas-informes.entity';
 import { EntregaResultados } from './entities/entrega-resultados.entity';
+import { Citologia } from './entities/citologia.entity';
+import { TomaMuestra } from './entities/toma-muestra.entity';
 import { Ordenes } from '../admisiones/entities/ordenes.entity';
 import { EstudiosGenerados } from '../documentos-soporte/entities/estudios-generados.entity';
 import { Empresa } from '../documentos-soporte/entities/empresa.entity';
@@ -16,6 +18,10 @@ import { PlantillasPatologiaService } from './plantillas-patologia.service';
 import { PlantillasInformesService } from './plantillas-informes.service';
 import { PlantillasInformesController } from './plantillas-informes.controller';
 import { EspecimenesController, PlantillasPatologiaController } from './especimenes.controller';
+import { CitologiaService } from './citologia.service';
+import { CitologiaController } from './citologia.controller';
+import { TomaMuestraService } from './toma-muestra.service';
+import { TomaMuestraController } from './toma-muestra.controller';
 
 @Module({
   imports: [
@@ -25,6 +31,8 @@ import { EspecimenesController, PlantillasPatologiaController } from './especime
       PlantillasPatologia,
       PlantillasInformes,
       EntregaResultados,
+      Citologia,
+      TomaMuestra,
       Ordenes,
       EstudiosGenerados,
       Empresa,
@@ -36,12 +44,16 @@ import { EspecimenesController, PlantillasPatologiaController } from './especime
     EspecimenesService,
     PlantillasPatologiaService,
     PlantillasInformesService,
+    CitologiaService,
+    TomaMuestraService,
   ],
   controllers: [
     PatologiaController,
     EspecimenesController,
     PlantillasPatologiaController,
     PlantillasInformesController,
+    CitologiaController,
+    TomaMuestraController,
   ],
   exports: [PatologiaService],
 })

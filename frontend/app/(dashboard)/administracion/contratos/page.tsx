@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2 } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -66,6 +66,7 @@ const FORM_INICIAL = {
     idLicencia: 1,
     usuario: "",
     contrasena: "",
+    confirmarContrasena: "",
 };
 
 interface Paginado {
@@ -88,6 +89,8 @@ export default function ContratosPage() {
     const [editando, setEditando] = useState<Contrato | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
+    const [mostrarContrasena, setMostrarContrasena] = useState(false);
+    const [mostrarConfirmarContrasena, setMostrarConfirmarContrasena] = useState(false);
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -132,6 +135,8 @@ export default function ContratosPage() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        setMostrarContrasena(false);
+        setMostrarConfirmarContrasena(false);
         setDialogOpen(true);
     }
 
@@ -150,8 +155,11 @@ export default function ContratosPage() {
             idLicencia: c.idLicencia,
             usuario: c.usuario,
             contrasena: "",
+            confirmarContrasena: "",
         });
         setFormError(null);
+        setMostrarContrasena(false);
+        setMostrarConfirmarContrasena(false);
         setDialogOpen(true);
     }
 
@@ -164,15 +172,23 @@ export default function ContratosPage() {
             setFormError("La contraseña es obligatoria para un contrato nuevo.");
             return;
         }
+        if (form.contrasena && form.contrasena !== form.confirmarContrasena) {
+            setFormError("Las contraseñas no coinciden.");
+            return;
+        }
         setGuardando(true);
         setFormError(null);
         try {
             if (editando) {
-                const payload: Partial<typeof form> = { ...form };
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { confirmarContrasena, ...resto } = form;
+                const payload: Partial<typeof resto> = { ...resto };
                 if (!payload.contrasena) delete payload.contrasena;
                 await api.patch(`/entidades-contratos/contratos/${editando.id}`, payload);
             } else {
-                await api.post("/entidades-contratos/contratos", form);
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { confirmarContrasena, ...payload } = form;
+                await api.post("/entidades-contratos/contratos", payload);
             }
             setDialogOpen(false);
             await cargar(page, searchTerm);
@@ -415,14 +431,54 @@ export default function ContratosPage() {
                             <label className="text-[12.5px] font-medium">
                                 {editando ? "Nueva contraseña (opcional)" : "Contraseña"}
                             </label>
-                            <Input
-                                type="password"
-                                value={form.contrasena}
-                                onChange={(e) => setForm((f) => ({ ...f, contrasena: e.target.value }))}
-                            />
+                            <div className="relative">
+                                <Input
+                                    type={mostrarContrasena ? "text" : "password"}
+                                    className="pr-9"
+                                    value={form.contrasena}
+                                    onChange={(e) => setForm((f) => ({ ...f, contrasena: e.target.value }))}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarContrasena((v) => !v)}
+                                    className="absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground"
+                                    tabIndex={-1}
+                                >
+                                    {mostrarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[12.5px] font-medium">
+                                {editando ? "Repetir nueva contraseña" : "Repetir contraseña"}
+                            </label>
+                            <div className="relative">
+                                <Input
+                                    type={mostrarConfirmarContrasena ? "text" : "password"}
+                                    className="pr-9"
+                                    value={form.confirmarContrasena}
+                                    onChange={(e) => setForm((f) => ({ ...f, confirmarContrasena: e.target.value }))}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setMostrarConfirmarContrasena((v) => !v)}
+                                    className="absolute inset-y-0 right-0 flex items-center px-2.5 text-muted-foreground"
+                                    tabIndex={-1}
+                                >
+                                    {mostrarConfirmarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    {formError && <p className="text-sm text-red-600">{formError}</p>}
+                    {formError && (
+                        <p
+                            className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px]"
+                            style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}
+                        >
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {formError}
+                        </p>
+                    )}
                     <DialogFooter>
                         <Button onClick={guardar} disabled={guardando}>
                             {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

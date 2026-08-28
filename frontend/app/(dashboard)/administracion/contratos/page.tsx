@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -193,6 +193,16 @@ export default function ContratosPage() {
         }
     }
 
+    async function eliminar(c: Contrato) {
+        if (!confirm(`¿Eliminar el contrato "${c.nombre}"? Podrás recuperarlo directamente en la base de datos si es necesario.`)) return;
+        try {
+            await api.delete(`/entidades-contratos/contratos/${c.id}`);
+            await cargar(page, searchTerm);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : "No se pudo eliminar el contrato");
+        }
+    }
+
     return (
         <div className="space-y-5">
             <div
@@ -289,6 +299,9 @@ export default function ContratosPage() {
                                         ) : (
                                             <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />
                                         )}
+                                    </Button>
+                                    <Button variant="ghost" size="sm" title="Eliminar" onClick={() => eliminar(c)}>
+                                        <Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
                                     </Button>
                                 </TableCell>
                             </TableRow>

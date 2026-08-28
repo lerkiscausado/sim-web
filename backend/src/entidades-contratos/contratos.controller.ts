@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -57,5 +58,12 @@ export class ContratosController {
   @Patch(':id/estado/:estado')
   cambiarEstado(@Param('id', ParseIntPipe) id: number, @Param('estado') estado: EstadoActivoInactivo) {
     return this.contratosService.cambiarEstado(id, estado);
+  }
+
+  /** Soft delete: no borra la fila, solo marca deletedAt. */
+  @RequirePermission('contratos')
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.contratosService.remove(id);
   }
 }

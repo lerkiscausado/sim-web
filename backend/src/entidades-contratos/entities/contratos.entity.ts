@@ -1,6 +1,7 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -81,11 +82,13 @@ export class Contratos {
   estado: EstadoActivoInactivo;
 
   // Credenciales del portal externo del contrato (dato legado propio del
-  // sistema VB.NET, no relacionado con el login web nuevo).
+  // sistema VB.NET, no relacionado con el login web nuevo). La columna se
+  // amplió a varchar(255) en la migración 003 porque bcrypt genera hashes
+  // de 60 caracteres (el char(50) original los habría truncado).
   @Column({ name: 'usuario', type: 'char', length: 50 })
   usuario: string;
 
-  @Column({ name: 'contrasena', type: 'char', length: 50, select: false })
+  @Column({ name: 'contrasena', type: 'varchar', length: 255, select: false })
   contrasena: string;
 
   @CreateDateColumn({ name: 'createdAt' })
@@ -93,4 +96,8 @@ export class Contratos {
 
   @UpdateDateColumn({ name: 'updatedAt' })
   updatedAt: Date;
+
+  /** Soft delete: TypeORM excluye automáticamente las filas con deletedAt no nulo de find()/findOne(). */
+  @DeleteDateColumn({ name: 'deletedAt' })
+  deletedAt?: Date | null;
 }

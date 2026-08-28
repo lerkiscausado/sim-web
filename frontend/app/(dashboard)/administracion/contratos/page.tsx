@@ -91,6 +91,8 @@ export default function ContratosPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
     const [mostrarConfirmarContrasena, setMostrarConfirmarContrasena] = useState(false);
+    const [contratoAEliminar, setContratoAEliminar] = useState<Contrato | null>(null);
+    const [eliminando, setEliminando] = useState(false);
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -210,12 +212,21 @@ export default function ContratosPage() {
     }
 
     async function eliminar(c: Contrato) {
-        if (!confirm(`¿Eliminar el contrato "${c.nombre}"? Podrás recuperarlo directamente en la base de datos si es necesario.`)) return;
+        setContratoAEliminar(c);
+    }
+
+    async function confirmarEliminar() {
+        if (!contratoAEliminar) return;
+        setEliminando(true);
         try {
-            await api.delete(`/entidades-contratos/contratos/${c.id}`);
+            await api.delete(`/entidades-contratos/contratos/${contratoAEliminar.id}`);
+            setContratoAEliminar(null);
             await cargar(page, searchTerm);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo eliminar el contrato");
+            setContratoAEliminar(null);
+        } finally {
+            setEliminando(false);
         }
     }
 
@@ -483,6 +494,62 @@ export default function ContratosPage() {
                         <Button onClick={guardar} disabled={guardando}>
                             {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Guardar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!contratoAEliminar} onOpenChange={(open) => !open && setContratoAEliminar(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                            <Trash2 className="h-6 w-6 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-center">Eliminar Contrato</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Esta acción no se puede deshacer desde la aplicación. Revisa los datos antes de confirmar.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {contratoAEliminar && (
+                        <div
+                            className="space-y-2 rounded-md border px-4 py-3 text-[13px]"
+                            style={{ borderColor: "var(--border-default)", background: "var(--surface-sunken, #f9fafb)" }}
+                        >
+                            <p>
+                                <span className="font-medium">Contrato:</span> {contratoAEliminar.nombre}
+                            </p>
+                            <p>
+                                <span className="font-medium">Entidad:</span>{" "}
+                                {contratoAEliminar.entidad?.nombreEntidad ?? contratoAEliminar.codigoEntidad}
+                            </p>
+                            {contratoAEliminar.numeroContrato && (
+                                <p>
+                                    <span className="font-medium">Número:</span> {contratoAEliminar.numeroContrato}
+                                </p>
+                            )}
+                            <p>
+                                <span className="font-medium">Tipo:</span> {contratoAEliminar.tipoContrato}
+                            </p>
+                            <p>
+                                <span className="font-medium">Fecha final:</span> {contratoAEliminar.fechaFinal}
+                            </p>
+                        </div>
+                    )}
+
+                    <p className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        Se marcará como eliminado, pero podrá recuperarse directamente en la base de datos si es necesario.
+                    </p>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setContratoAEliminar(null)} disabled={eliminando}>
+                            Cancelar
+                        </Button>
+                        <Button variant="destructive" onClick={confirmarEliminar} disabled={eliminando}>
+                            {eliminando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
                         </Button>
                     </DialogFooter>
                 </DialogContent>

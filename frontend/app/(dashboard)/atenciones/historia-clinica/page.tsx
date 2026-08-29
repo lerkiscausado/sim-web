@@ -5,7 +5,7 @@ import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDa
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import {
     Table,
@@ -15,13 +15,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
+import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import type {
     OrdenPendiente,
     HistoriaClinicaData,
@@ -494,7 +488,7 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[12.5px] font-medium">Motivo de Consulta</label>
-                                            <Textarea rows={5} value={form.motivoConsulta ?? ""} onChange={(e) => setForm((f) => ({ ...f, motivoConsulta: e.target.value }))} />
+                                            <RichTextEditor rows={5} value={form.motivoConsulta ?? ""} onChange={(html) => setForm((f) => ({ ...f, motivoConsulta: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -506,7 +500,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Consulta de Control o Evolución</label>
-                                        <Textarea rows={6} value={form.consultaControl ?? ""} onChange={(e) => setForm((f) => ({ ...f, consultaControl: e.target.value }))} />
+                                        <RichTextEditor rows={6} value={form.consultaControl ?? ""} onChange={(html) => setForm((f) => ({ ...f, consultaControl: html }))} />
                                     </div>
                                 </div>
                             </div>
@@ -517,7 +511,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Enfermedad Actual</label>
-                                        <Textarea rows={6} value={form.enfermedadActual ?? ""} onChange={(e) => setForm((f) => ({ ...f, enfermedadActual: e.target.value }))} />
+                                        <RichTextEditor rows={6} value={form.enfermedadActual ?? ""} onChange={(html) => setForm((f) => ({ ...f, enfermedadActual: html }))} />
                                     </div>
                                 </div>
                             </div>
@@ -553,7 +547,7 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                         <div className="col-span-3 space-y-1.5">
                                             <label className="text-[12.5px] font-medium">Descripción del Examen Físico</label>
-                                            <Textarea rows={4} value={form.examenFisico ?? ""} onChange={(e) => setForm((f) => ({ ...f, examenFisico: e.target.value }))} />
+                                            <RichTextEditor rows={4} value={form.examenFisico ?? ""} onChange={(html) => setForm((f) => ({ ...f, examenFisico: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -599,7 +593,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Diagnóstico</label>
-                                        <Textarea rows={4} value={form.diagnostico ?? ""} onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))} />
+                                        <RichTextEditor rows={4} value={form.diagnostico ?? ""} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -648,11 +642,11 @@ export default function HistoriaClinicaPage() {
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
                                             <label className="text-[12.5px] font-medium">Análisis y Plan a Seguir</label>
-                                            <Textarea rows={5} value={form.planSeguir ?? ""} onChange={(e) => setForm((f) => ({ ...f, planSeguir: e.target.value }))} />
+                                            <RichTextEditor rows={5} value={form.planSeguir ?? ""} onChange={(html) => setForm((f) => ({ ...f, planSeguir: html }))} />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[12.5px] font-medium">Recomendaciones</label>
-                                            <Textarea rows={3} value={form.recomendaciones ?? ""} onChange={(e) => setForm((f) => ({ ...f, recomendaciones: e.target.value }))} />
+                                            <RichTextEditor rows={3} value={form.recomendaciones ?? ""} onChange={(html) => setForm((f) => ({ ...f, recomendaciones: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -664,7 +658,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Formulación</label>
-                                        <Textarea rows={3} value={form.formulacion ?? ""} onChange={(e) => setForm((f) => ({ ...f, formulacion: e.target.value }))} />
+                                        <RichTextEditor rows={3} value={form.formulacion ?? ""} onChange={(html) => setForm((f) => ({ ...f, formulacion: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -727,7 +721,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Laboratorios (texto libre)</label>
-                                        <Textarea rows={2} value={form.laboratorios ?? ""} onChange={(e) => setForm((f) => ({ ...f, laboratorios: e.target.value }))} />
+                                        <RichTextEditor rows={2} value={form.laboratorios ?? ""} onChange={(html) => setForm((f) => ({ ...f, laboratorios: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -775,7 +769,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Otros Estudios</label>
-                                        <Textarea rows={2} value={form.otrosEstudios ?? ""} onChange={(e) => setForm((f) => ({ ...f, otrosEstudios: e.target.value }))} />
+                                        <RichTextEditor rows={2} value={form.otrosEstudios ?? ""} onChange={(html) => setForm((f) => ({ ...f, otrosEstudios: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -842,24 +836,16 @@ export default function HistoriaClinicaPage() {
                     </div>
                 </div>
 
-                <Dialog open={!!previewAnterior} onOpenChange={(open) => !open && setPreviewAnterior(null)}>
-                    <DialogContent className="max-w-xl">
-                        <DialogHeader>
-                            <DialogTitle>Orden {previewAnterior?.consecutivo}</DialogTitle>
-                            <DialogDescription>{previewAnterior?.estudio}</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-3 text-sm">
-                            <div>
-                                <p className="text-[11px] font-bold uppercase text-muted-foreground">Motivo de consulta</p>
-                                <p>{previewAnterior?.motivoConsulta || "—"}</p>
-                            </div>
-                            <div>
-                                <p className="text-[11px] font-bold uppercase text-muted-foreground">Diagnóstico</p>
-                                <p>{previewAnterior?.diagnostico || "—"}</p>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                <HtmlPreviewDialog
+                    open={!!previewAnterior}
+                    onOpenChange={(open) => !open && setPreviewAnterior(null)}
+                    titulo={`Orden ${previewAnterior?.consecutivo ?? ""}`}
+                    maxWidthClassName="max-w-2xl"
+                    secciones={[
+                        { titulo: "Motivo de Consulta", html: previewAnterior?.motivoConsulta ?? "" },
+                        { titulo: "Diagnóstico", html: previewAnterior?.diagnostico ?? "", destacado: true },
+                    ]}
+                />
             </div>
         );
     }

@@ -165,14 +165,16 @@ export default function ContratosPage() {
         setFormError(null);
         setMostrarContrasena(false);
         setMostrarConfirmarContrasena(false);
-        setEntidadQuery(c.entidad?.nombreEntidad ?? "");
+        setEntidadQuery(c.entidad ? `${c.codigoEntidad} - ${c.entidad.nombreEntidad}` : c.codigoEntidad);
         setDialogOpen(true);
     }
 
     const entidadesFiltradas = useMemo(() => {
         const q = entidadQuery.trim().toLowerCase();
-        if (!q) return entidades;
-        return entidades.filter((e) => e.nombreEntidad.toLowerCase().includes(q));
+        if (q.length < 3) return [];
+        return entidades.filter(
+            (e) => e.nombreEntidad.toLowerCase().includes(q) || e.codigoEntidad.toLowerCase().includes(q),
+        );
     }, [entidades, entidadQuery]);
 
     async function guardar() {
@@ -361,7 +363,7 @@ export default function ContratosPage() {
                         <div className="relative space-y-1.5">
                             <label className="text-[12.5px] font-medium">Entidad</label>
                             <Input
-                                placeholder="Buscar entidad…"
+                                placeholder="Escribe al menos 3 letras…"
                                 value={entidadQuery}
                                 onChange={(e) => {
                                     setEntidadQuery(e.target.value);
@@ -383,11 +385,11 @@ export default function ContratosPage() {
                                             className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
                                             onClick={() => {
                                                 setForm((f) => ({ ...f, codigoEntidad: e.codigoEntidad }));
-                                                setEntidadQuery(e.nombreEntidad);
+                                                setEntidadQuery(`${e.codigoEntidad} - ${e.nombreEntidad}`);
                                                 setEntidadResultadosAbiertos(false);
                                             }}
                                         >
-                                            {e.nombreEntidad}
+                                            {e.codigoEntidad} - {e.nombreEntidad}
                                         </button>
                                     ))}
                                 </div>

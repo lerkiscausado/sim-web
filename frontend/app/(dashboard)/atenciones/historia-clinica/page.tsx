@@ -450,17 +450,17 @@ export default function HistoriaClinicaPage() {
                     {/* Columna derecha: 70% */}
                     <div className="col-span-10 lg:col-span-7">
                         <Tabs defaultValue="motivo" className="w-full">
-                            <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-                                <TabsTrigger value="motivo">Motivo de Consulta</TabsTrigger>
-                                <TabsTrigger value="control">Consulta de Control</TabsTrigger>
-                                <TabsTrigger value="enfermedad">Enfermedad Actual</TabsTrigger>
-                                <TabsTrigger value="examen">Examen Físico</TabsTrigger>
-                                <TabsTrigger value="rxs">Revisión por Sistemas</TabsTrigger>
-                                <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
-                                <TabsTrigger value="analisis">Análisis y Plan a Seguir</TabsTrigger>
-                                <TabsTrigger value="formulacion">Formulación</TabsTrigger>
-                                <TabsTrigger value="laboratorios">Laboratorios</TabsTrigger>
-                                <TabsTrigger value="procedimientos">Procedimientos</TabsTrigger>
+                            <TabsList className="h-9 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden bg-transparent p-0">
+                                <TabsTrigger value="motivo" className="shrink-0 whitespace-nowrap">Motivo de Consulta</TabsTrigger>
+                                <TabsTrigger value="control" className="shrink-0 whitespace-nowrap">Consulta de Control</TabsTrigger>
+                                <TabsTrigger value="enfermedad" className="shrink-0 whitespace-nowrap">Enfermedad Actual</TabsTrigger>
+                                <TabsTrigger value="examen" className="shrink-0 whitespace-nowrap">Examen Físico</TabsTrigger>
+                                <TabsTrigger value="rxs" className="shrink-0 whitespace-nowrap">Revisión por Sistemas</TabsTrigger>
+                                <TabsTrigger value="diagnostico" className="shrink-0 whitespace-nowrap">Diagnóstico</TabsTrigger>
+                                <TabsTrigger value="analisis" className="shrink-0 whitespace-nowrap">Análisis y Plan a Seguir</TabsTrigger>
+                                <TabsTrigger value="formulacion" className="shrink-0 whitespace-nowrap">Formulación</TabsTrigger>
+                                <TabsTrigger value="laboratorios" className="shrink-0 whitespace-nowrap">Laboratorios</TabsTrigger>
+                                <TabsTrigger value="procedimientos" className="shrink-0 whitespace-nowrap">Procedimientos</TabsTrigger>
                             </TabsList>
 
                             <TabsContent value="motivo" className="mt-3">

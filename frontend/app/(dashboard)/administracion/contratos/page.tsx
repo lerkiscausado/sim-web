@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
@@ -93,6 +93,8 @@ export default function ContratosPage() {
     const [mostrarConfirmarContrasena, setMostrarConfirmarContrasena] = useState(false);
     const [contratoAEliminar, setContratoAEliminar] = useState<Contrato | null>(null);
     const [eliminando, setEliminando] = useState(false);
+    const [entidadQuery, setEntidadQuery] = useState("");
+    const [entidadResultadosAbiertos, setEntidadResultadosAbiertos] = useState(false);
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -139,6 +141,7 @@ export default function ContratosPage() {
         setFormError(null);
         setMostrarContrasena(false);
         setMostrarConfirmarContrasena(false);
+        setEntidadQuery("");
         setDialogOpen(true);
     }
 
@@ -162,8 +165,15 @@ export default function ContratosPage() {
         setFormError(null);
         setMostrarContrasena(false);
         setMostrarConfirmarContrasena(false);
+        setEntidadQuery(c.entidad?.nombreEntidad ?? "");
         setDialogOpen(true);
     }
+
+    const entidadesFiltradas = useMemo(() => {
+        const q = entidadQuery.trim().toLowerCase();
+        if (!q) return entidades;
+        return entidades.filter((e) => e.nombreEntidad.toLowerCase().includes(q));
+    }, [entidades, entidadQuery]);
 
     async function guardar() {
         if (!form.codigoEntidad || !form.nombre || !form.fechaFinal || !form.usuario) {
@@ -348,20 +358,40 @@ export default function ContratosPage() {
                         <DialogDescription>{editando ? "Actualiza los datos y la tarifa del contrato." : "Registra un nuevo contrato con una entidad."}</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-2">
-                        <div className="space-y-1.5">
+                        <div className="relative space-y-1.5">
                             <label className="text-[12.5px] font-medium">Entidad</label>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
-                                value={form.codigoEntidad}
-                                onChange={(e) => setForm((f) => ({ ...f, codigoEntidad: e.target.value }))}
-                            >
-                                <option value="">Seleccionar…</option>
-                                {entidades.map((e) => (
-                                    <option key={e.codigoEntidad} value={e.codigoEntidad}>
-                                        {e.nombreEntidad}
-                                    </option>
-                                ))}
-                            </select>
+                            <Input
+                                placeholder="Buscar entidad…"
+                                value={entidadQuery}
+                                onChange={(e) => {
+                                    setEntidadQuery(e.target.value);
+                                    setEntidadResultadosAbiertos(true);
+                                    if (!e.target.value) setForm((f) => ({ ...f, codigoEntidad: "" }));
+                                }}
+                                onFocus={() => setEntidadResultadosAbiertos(true)}
+                                onBlur={() => setTimeout(() => setEntidadResultadosAbiertos(false), 150)}
+                            />
+                            {entidadResultadosAbiertos && entidadesFiltradas.length > 0 && (
+                                <div
+                                    className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                    style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                >
+                                    {entidadesFiltradas.map((e) => (
+                                        <button
+                                            key={e.codigoEntidad}
+                                            type="button"
+                                            className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                            onClick={() => {
+                                                setForm((f) => ({ ...f, codigoEntidad: e.codigoEntidad }));
+                                                setEntidadQuery(e.nombreEntidad);
+                                                setEntidadResultadosAbiertos(false);
+                                            }}
+                                        >
+                                            {e.nombreEntidad}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Nombre del contrato</label>

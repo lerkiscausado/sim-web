@@ -24,6 +24,17 @@ export class MedicamentosService {
     return paginate(qb, page, pageSize);
   }
 
+  /** Sin paginar, para autocompletados (Historia Clínica). */
+  async search(q: string) {
+    if (!q || q.trim().length < 2) return [];
+    return this.repo
+      .createQueryBuilder('m')
+      .where('m.nombre LIKE :term', { term: `%${q.trim()}%` })
+      .andWhere('m.estado = :estado', { estado: EstadoActivoInactivo.ACTIVO })
+      .take(20)
+      .getMany();
+  }
+
   async findOne(id: number) {
     const item = await this.repo.findOne({ where: { id } });
     if (!item) throw new NotFoundException(`Medicamento ${id} no encontrado`);

@@ -17,6 +17,8 @@ const LOOKUP_TABLES: Record<string, { idCol: string; nameCol: string; estadoCol?
   ingreso: { idCol: 'ID', nameCol: 'NOMBRE_INGRESO' },
   'tipo-afiliado': { idCol: 'ID', nameCol: 'NOMBRE_TIPO_AFILIADO' },
   'tipo-usuario': { idCol: 'ID', nameCol: 'NOMBRE_TIPO_USUARIO' },
+  'revision-sistemas': { idCol: 'ID', nameCol: 'NOMBRE', estadoCol: 'ESTADO' },
+  'via-administracion': { idCol: 'ID', nameCol: 'NOMBRE', estadoCol: 'ESTADO' },
 };
 
 const TABLE_NAME_MAP: Record<string, string> = {
@@ -30,6 +32,8 @@ const TABLE_NAME_MAP: Record<string, string> = {
   ingreso: 'ingreso',
   'tipo-afiliado': 'tipo_afiliado',
   'tipo-usuario': 'tipo_usuario',
+  'revision-sistemas': 'revision_sistemas',
+  'via-administracion': 'via_administracion',
 };
 
 @Injectable()

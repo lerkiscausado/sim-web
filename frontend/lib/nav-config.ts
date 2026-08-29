@@ -57,6 +57,7 @@ export const navConfig: NavItem[] = [
         children: [
             { label: "Citologías", href: "/atenciones/citologias", icon: FlaskConical, description: "Registro y resultados de estudios citológicos." },
             { label: "Patologías", href: "/atenciones/patologias", icon: Microscope, description: "Análisis y diagnósticos de muestras patológicas." },
+            { label: "Historia Clínica", href: "/atenciones/historia-clinica", icon: Stethoscope, description: "Consulta y registro de historias clínicas de endoscopia." },
             { label: "Plantillas Patología", href: "/atenciones/plantillas-patologia", icon: NotebookText, description: "Plantillas rápidas de macro, micro y diagnóstico para informes de patología." },
             { label: "Toma de Muestra", href: "/atenciones/toma-muestra", icon: Pipette, description: "Control de recolección y procesamiento de muestras." },
         ],
@@ -105,6 +106,7 @@ export const breadcrumbLabels: Record<string, string> = {
     atenciones: "Atenciones",
     citologias: "Citologías",
     patologias: "Patologías",
+    "historia-clinica": "Historia Clínica",
     "plantillas-patologia": "Plantillas Patología",
     "toma-muestra": "Toma de Muestra",
     administracion: "Administración",

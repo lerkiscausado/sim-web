@@ -31,6 +31,11 @@ export class MedicamentosController {
     return this.medicamentosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q, estado);
   }
 
+  @Get('search')
+  search(@Query('q') q: string) {
+    return this.medicamentosService.search(q);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.medicamentosService.findOne(id);

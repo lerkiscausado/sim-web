@@ -2,11 +2,13 @@
 
 import { User, ChevronDown, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 
 export function UserBadge() {
     const { user, logout } = useAuth();
+    const router = useRouter();
     const [open, setOpen] = useState(false);
 
     const initials = (user?.usuario ?? "??").slice(0, 2).toUpperCase();
@@ -85,14 +87,18 @@ export function UserBadge() {
                         </div>
                         <div className="py-1">
                             {[
-                                { label: "Mi Perfil", icon: User },
-                                { label: "Preferencias", icon: Settings },
-                            ].map(({ label, icon: Icon }) => (
+                                { label: "Mi Perfil", icon: User, href: "/perfil" },
+                                { label: "Preferencias", icon: Settings, href: "/preferencias" },
+                            ].map(({ label, icon: Icon, href }) => (
                                 <button
                                     key={label}
                                     className="flex w-full items-center gap-2.5 px-4 py-2 text-[12.5px] hover:bg-[var(--surface-base)]"
                                     style={{ color: "var(--ink-primary)" }}
                                     type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        router.push(href);
+                                    }}
                                 >
                                     <Icon size={13} style={{ color: "var(--ink-tertiary)" }} />
                                     {label}

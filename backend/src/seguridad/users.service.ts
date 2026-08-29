@@ -132,6 +132,29 @@ export class UsersService {
     return this.usersRepository.findOne({ where: { id } });
   }
 
+  /** Trae el usuario CON el hash de PASS por id (para verificar la contraseña actual en el cambio de autoservicio). */
+  async findOneByIdWithPassword(id: number): Promise<Users | null> {
+    return this.usersRepository
+      .createQueryBuilder('u')
+      .addSelect('u.pass')
+      .where('u.id = :id', { id })
+      .getOne();
+  }
+
+  /** Cambio de contraseña por el propio usuario (Mi Perfil): exige la contraseña actual, no requiere el permiso 'users'. */
+  async changeOwnPassword(id: number, actual: string, nueva: string): Promise<void> {
+    const user = await this.findOneByIdWithPassword(id);
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const coincide = await bcrypt.compare(actual, user.pass);
+    if (!coincide) {
+      throw new ConflictException('La contraseña actual no es correcta');
+    }
+
+    user.pass = await bcrypt.hash(nueva, BCRYPT_ROUNDS);
+    await this.usersRepository.save(user);
+  }
+
   /** Arma el mapa de permisos boolean a partir de la entity, para incluir en el JWT / respuestas. */
   buildPermisosMap(user: Users): Record<PermisoUsuario, boolean> {
     const permisos = {} as Record<PermisoUsuario, boolean>;

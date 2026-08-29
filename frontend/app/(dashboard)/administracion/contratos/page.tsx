@@ -23,6 +23,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { getPreferencias } from "@/lib/preferencias";
 
 interface Entidad {
     codigoEntidad: string;
@@ -224,7 +225,25 @@ export default function ContratosPage() {
     }
 
     async function eliminar(c: Contrato) {
+        if (!getPreferencias().confirmarEliminar) {
+            await confirmarEliminarInmediato(c);
+            return;
+        }
         setContratoAEliminar(c);
+    }
+
+    async function confirmarEliminarInmediato(c: Contrato) {
+        setEliminando(true);
+        try {
+            await api.delete(`/entidades-contratos/contratos/${c.id}`);
+            setContratoAEliminar(null);
+            await cargar(page, searchTerm);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : "No se pudo eliminar el contrato");
+            setContratoAEliminar(null);
+        } finally {
+            setEliminando(false);
+        }
     }
 
     async function confirmarEliminar() {

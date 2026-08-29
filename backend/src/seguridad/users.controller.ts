@@ -15,6 +15,7 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangeOwnPasswordDto } from './dto/change-own-password.dto';
 
 /**
  * Gestión de cuentas de usuario del sistema (tabla `users`). En el VB.NET
@@ -31,8 +32,26 @@ export class UsersController {
 
   @Get('me')
   async me(@Req() req: any) {
-    const user = await this.usersService.findOneById(req.user.userId);
-    return user ? this.usersService.buildPermisosMap(user) : null;
+    const user = await this.usersService.findOne(req.user.userId);
+    return {
+      id: user.id,
+      usuario: user.usuario,
+      admin: user.admin === '1',
+      empleado: user.empleado
+        ? {
+            nombreEmpleado: user.empleado.nombreEmpleado,
+            cargo: user.empleado.cargo?.nombreCargo ?? null,
+          }
+        : null,
+      permisos: this.usersService.buildPermisosMap(user),
+    };
+  }
+
+  /** Autoservicio: cualquier usuario autenticado puede cambiar su propia contraseña (exige la actual). */
+  @Patch('me/password')
+  async changeOwnPassword(@Req() req: any, @Body() dto: ChangeOwnPasswordDto) {
+    await this.usersService.changeOwnPassword(req.user.userId, dto.actual, dto.nueva);
+    return { ok: true };
   }
 
   @RequirePermission('users')

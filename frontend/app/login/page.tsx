@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuth, ApiError } from "@/lib/auth";
+import { getPreferencias } from "@/lib/preferencias";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -22,7 +23,7 @@ export default function LoginPage() {
         setLoading(true);
         try {
             await login(usuario, pass);
-            router.push("/inicio");
+            router.push(getPreferencias().paginaInicio);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo iniciar sesión");
         } finally {

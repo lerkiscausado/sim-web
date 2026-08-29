@@ -6,6 +6,7 @@ import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import {
     Table,
@@ -447,307 +448,347 @@ export default function HistoriaClinicaPage() {
                     </div>
 
                     {/* Columna derecha: 70% */}
-                    <div className="col-span-10 space-y-4 lg:col-span-7">
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Consulta</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Responsables</label>
-                                    <Input value={form.responsables ?? ""} onChange={(e) => setForm((f) => ({ ...f, responsables: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Motivo de Consulta</label>
-                                    <Textarea rows={2} value={form.motivoConsulta ?? ""} onChange={(e) => setForm((f) => ({ ...f, motivoConsulta: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Consulta de Control</label>
-                                    <Textarea rows={2} value={form.consultaControl ?? ""} onChange={(e) => setForm((f) => ({ ...f, consultaControl: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Enfermedad Actual</label>
-                                    <Textarea rows={3} value={form.enfermedadActual ?? ""} onChange={(e) => setForm((f) => ({ ...f, enfermedadActual: e.target.value }))} />
-                                </div>
-                            </div>
-                        </div>
+                    <div className="col-span-10 lg:col-span-7">
+                        <Tabs defaultValue="motivo" className="w-full">
+                            <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+                                <TabsTrigger value="motivo">Motivo de Consulta</TabsTrigger>
+                                <TabsTrigger value="control">Consulta de Control</TabsTrigger>
+                                <TabsTrigger value="enfermedad">Enfermedad Actual</TabsTrigger>
+                                <TabsTrigger value="examen">Examen Físico</TabsTrigger>
+                                <TabsTrigger value="rxs">Revisión por Sistemas</TabsTrigger>
+                                <TabsTrigger value="diagnostico">Diagnóstico</TabsTrigger>
+                                <TabsTrigger value="analisis">Análisis y Plan a Seguir</TabsTrigger>
+                                <TabsTrigger value="formulacion">Formulación</TabsTrigger>
+                                <TabsTrigger value="laboratorios">Laboratorios</TabsTrigger>
+                                <TabsTrigger value="procedimientos">Procedimientos</TabsTrigger>
+                            </TabsList>
 
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Examen Físico</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Peso (kg)</label>
-                                    <Input type="number" value={form.peso ?? ""} onChange={(e) => setForm((f) => ({ ...f, peso: Number(e.target.value) || undefined }))} />
+                            <TabsContent value="motivo" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Responsables</label>
+                                            <Input value={form.responsables ?? ""} onChange={(e) => setForm((f) => ({ ...f, responsables: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Motivo de Consulta</label>
+                                            <Textarea rows={5} value={form.motivoConsulta ?? ""} onChange={(e) => setForm((f) => ({ ...f, motivoConsulta: e.target.value }))} />
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Talla (cm)</label>
-                                    <Input type="number" value={form.talla ?? ""} onChange={(e) => setForm((f) => ({ ...f, talla: Number(e.target.value) || undefined }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Temperatura</label>
-                                    <Input value={form.temperatura ?? ""} onChange={(e) => setForm((f) => ({ ...f, temperatura: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Tensión Arterial</label>
-                                    <Input value={form.tensionArterial ?? ""} onChange={(e) => setForm((f) => ({ ...f, tensionArterial: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Frecuencia Cardíaca</label>
-                                    <Input value={form.frecuenciaCardiaca ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaCardiaca: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Frecuencia Respiratoria</label>
-                                    <Input value={form.frecuenciaRespiratoria ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaRespiratoria: e.target.value }))} />
-                                </div>
-                                <div className="col-span-3 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Descripción del Examen Físico</label>
-                                    <Textarea rows={3} value={form.examenFisico ?? ""} onChange={(e) => setForm((f) => ({ ...f, examenFisico: e.target.value }))} />
-                                </div>
-                            </div>
-                        </div>
+                            </TabsContent>
 
-                        {/* Diagnósticos */}
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Diagnósticos (CIE10)</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="relative col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Buscar CIE10</label>
-                                    <Input value={dxQuery} onChange={(e) => { setDxQuery(e.target.value); setDxElegido(null); }} placeholder="Código o nombre…" />
-                                    {dxResultados.length > 0 && !dxElegido && (
-                                        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
-                                            {dxResultados.map((d) => (
-                                                <button key={d.codigoDiagnostico} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onClick={() => { setDxElegido(d); setDxQuery(`${d.codigoDiagnostico} — ${d.nombreDiagnostico}`); setDxResultados([]); }}>
-                                                    <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
-                                                </button>
+                            <TabsContent value="control" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Consulta de Control o Evolución</label>
+                                        <Textarea rows={6} value={form.consultaControl ?? ""} onChange={(e) => setForm((f) => ({ ...f, consultaControl: e.target.value }))} />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="enfermedad" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Enfermedad Actual</label>
+                                        <Textarea rows={6} value={form.enfermedadActual ?? ""} onChange={(e) => setForm((f) => ({ ...f, enfermedadActual: e.target.value }))} />
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="examen" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Peso (kg)</label>
+                                            <Input type="number" value={form.peso ?? ""} onChange={(e) => setForm((f) => ({ ...f, peso: Number(e.target.value) || undefined }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Talla (cm)</label>
+                                            <Input type="number" value={form.talla ?? ""} onChange={(e) => setForm((f) => ({ ...f, talla: Number(e.target.value) || undefined }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Temperatura</label>
+                                            <Input value={form.temperatura ?? ""} onChange={(e) => setForm((f) => ({ ...f, temperatura: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Tensión Arterial</label>
+                                            <Input value={form.tensionArterial ?? ""} onChange={(e) => setForm((f) => ({ ...f, tensionArterial: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Frecuencia Cardíaca</label>
+                                            <Input value={form.frecuenciaCardiaca ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaCardiaca: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Frecuencia Respiratoria</label>
+                                            <Input value={form.frecuenciaRespiratoria ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaRespiratoria: e.target.value }))} />
+                                        </div>
+                                        <div className="col-span-3 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Descripción del Examen Físico</label>
+                                            <Textarea rows={4} value={form.examenFisico ?? ""} onChange={(e) => setForm((f) => ({ ...f, examenFisico: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="rxs" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Sistema</label>
+                                            <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={rxsForm.idRxs} onChange={(e) => setRxsForm((f) => ({ ...f, idRxs: e.target.value }))}>
+                                                <option value="">Seleccionar…</option>
+                                                {rxsCatalogo.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Hallazgo</label>
+                                            <Input value={rxsForm.descripcion} onChange={(e) => setRxsForm((f) => ({ ...f, descripcion: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" className="mt-3" onClick={agregarRxs} disabled={!rxsForm.idRxs || !rxsForm.descripcion}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Hallazgo
+                                    </Button>
+                                    {rxsList.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {rxsList.map((r) => (
+                                                <div key={r.idRxs} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <span>{r.nombre}: {r.descripcion}</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarRxs(r.idRxs)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Nota (opcional)</label>
-                                    <Input value={dxDescripcion} onChange={(e) => setDxDescripcion(e.target.value)} />
-                                </div>
-                            </div>
-                            <Button size="sm" className="mt-3" onClick={agregarDiagnostico} disabled={!dxElegido}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Agregar Diagnóstico
-                            </Button>
-                            {diagnosticos.length > 0 && (
-                                <div className="mt-3 space-y-1.5">
-                                    {diagnosticos.map((d) => (
-                                        <div key={d.idDiagnostico} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
-                                            <span><span className="font-semibold">{d.idDiagnostico}</span> — {d.nombre ?? "—"}{d.descripcion ? ` (${d.descripcion})` : ""}</span>
-                                            <Button variant="ghost" size="sm" onClick={() => quitarDiagnostico(d.idDiagnostico)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                            </TabsContent>
 
-                        {/* Medicamentos */}
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Medicamentos Formulados</p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="relative space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Medicamento</label>
-                                    <Input value={medQuery} onChange={(e) => { setMedQuery(e.target.value); setMedElegido(null); }} placeholder="Buscar…" />
-                                    {medResultados.length > 0 && !medElegido && (
-                                        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
-                                            {medResultados.map((m) => (
-                                                <button key={m.id} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onClick={() => { setMedElegido(m); setMedQuery(m.nombre); setMedResultados([]); }}>
-                                                    {m.nombre}
-                                                </button>
+                            <TabsContent value="diagnostico" className="mt-3 space-y-4">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Diagnóstico</label>
+                                        <Textarea rows={4} value={form.diagnostico ?? ""} onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))} />
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <p className="mb-3 text-sm font-bold">Diagnósticos (CIE10)</p>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="relative col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Buscar CIE10</label>
+                                            <Input value={dxQuery} onChange={(e) => { setDxQuery(e.target.value); setDxElegido(null); }} placeholder="Código o nombre…" />
+                                            {dxResultados.length > 0 && !dxElegido && (
+                                                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
+                                                    {dxResultados.map((d) => (
+                                                        <button key={d.codigoDiagnostico} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                            onClick={() => { setDxElegido(d); setDxQuery(`${d.codigoDiagnostico} — ${d.nombreDiagnostico}`); setDxResultados([]); }}>
+                                                            <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Nota (opcional)</label>
+                                            <Input value={dxDescripcion} onChange={(e) => setDxDescripcion(e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" className="mt-3" onClick={agregarDiagnostico} disabled={!dxElegido}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Diagnóstico
+                                    </Button>
+                                    {diagnosticos.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {diagnosticos.map((d) => (
+                                                <div key={d.idDiagnostico} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <span><span className="font-semibold">{d.idDiagnostico}</span> — {d.nombre ?? "—"}{d.descripcion ? ` (${d.descripcion})` : ""}</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarDiagnostico(d.idDiagnostico)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Vía de Administración</label>
-                                    <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={medForm.idViaAdministracion} onChange={(e) => setMedForm((f) => ({ ...f, idViaAdministracion: e.target.value }))}>
-                                        <option value="">Seleccionar…</option>
-                                        {viasAdministracion.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Dosis</label>
-                                    <Input value={medForm.dosis} onChange={(e) => setMedForm((f) => ({ ...f, dosis: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Cantidad</label>
-                                    <Input value={medForm.cantidad} onChange={(e) => setMedForm((f) => ({ ...f, cantidad: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Indicaciones</label>
-                                    <Input value={medForm.descripcion} onChange={(e) => setMedForm((f) => ({ ...f, descripcion: e.target.value }))} />
-                                </div>
-                            </div>
-                            <Button size="sm" className="mt-3" onClick={agregarMedicamento} disabled={!medElegido}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Agregar Medicamento
-                            </Button>
-                            {medicamentos.length > 0 && (
-                                <div className="mt-3 space-y-1.5">
-                                    {medicamentos.map((m) => (
-                                        <div key={m.idMedicamento} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
-                                            <span>{m.nombreMedicamento} — {m.dosis} x {m.cantidad} ({m.nombreViaAdministracion}) — {m.descripcion}</span>
-                                            <Button variant="ghost" size="sm" onClick={() => quitarMedicamento(m.idMedicamento)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                            </TabsContent>
 
-                        {/* Laboratorios */}
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Laboratorios Solicitados</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="relative col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Examen (CUPS)</label>
-                                    <Input value={labQuery} onChange={(e) => { setLabQuery(e.target.value); setLabElegido(null); }} placeholder="Buscar…" />
-                                    {labResultados.length > 0 && !labElegido && (
-                                        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
-                                            {labResultados.map((c) => (
-                                                <button key={c.codigoCups} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onClick={() => { setLabElegido(c); setLabQuery(`${c.codigoCups} — ${c.nombreCups}`); setLabResultados([]); }}>
-                                                    <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                                </button>
+                            <TabsContent value="analisis" className="mt-3">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Análisis y Plan a Seguir</label>
+                                            <Textarea rows={5} value={form.planSeguir ?? ""} onChange={(e) => setForm((f) => ({ ...f, planSeguir: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Recomendaciones</label>
+                                            <Textarea rows={3} value={form.recomendaciones ?? ""} onChange={(e) => setForm((f) => ({ ...f, recomendaciones: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="formulacion" className="mt-3 space-y-4">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Formulación</label>
+                                        <Textarea rows={3} value={form.formulacion ?? ""} onChange={(e) => setForm((f) => ({ ...f, formulacion: e.target.value }))} />
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <p className="mb-3 text-sm font-bold">Medicamentos Formulados</p>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="relative space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Medicamento</label>
+                                            <Input value={medQuery} onChange={(e) => { setMedQuery(e.target.value); setMedElegido(null); }} placeholder="Buscar…" />
+                                            {medResultados.length > 0 && !medElegido && (
+                                                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
+                                                    {medResultados.map((m) => (
+                                                        <button key={m.id} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                            onClick={() => { setMedElegido(m); setMedQuery(m.nombre); setMedResultados([]); }}>
+                                                            {m.nombre}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Vía de Administración</label>
+                                            <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={medForm.idViaAdministracion} onChange={(e) => setMedForm((f) => ({ ...f, idViaAdministracion: e.target.value }))}>
+                                                <option value="">Seleccionar…</option>
+                                                {viasAdministracion.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Dosis</label>
+                                            <Input value={medForm.dosis} onChange={(e) => setMedForm((f) => ({ ...f, dosis: e.target.value }))} />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Cantidad</label>
+                                            <Input value={medForm.cantidad} onChange={(e) => setMedForm((f) => ({ ...f, cantidad: e.target.value }))} />
+                                        </div>
+                                        <div className="col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Indicaciones</label>
+                                            <Input value={medForm.descripcion} onChange={(e) => setMedForm((f) => ({ ...f, descripcion: e.target.value }))} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" className="mt-3" onClick={agregarMedicamento} disabled={!medElegido}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Medicamento
+                                    </Button>
+                                    {medicamentos.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {medicamentos.map((m) => (
+                                                <div key={m.idMedicamento} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <span>{m.nombreMedicamento} — {m.dosis} x {m.cantidad} ({m.nombreViaAdministracion}) — {m.descripcion}</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarMedicamento(m.idMedicamento)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
+                                                </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Nota (opcional)</label>
-                                    <Input value={labDescripcion} onChange={(e) => setLabDescripcion(e.target.value)} />
-                                </div>
-                            </div>
-                            <Button size="sm" className="mt-3" onClick={agregarLaboratorio} disabled={!labElegido}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Agregar Laboratorio
-                            </Button>
-                            {laboratorios.length > 0 && (
-                                <div className="mt-3 space-y-1.5">
-                                    {laboratorios.map((l) => (
-                                        <div key={l.codigoCups} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
-                                            <span><span className="font-semibold">{l.codigoCups}</span> — {l.nombre ?? "—"}{l.descripcion ? ` (${l.descripcion})` : ""}</span>
-                                            <Button variant="ghost" size="sm" onClick={() => quitarLaboratorio(l.codigoCups)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                            </TabsContent>
 
-                        {/* Procedimientos */}
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Procedimientos</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="relative col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Procedimiento (CUPS)</label>
-                                    <Input value={procQuery} onChange={(e) => { setProcQuery(e.target.value); setProcElegido(null); }} placeholder="Buscar…" />
-                                    {procResultados.length > 0 && !procElegido && (
-                                        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
-                                            {procResultados.map((c) => (
-                                                <button key={c.codigoCups} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onClick={() => { setProcElegido(c); setProcQuery(`${c.codigoCups} — ${c.nombreCups}`); setProcResultados([]); }}>
-                                                    <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Descripción</label>
-                                    <Input value={procDescripcion} onChange={(e) => setProcDescripcion(e.target.value)} />
-                                </div>
-                            </div>
-                            <Button size="sm" className="mt-3" onClick={agregarProcedimiento} disabled={!procElegido || !procDescripcion}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Agregar Procedimiento
-                            </Button>
-                            {procedimientos.length > 0 && (
-                                <div className="mt-3 space-y-1.5">
-                                    {procedimientos.map((p) => (
-                                        <div key={p.codigoCups} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
-                                            <span><span className="font-semibold">{p.codigoCups}</span> — {p.nombre ?? "—"} ({p.descripcion})</span>
-                                            <Button variant="ghost" size="sm" onClick={() => quitarProcedimiento(p.codigoCups)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* RXS */}
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Revisión por Sistemas</p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Sistema</label>
-                                    <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={rxsForm.idRxs} onChange={(e) => setRxsForm((f) => ({ ...f, idRxs: e.target.value }))}>
-                                        <option value="">Seleccionar…</option>
-                                        {rxsCatalogo.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Hallazgo</label>
-                                    <Input value={rxsForm.descripcion} onChange={(e) => setRxsForm((f) => ({ ...f, descripcion: e.target.value }))} />
-                                </div>
-                            </div>
-                            <Button size="sm" className="mt-3" onClick={agregarRxs} disabled={!rxsForm.idRxs || !rxsForm.descripcion}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Agregar Hallazgo
-                            </Button>
-                            {rxsList.length > 0 && (
-                                <div className="mt-3 space-y-1.5">
-                                    {rxsList.map((r) => (
-                                        <div key={r.idRxs} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
-                                            <span>{r.nombre}: {r.descripcion}</span>
-                                            <Button variant="ghost" size="sm" onClick={() => quitarRxs(r.idRxs)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="mb-3 text-sm font-bold">Diagnóstico y Plan</p>
-                            <div className="space-y-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Diagnóstico</label>
-                                    <Textarea rows={3} value={form.diagnostico ?? ""} onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Plan a Seguir</label>
-                                    <Textarea rows={3} value={form.planSeguir ?? ""} onChange={(e) => setForm((f) => ({ ...f, planSeguir: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Formulación</label>
-                                    <Textarea rows={2} value={form.formulacion ?? ""} onChange={(e) => setForm((f) => ({ ...f, formulacion: e.target.value }))} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
+                            <TabsContent value="laboratorios" className="mt-3 space-y-4">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Laboratorios (texto libre)</label>
                                         <Textarea rows={2} value={form.laboratorios ?? ""} onChange={(e) => setForm((f) => ({ ...f, laboratorios: e.target.value }))} />
                                     </div>
+                                </div>
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <p className="mb-3 text-sm font-bold">Laboratorios Solicitados</p>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="relative col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Examen (CUPS)</label>
+                                            <Input value={labQuery} onChange={(e) => { setLabQuery(e.target.value); setLabElegido(null); }} placeholder="Buscar…" />
+                                            {labResultados.length > 0 && !labElegido && (
+                                                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
+                                                    {labResultados.map((c) => (
+                                                        <button key={c.codigoCups} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                            onClick={() => { setLabElegido(c); setLabQuery(`${c.codigoCups} — ${c.nombreCups}`); setLabResultados([]); }}>
+                                                            <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Nota (opcional)</label>
+                                            <Input value={labDescripcion} onChange={(e) => setLabDescripcion(e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" className="mt-3" onClick={agregarLaboratorio} disabled={!labElegido}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Laboratorio
+                                    </Button>
+                                    {laboratorios.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {laboratorios.map((l) => (
+                                                <div key={l.codigoCups} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <span><span className="font-semibold">{l.codigoCups}</span> — {l.nombre ?? "—"}{l.descripcion ? ` (${l.descripcion})` : ""}</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarLaboratorio(l.codigoCups)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="procedimientos" className="mt-3 space-y-4">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Otros Estudios</label>
                                         <Textarea rows={2} value={form.otrosEstudios ?? ""} onChange={(e) => setForm((f) => ({ ...f, otrosEstudios: e.target.value }))} />
                                     </div>
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Recomendaciones</label>
-                                    <Textarea rows={2} value={form.recomendaciones ?? ""} onChange={(e) => setForm((f) => ({ ...f, recomendaciones: e.target.value }))} />
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <p className="mb-3 text-sm font-bold">Procedimientos</p>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="relative col-span-2 space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Procedimiento (CUPS)</label>
+                                            <Input value={procQuery} onChange={(e) => { setProcQuery(e.target.value); setProcElegido(null); }} placeholder="Buscar…" />
+                                            {procResultados.length > 0 && !procElegido && (
+                                                <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
+                                                    {procResultados.map((c) => (
+                                                        <button key={c.codigoCups} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                            onClick={() => { setProcElegido(c); setProcQuery(`${c.codigoCups} — ${c.nombreCups}`); setProcResultados([]); }}>
+                                                            <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[12.5px] font-medium">Descripción</label>
+                                            <Input value={procDescripcion} onChange={(e) => setProcDescripcion(e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <Button size="sm" className="mt-3" onClick={agregarProcedimiento} disabled={!procElegido || !procDescripcion}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Agregar Procedimiento
+                                    </Button>
+                                    {procedimientos.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {procedimientos.map((p) => (
+                                                <div key={p.codigoCups} className="flex items-center justify-between rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <span><span className="font-semibold">{p.codigoCups}</span> — {p.nombre ?? "—"} ({p.descripcion})</span>
+                                                    <Button variant="ghost" size="sm" onClick={() => quitarProcedimiento(p.codigoCups)}><Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} /></Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
+                            </TabsContent>
+                        </Tabs>
 
+                        {/* Acciones globales: siempre visibles, sin importar la ficha activa */}
+                        <div className="mt-4 rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             {formError && (
-                                <p className="mt-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>
+                                <p className="mb-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>
                                     {formError}
                                 </p>
                             )}
                             {guardadoOk && (
-                                <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-[12.5px] text-green-700">Historia guardada correctamente.</p>
+                                <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-[12.5px] text-green-700">Historia guardada correctamente.</p>
                             )}
-
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <Button onClick={guardarInforme} disabled={guardando}>
                                     {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Guardar Historia

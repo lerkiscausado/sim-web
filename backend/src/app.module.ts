@@ -33,6 +33,10 @@ import { PacientesModule } from './pacientes/pacientes.module';
         // en migrations/001_add_timestamps_and_pass.sql, revisada a mano.
         synchronize: false,
         autoLoadEntities: true,
+        // DIAGNÓSTICO TEMPORAL: activa el log de cada SQL ejecutado, para
+        // encontrar por qué createdAt queda en NULL al crear un contrato.
+        // Quitar (volver a false) una vez resuelto.
+        logging: ['query', 'error'],
       }),
       inject: [ConfigService],
     }),

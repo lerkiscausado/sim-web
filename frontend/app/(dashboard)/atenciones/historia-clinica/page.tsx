@@ -6,7 +6,6 @@ import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import {
     Table,
@@ -85,8 +84,22 @@ function PacienteCard({ p }: { p?: PacienteHistoria }) {
 
 type Vista = "listado" | "informe";
 
+const SECCIONES = [
+    { value: "motivo", label: "Motivo de Consulta", descripcion: "Razón principal por la que el paciente acude a la consulta." },
+    { value: "control", label: "Consulta de Control", descripcion: "Evolución y seguimiento de una consulta o tratamiento anterior." },
+    { value: "enfermedad", label: "Enfermedad Actual", descripcion: "Descripción detallada de los síntomas y su evolución en el tiempo." },
+    { value: "examen", label: "Examen Físico", descripcion: "Signos vitales y hallazgos del examen físico general." },
+    { value: "rxs", label: "Revisión por Sistemas", descripcion: "Hallazgos positivos o negativos por cada sistema corporal." },
+    { value: "diagnostico", label: "Diagnóstico", descripcion: "Diagnóstico clínico y códigos CIE10 asociados a la consulta." },
+    { value: "analisis", label: "Análisis y Plan a Seguir", descripcion: "Interpretación clínica del caso y la conducta a seguir." },
+    { value: "formulacion", label: "Formulación", descripcion: "Medicamentos formulados al paciente, con dosis y vía de administración." },
+    { value: "laboratorios", label: "Laboratorios", descripcion: "Exámenes de laboratorio solicitados al paciente." },
+    { value: "procedimientos", label: "Procedimientos", descripcion: "Procedimientos y otros estudios solicitados al paciente." },
+] as const;
+
 export default function HistoriaClinicaPage() {
     const [vista, setVista] = useState<Vista>("listado");
+    const [seccionActiva, setSeccionActiva] = useState<string>("motivo");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -449,21 +462,30 @@ export default function HistoriaClinicaPage() {
 
                     {/* Columna derecha: 70% */}
                     <div className="col-span-10 lg:col-span-7">
-                        <Tabs defaultValue="motivo" className="w-full">
-                            <TabsList className="h-9 w-full justify-start gap-1 overflow-x-auto overflow-y-hidden bg-transparent p-0">
-                                <TabsTrigger value="motivo" className="shrink-0 whitespace-nowrap">Motivo de Consulta</TabsTrigger>
-                                <TabsTrigger value="control" className="shrink-0 whitespace-nowrap">Consulta de Control</TabsTrigger>
-                                <TabsTrigger value="enfermedad" className="shrink-0 whitespace-nowrap">Enfermedad Actual</TabsTrigger>
-                                <TabsTrigger value="examen" className="shrink-0 whitespace-nowrap">Examen Físico</TabsTrigger>
-                                <TabsTrigger value="rxs" className="shrink-0 whitespace-nowrap">Revisión por Sistemas</TabsTrigger>
-                                <TabsTrigger value="diagnostico" className="shrink-0 whitespace-nowrap">Diagnóstico</TabsTrigger>
-                                <TabsTrigger value="analisis" className="shrink-0 whitespace-nowrap">Análisis y Plan a Seguir</TabsTrigger>
-                                <TabsTrigger value="formulacion" className="shrink-0 whitespace-nowrap">Formulación</TabsTrigger>
-                                <TabsTrigger value="laboratorios" className="shrink-0 whitespace-nowrap">Laboratorios</TabsTrigger>
-                                <TabsTrigger value="procedimientos" className="shrink-0 whitespace-nowrap">Procedimientos</TabsTrigger>
-                            </TabsList>
+                        <div className="space-y-1.5">
+                            <select
+                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                value={seccionActiva}
+                                onChange={(e) => setSeccionActiva(e.target.value)}
+                            >
+                                {SECCIONES.map((s) => (
+                                    <option key={s.value} value={s.value}>
+                                        {s.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div>
+                                <h2 className="text-base font-bold" style={{ color: "var(--ink-primary)" }}>
+                                    {SECCIONES.find((s) => s.value === seccionActiva)?.label}
+                                </h2>
+                                <p className="text-[12.5px]" style={{ color: "var(--ink-secondary)" }}>
+                                    {SECCIONES.find((s) => s.value === seccionActiva)?.descripcion}
+                                </p>
+                            </div>
+                        </div>
 
-                            <TabsContent value="motivo" className="mt-3">
+                            {seccionActiva === "motivo" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
@@ -476,27 +498,33 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="control" className="mt-3">
+                            {seccionActiva === "control" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Consulta de Control o Evolución</label>
                                         <Textarea rows={6} value={form.consultaControl ?? ""} onChange={(e) => setForm((f) => ({ ...f, consultaControl: e.target.value }))} />
                                     </div>
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="enfermedad" className="mt-3">
+                            {seccionActiva === "enfermedad" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Enfermedad Actual</label>
                                         <Textarea rows={6} value={form.enfermedadActual ?? ""} onChange={(e) => setForm((f) => ({ ...f, enfermedadActual: e.target.value }))} />
                                     </div>
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="examen" className="mt-3">
+                            {seccionActiva === "examen" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="space-y-1.5">
@@ -529,9 +557,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="rxs" className="mt-3">
+                            {seccionActiva === "rxs" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="space-y-1.5">
@@ -561,9 +591,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="diagnostico" className="mt-3 space-y-4">
+                            {seccionActiva === "diagnostico" && (
+                            <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Diagnóstico</label>
@@ -607,9 +639,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="analisis" className="mt-3">
+                            {seccionActiva === "analisis" && (
+                            <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
@@ -622,9 +656,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="formulacion" className="mt-3 space-y-4">
+                            {seccionActiva === "formulacion" && (
+                            <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Formulación</label>
@@ -683,9 +719,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="laboratorios" className="mt-3 space-y-4">
+                            {seccionActiva === "laboratorios" && (
+                            <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Laboratorios (texto libre)</label>
@@ -729,9 +767,11 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </TabsContent>
+                            </div>
+                            )}
 
-                            <TabsContent value="procedimientos" className="mt-3 space-y-4">
+                            {seccionActiva === "procedimientos" && (
+                            <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Otros Estudios</label>
@@ -775,8 +815,8 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                     )}
                                 </div>
-                            </TabsContent>
-                        </Tabs>
+                            </div>
+                            )}
 
                         {/* Acciones globales: siempre visibles, sin importar la ficha activa */}
                         <div className="mt-4 rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>

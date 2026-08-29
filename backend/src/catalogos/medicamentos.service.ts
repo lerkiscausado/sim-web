@@ -13,10 +13,13 @@ export class MedicamentosService {
     private readonly repo: Repository<Medicamentos>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('m').orderBy('m.nombre', 'ASC');
     if (q && q.trim().length > 0) {
       qb.where('m.nombre LIKE :term', { term: `%${q.trim()}%` });
+    }
+    if (estado === 'A' || estado === 'I') {
+      qb.andWhere('m.estado = :estado', { estado });
     }
     return paginate(qb, page, pageSize);
   }

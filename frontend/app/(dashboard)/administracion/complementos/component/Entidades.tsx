@@ -52,6 +52,7 @@ const FORM_INICIAL = { codigoEntidad: "", nombreEntidad: "", nit: "", direccion:
 export default function Entidades() {
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -62,12 +63,13 @@ export default function Entidades() {
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
-    const cargar = useCallback(async (p: number, q?: string) => {
+    const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
         setError(null);
         try {
             const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
             if (q) qs.set("q", q);
+            if (estado) qs.set("estado", estado);
             const data = await api.get<Paginado>(`/entidades-contratos/entidades?${qs.toString()}`);
             setResult(data);
         } catch (err) {
@@ -84,14 +86,14 @@ export default function Entidades() {
     useEffect(() => {
         const t = setTimeout(() => {
             setPage(1);
-            cargar(1, searchTerm);
+            cargar(1, searchTerm, filtroEstado);
         }, 300);
         return () => clearTimeout(t);
-    }, [searchTerm, cargar]);
+    }, [searchTerm, filtroEstado, cargar]);
 
     function cambiarPagina(p: number) {
         setPage(p);
-        cargar(p, searchTerm);
+        cargar(p, searchTerm, filtroEstado);
     }
 
     function abrirNuevo() {
@@ -172,6 +174,15 @@ export default function Entidades() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <select
+                        className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                        value={filtroEstado}
+                        onChange={(e) => setFiltroEstado(e.target.value)}
+                    >
+                        <option value="">Todos los estados</option>
+                        <option value="A">Activos</option>
+                        <option value="I">Inactivos</option>
+                    </select>
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 

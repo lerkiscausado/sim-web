@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Hash, FileText } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Hash, FileText, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -12,6 +12,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
     Card,
@@ -33,6 +34,7 @@ import { api, ApiError } from "@/lib/api";
 interface Cie10Item {
     codigoDiagnostico: string;
     nombreDiagnostico: string | null;
+    estado: string | null;
 }
 
 interface Paginado {
@@ -45,6 +47,7 @@ interface Paginado {
 export default function Cie10() {
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -55,12 +58,13 @@ export default function Cie10() {
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
 
-    const cargar = useCallback(async (p: number, q?: string) => {
+    const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
         setError(null);
         try {
             const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
             if (q) qs.set("q", q);
+            if (estado) qs.set("estado", estado);
             const data = await api.get<Paginado>(`/catalogos/diagnosticos?${qs.toString()}`);
             setResult(data);
         } catch (err) {
@@ -77,14 +81,14 @@ export default function Cie10() {
     useEffect(() => {
         const t = setTimeout(() => {
             setPage(1);
-            cargar(1, searchTerm);
+            cargar(1, searchTerm, filtroEstado);
         }, 300);
         return () => clearTimeout(t);
-    }, [searchTerm, cargar]);
+    }, [searchTerm, filtroEstado, cargar]);
 
     function cambiarPagina(p: number) {
         setPage(p);
-        cargar(p, searchTerm);
+        cargar(p, searchTerm, filtroEstado);
     }
 
     function abrirNuevo() {
@@ -117,11 +121,21 @@ export default function Cie10() {
                 await api.post("/catalogos/diagnosticos", form);
             }
             setDialogOpen(false);
-            await cargar(page, searchTerm);
+            await cargar(page, searchTerm, filtroEstado);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
         } finally {
             setGuardando(false);
+        }
+    }
+
+    async function toggleEstado(item: Cie10Item) {
+        const nuevo = item.estado === "A" ? "I" : "A";
+        try {
+            await api.patch(`/catalogos/diagnosticos/${item.codigoDiagnostico}/estado/${nuevo}`);
+            await cargar(page, searchTerm, filtroEstado);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : "No se pudo cambiar el estado");
         }
     }
 
@@ -152,6 +166,15 @@ export default function Cie10() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <select
+                        className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                        value={filtroEstado}
+                        onChange={(e) => setFiltroEstado(e.target.value)}
+                    >
+                        <option value="">Todos los estados</option>
+                        <option value="A">Activos</option>
+                        <option value="I">Inactivos</option>
+                    </select>
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 
@@ -165,13 +188,14 @@ export default function Cie10() {
                             <TableRow className="bg-muted/50">
                                 <TableHead className="w-[120px] font-bold"><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Código</span></TableHead>
                                 <TableHead className="font-bold"><span className="inline-flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Descripción</span></TableHead>
-                                <TableHead className="w-[100px] text-right font-bold">Acciones</TableHead>
+                                <TableHead className="w-[100px] text-center font-bold">Estado</TableHead>
+                                <TableHead className="w-[140px] text-right font-bold">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {!loading && (!result || result.data.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center text-sm text-muted-foreground">
+                                    <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
                                         No se encontraron resultados.
                                     </TableCell>
                                 </TableRow>
@@ -180,9 +204,30 @@ export default function Cie10() {
                                 <TableRow key={item.codigoDiagnostico} className="hover:bg-muted/30 transition-colors">
                                     <TableCell className="font-medium text-primary">{item.codigoDiagnostico}</TableCell>
                                     <TableCell className="max-w-md truncate">{item.nombreDiagnostico ?? "—"}</TableCell>
+                                    <TableCell className="text-center">
+                                        <Badge
+                                            className={item.estado === "A" ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200" : ""}
+                                            variant={item.estado === "A" ? "default" : "destructive"}
+                                        >
+                                            {item.estado === "A" ? "Activo" : "Inactivo"}
+                                        </Badge>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="sm" className="h-8 px-2" title="Editar" onClick={() => abrirEditar(item)}>
                                             <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 px-2"
+                                            title={item.estado === "A" ? "Desactivar" : "Activar"}
+                                            onClick={() => toggleEstado(item)}
+                                        >
+                                            {item.estado === "A" ? (
+                                                <Ban className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />
+                                            ) : (
+                                                <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#059669" }} />
+                                            )}
                                         </Button>
                                     </TableCell>
                                 </TableRow>

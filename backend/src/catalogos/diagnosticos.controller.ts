@@ -15,8 +15,9 @@ export class DiagnosticosController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('estado') estado?: string,
   ) {
-    return this.diagnosticosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+    return this.diagnosticosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q, estado);
   }
 
   /** Sin paginar, para autocompletados. */
@@ -40,5 +41,11 @@ export class DiagnosticosController {
   @Patch(':codigo')
   update(@Param('codigo') codigo: string, @Body() dto: Partial<CreateDiagnosticoDto>) {
     return this.diagnosticosService.update(codigo, dto);
+  }
+
+  @RequirePermission('cie10')
+  @Patch(':codigo/estado/:estado')
+  cambiarEstado(@Param('codigo') codigo: string, @Param('estado') estado: 'A' | 'I') {
+    return this.diagnosticosService.cambiarEstado(codigo, estado);
   }
 }

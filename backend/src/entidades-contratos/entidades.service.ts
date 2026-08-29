@@ -13,11 +13,14 @@ export class EntidadesService {
     private readonly repo: Repository<Entidades>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('e').orderBy('e.nombreEntidad', 'ASC');
     if (q && q.trim().length > 0) {
       const term = `%${q.trim()}%`;
       qb.where('(e.codigoEntidad LIKE :term OR e.nombreEntidad LIKE :term OR e.nit LIKE :term)', { term });
+    }
+    if (estado === 'A' || estado === 'I') {
+      qb.andWhere('e.estado = :estado', { estado });
     }
     return paginate(qb, page, pageSize);
   }

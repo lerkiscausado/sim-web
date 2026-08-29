@@ -13,10 +13,13 @@ export class EspecimenesService {
     private readonly repo: Repository<Especimenes>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('e').orderBy('e.nombre', 'ASC');
     if (q && q.trim().length > 0) {
       qb.where('e.nombre LIKE :term', { term: `%${q.trim()}%` });
+    }
+    if (estado === 'A' || estado === 'I') {
+      qb.andWhere('e.estado = :estado', { estado });
     }
     return paginate(qb, page, pageSize);
   }

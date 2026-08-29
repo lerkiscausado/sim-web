@@ -25,8 +25,9 @@ export class EntidadesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('estado') estado?: string,
   ) {
-    return this.entidadesService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+    return this.entidadesService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q, estado);
   }
 
   /** Sin paginar, para selects (formulario de Contratos). */

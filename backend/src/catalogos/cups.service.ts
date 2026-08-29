@@ -13,11 +13,14 @@ export class CupsService {
     private readonly repo: Repository<Cups>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('c').orderBy('c.codigoCups', 'ASC');
     if (q && q.trim().length > 0) {
       const term = `%${q.trim()}%`;
       qb.where('(c.codigoCups LIKE :term OR c.nombreCups LIKE :term)', { term });
+    }
+    if (estado === 'A' || estado === 'I') {
+      qb.andWhere('c.estado = :estado', { estado });
     }
     return paginate(qb, page, pageSize);
   }

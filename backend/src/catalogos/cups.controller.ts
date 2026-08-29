@@ -25,8 +25,9 @@ export class CupsController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('estado') estado?: string,
   ) {
-    return this.cupsService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+    return this.cupsService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q, estado);
   }
 
   /** Sin paginar, para autocompletados. */

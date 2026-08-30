@@ -102,7 +102,7 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[85vh] w-full max-w-5xl overflow-x-hidden overflow-y-auto sm:max-w-5xl">
+            <DialogContent className="max-h-[85vh] w-full max-w-[calc(100%-2rem)] overflow-x-hidden overflow-y-auto sm:max-w-[60vw]">
                 <DialogHeader>
                     <DialogTitle>Detalle de la Orden {orden ? `— ${orden.consecutivo || orden.id}` : ""}</DialogTitle>
                     <DialogDescription>Información completa de la orden y los estudios asociados.</DialogDescription>

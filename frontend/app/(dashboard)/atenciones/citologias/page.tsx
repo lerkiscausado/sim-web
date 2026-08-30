@@ -390,7 +390,7 @@ export default function CitologiasPage() {
                         <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                             Atenciones · Citologías
                         </span>
-                        <h1 style={{ color: "var(--ink-primary)" }}>Informe de Citología — Orden {ordenActiva.consecutivo}</h1>
+                        <h1 style={{ color: "var(--ink-primary)" }}>Informe de Citología — Orden {ordenActiva.consecutivo || ordenActiva.id}</h1>
                         <div className="mt-2 flex flex-wrap items-center gap-4">
                             <p className="text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                                 Fecha de ingreso: <span className="font-medium">{ordenActiva.fechaIngreso}</span>
@@ -438,7 +438,7 @@ export default function CitologiasPage() {
                                         {estudiosAnteriores.map((e) => (
                                             <TableRow key={e.id}>
                                                 <TableCell className="py-2.5">
-                                                    <p className="text-sm font-bold">{e.orden.consecutivo}</p>
+                                                    <p className="text-sm font-bold">{e.orden.consecutivo || e.orden.id}</p>
                                                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                                         <CalendarDays className="h-3 w-3" />
                                                         {e.orden.fechaIngreso}
@@ -630,7 +630,7 @@ export default function CitologiasPage() {
                 <Dialog open={!!previewAnterior} onOpenChange={(open) => !open && setPreviewAnterior(null)}>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>Orden {previewAnterior?.orden.consecutivo}</DialogTitle>
+                            <DialogTitle>Orden {previewAnterior?.orden.consecutivo || previewAnterior?.orden.id}</DialogTitle>
                             <DialogDescription>Diagnóstico del estudio anterior.</DialogDescription>
                         </DialogHeader>
                         <p className="whitespace-pre-wrap rounded-md border bg-muted/20 px-3 py-2 text-sm" style={{ borderColor: "var(--border-default)" }}>
@@ -707,7 +707,7 @@ export default function CitologiasPage() {
                             return (
                                 <TableRow key={orden.id} className="align-top hover:bg-muted/40">
                                     <TableCell className="py-3">
-                                        <p className="font-bold">{orden.consecutivo}</p>
+                                        <p className="font-bold">{orden.consecutivo || orden.id}</p>
                                         <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <CalendarDays className="h-3 w-3" />
                                             {orden.fechaIngreso}

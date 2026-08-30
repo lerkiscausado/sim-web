@@ -397,7 +397,7 @@ export default function HistoriaClinicaPage() {
                         <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                             Atenciones · Historia Clínica
                         </span>
-                        <h1 style={{ color: "var(--ink-primary)" }}>Historia Clínica — Orden {ordenActiva.consecutivo}</h1>
+                        <h1 style={{ color: "var(--ink-primary)" }}>Historia Clínica — Orden {ordenActiva.consecutivo || ordenActiva.idOrden}</h1>
                         <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                             {ordenActiva.estudio} · Fecha de ingreso: {ordenActiva.fechaIngreso}
                         </p>
@@ -434,7 +434,7 @@ export default function HistoriaClinicaPage() {
                                         {estudiosAnteriores.map((e) => (
                                             <TableRow key={e.id}>
                                                 <TableCell className="py-2.5">
-                                                    <p className="text-sm font-bold">{e.consecutivo}</p>
+                                                    <p className="text-sm font-bold">{e.consecutivo || e.idOrden}</p>
                                                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                                         <CalendarDays className="h-3 w-3" />
                                                         {e.fechaIngreso}
@@ -909,7 +909,7 @@ export default function HistoriaClinicaPage() {
                         {pendientes.map((orden) => (
                             <TableRow key={orden.idDetalleOrden} className="align-top hover:bg-muted/40">
                                 <TableCell className="py-3">
-                                    <p className="font-bold">{orden.consecutivo}</p>
+                                    <p className="font-bold">{orden.consecutivo || orden.idOrden}</p>
                                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                         <CalendarDays className="h-3 w-3" />
                                         {orden.fechaIngreso}

@@ -707,7 +707,7 @@ export default function OrdenesPage() {
                                     return (
                                         <TableRow key={o.id} className="align-top hover:bg-muted/40">
                                             <TableCell className="py-3">
-                                                <p className="font-bold">{o.consecutivo}</p>
+                                                <p className="font-bold">{o.consecutivo || o.id}</p>
                                                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                                                     <CalendarDays className="h-3 w-3" />
                                                     {o.fechaIngreso}

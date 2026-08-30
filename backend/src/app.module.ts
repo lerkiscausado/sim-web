@@ -8,6 +8,7 @@ import { SeguridadModule } from './seguridad/seguridad.module';
 import { AdmisionesModule } from './admisiones/admisiones.module';
 import { AtencionesModule } from './atenciones/atenciones.module';
 import { HistoriaClinicaModule } from './historia-clinica/historia-clinica.module';
+import { EndoscopiasModule } from './endoscopias/endoscopias.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { EntidadesContratosModule } from './entidades-contratos/entidades-contratos.module';
 import { PacientesModule } from './pacientes/pacientes.module';
@@ -46,6 +47,7 @@ import { PacientesModule } from './pacientes/pacientes.module';
     AdmisionesModule,
     AtencionesModule,
     HistoriaClinicaModule,
+    EndoscopiasModule,
     CatalogosModule,
     EntidadesContratosModule,
     PacientesModule,

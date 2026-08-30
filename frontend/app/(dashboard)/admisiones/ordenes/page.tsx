@@ -141,6 +141,7 @@ export default function OrdenesPage() {
     const [listadoError, setListadoError] = useState<string | null>(null);
     const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
     const [verOrdenId, setVerOrdenId] = useState<number | null>(null);
+    const [verOrdenEsPreviaGuardado, setVerOrdenEsPreviaGuardado] = useState(false);
     const [ordenACancelar, setOrdenACancelar] = useState<OrdenListado | null>(null);
     const [cancelando, setCancelando] = useState(false);
     const [listadoQuery, setListadoQuery] = useState("");
@@ -439,6 +440,9 @@ export default function OrdenesPage() {
             setOrden(nuevaOrden);
             setDetalles(detallesReales);
             setDetallesTemp([]);
+            volverAlListado();
+            setVerOrdenEsPreviaGuardado(true);
+            setVerOrdenId(nuevaOrden.id);
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
             setOrdenErrorDetails(err instanceof ApiError ? err.details : undefined);
@@ -755,7 +759,10 @@ export default function OrdenesPage() {
                                                         variant="ghost"
                                                         size="sm"
                                                         title="Ver orden"
-                                                        onClick={() => setVerOrdenId(o.id)}
+                                                        onClick={() => {
+                                                            setVerOrdenEsPreviaGuardado(false);
+                                                            setVerOrdenId(o.id);
+                                                        }}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
@@ -1153,8 +1160,14 @@ export default function OrdenesPage() {
 
             <OrdenDetalleDialog
                 open={!!verOrdenId}
-                onOpenChange={(open) => !open && setVerOrdenId(null)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setVerOrdenId(null);
+                        setVerOrdenEsPreviaGuardado(false);
+                    }
+                }}
                 idOrden={verOrdenId}
+                mostrarVolverAlListado={verOrdenEsPreviaGuardado}
             />
 
             <Dialog open={!!ordenACancelar} onOpenChange={(open) => !open && setOrdenACancelar(null)}>

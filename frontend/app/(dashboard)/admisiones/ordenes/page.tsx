@@ -531,7 +531,7 @@ export default function OrdenesPage() {
     }
 
     const totalOrden = orden
-        ? detalles.filter((d) => estadoTexto(d.estado) !== "CANCELADO").reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0)
+        ? detalles.filter((d) => estadoTexto(d.estado) !== "CANCELADO").reduce((acc, d) => acc + Number(d.neto ?? d.valor ?? 0), 0)
         : detallesTemp.reduce((acc, d) => acc + (d.valor - d.copago), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
@@ -683,7 +683,7 @@ export default function OrdenesPage() {
                                     <TableHead>
                                         <span className="inline-flex items-center gap-1.5">
                                             <TestTube2 className="h-3.5 w-3.5" />
-                                            Espécimen / Estudio
+                                            Estudio / Espécimen
                                         </span>
                                     </TableHead>
                                     <TableHead>
@@ -734,8 +734,8 @@ export default function OrdenesPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-3 text-sm">
-                                                {o.especimen?.nombre ?? "—"}
-                                                {o.tipoEstudio?.nombreTipoEstudio ? ` - ${o.tipoEstudio.nombreTipoEstudio}` : ""}
+                                                {o.tipoEstudio?.nombreTipoEstudio ?? "—"}
+                                                {o.especimen?.nombre ? ` - ${o.especimen.nombre}` : ""}
                                             </TableCell>
                                             <TableCell className="py-3">
                                                 <p className="text-sm">{o.contrato?.nombre ?? "—"}</p>
@@ -1100,9 +1100,9 @@ export default function OrdenesPage() {
                                             <TableRow key={d.id}>
                                                 <TableCell className="font-medium">{d.codigoCups}</TableCell>
                                                 <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
-                                                <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.valor).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.copago ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.neto ?? d.valor).toLocaleString()}</TableCell>
                                                 <TableCell className="text-center">
                                                     <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>{estadoTexto(d.estado)}</Badge>
                                                 </TableCell>

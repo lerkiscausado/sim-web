@@ -97,7 +97,7 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
         : "";
     const totalOrden = detalles
         .filter((d) => estadoTexto(d.estado) !== "CANCELADO")
-        .reduce((acc, d) => acc + (d.neto ?? d.valor ?? 0), 0);
+        .reduce((acc, d) => acc + Number(d.neto ?? d.valor ?? 0), 0);
     const estilo = orden ? ESTADO_ESTILOS[estadoTexto(orden.estado)] ?? { bg: "#F3F4F6", text: "#374151" } : null;
 
     return (
@@ -235,9 +235,9 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
                                             <TableRow key={d.id}>
                                                 <TableCell className="font-medium">{d.codigoCups}</TableCell>
                                                 <TableCell>{d.cups?.nombreCups ?? "—"}</TableCell>
-                                                <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">${(d.copago ?? 0).toLocaleString()}</TableCell>
-                                                <TableCell className="text-right">${(d.neto ?? d.valor).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.valor).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.copago ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell className="text-right">${Number(d.neto ?? d.valor).toLocaleString()}</TableCell>
                                                 <TableCell className="text-center">
                                                     <Badge variant={estadoTexto(d.estado) === "CANCELADO" ? "destructive" : "outline"}>
                                                         {estadoTexto(d.estado)}

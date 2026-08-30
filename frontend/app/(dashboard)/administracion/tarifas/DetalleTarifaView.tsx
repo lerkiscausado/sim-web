@@ -300,8 +300,8 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                                 <TableCell className="text-center">
                                     <Badge variant="outline">{d.tipoAtencion === "CONSULTA" ? "Consulta" : "Procedimiento"}</Badge>
                                 </TableCell>
-                                <TableCell className="text-right">${d.valor.toLocaleString()}</TableCell>
-                                <TableCell className="text-right">${d.descuento.toLocaleString()}</TableCell>
+                                <TableCell className="text-right">${Number(d.valor).toLocaleString()}</TableCell>
+                                <TableCell className="text-right">${Number(d.descuento).toLocaleString()}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="sm" title="Quitar" onClick={() => quitar(d.id)}>
                                         <Trash2 className="h-3.5 w-3.5" style={{ color: "#DC2626" }} />

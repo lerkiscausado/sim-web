@@ -15,6 +15,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
+import { ErrorDialog } from "@/components/ui/error-dialog";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { PacienteFormDialog, type Paciente as PacienteCompleto, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
 import type {
@@ -167,6 +168,7 @@ export default function OrdenesPage() {
     const [header, setHeader] = useState(HEADER_INICIAL);
     const [creandoOrden, setCreandoOrden] = useState(false);
     const [ordenError, setOrdenError] = useState<string | null>(null);
+    const [ordenErrorDetails, setOrdenErrorDetails] = useState<string[] | undefined>(undefined);
     const [orden, setOrden] = useState<Orden | null>(null);
     const [detalles, setDetalles] = useState<DetalleOrden[]>([]);
     const [detallesTemp, setDetallesTemp] = useState<DetalleTemp[]>([]);
@@ -174,6 +176,7 @@ export default function OrdenesPage() {
     // --- formulario de línea (detalle) ---
     const [detalleForm, setDetalleForm] = useState(DETALLE_INICIAL);
     const [detalleError, setDetalleError] = useState<string | null>(null);
+    const [detalleErrorDetails, setDetalleErrorDetails] = useState<string[] | undefined>(undefined);
     const [guardandoDetalle, setGuardandoDetalle] = useState(false);
     const [cupsQuery, setCupsQuery] = useState("");
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
@@ -341,6 +344,7 @@ export default function OrdenesPage() {
 
     async function abrirOrdenExistente(o: OrdenListado) {
         setOrdenError(null);
+        setOrdenErrorDetails(undefined);
         try {
             const [ordenCompleta, detallesOrden] = await Promise.all([
                 api.get<any>(`/admisiones/ordenes/${o.id}`),
@@ -395,18 +399,23 @@ export default function OrdenesPage() {
         const faltante = requeridos.find((k) => !header[k]);
         if (faltante) {
             setOrdenError("Completa todos los campos obligatorios de la orden.");
+            setOrdenErrorDetails(undefined);
             return;
         }
         if (detallesTemp.length === 0) {
             setOrdenError("Agrega al menos un estudio antes de registrar la orden.");
+            setOrdenErrorDetails(undefined);
             return;
         }
         setCreandoOrden(true);
         setOrdenError(null);
+        setOrdenErrorDetails(undefined);
         try {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { idAmbito, idFinalidadConsulta, ...headerOrden } = header;
             const nuevaOrden = await api.post<Orden>("/admisiones/ordenes", {
                 idUsuario: paciente.id,
-                ...header,
+                ...headerOrden,
                 numeroOrden: header.numeroOrden || undefined,
                 detalles: detallesTemp.map((d) => ({
                     codigoCups: d.codigoCups,
@@ -423,6 +432,7 @@ export default function OrdenesPage() {
             setDetallesTemp([]);
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
+            setOrdenErrorDetails(err instanceof ApiError ? err.details : undefined);
         } finally {
             setCreandoOrden(false);
         }
@@ -437,14 +447,17 @@ export default function OrdenesPage() {
     async function agregarDetalle() {
         if (!detalleForm.codigoCups) {
             setDetalleError("Selecciona un CUPS.");
+            setDetalleErrorDetails(undefined);
             return;
         }
         if (!header.idAmbito) {
             setDetalleError("Selecciona el Ámbito del Procedimiento en la columna izquierda.");
+            setDetalleErrorDetails(undefined);
             return;
         }
         setGuardandoDetalle(true);
         setDetalleError(null);
+        setDetalleErrorDetails(undefined);
         try {
             let valor = detalleForm.valor;
             if (valor === undefined && header.idContrato) {
@@ -455,6 +468,7 @@ export default function OrdenesPage() {
             }
             if (valor === undefined) {
                 setDetalleError("No se encontró tarifa pactada para este CUPS. Indica el valor manualmente.");
+                setDetalleErrorDetails(undefined);
                 return;
             }
             const copago = detalleForm.copago ?? 0;
@@ -488,6 +502,7 @@ export default function OrdenesPage() {
             setCupsQuery("");
         } catch (err) {
             setDetalleError(err instanceof ApiError ? err.message : "No se pudo agregar el procedimiento");
+            setDetalleErrorDetails(err instanceof ApiError ? err.details : undefined);
         } finally {
             setGuardandoDetalle(false);
         }
@@ -1001,7 +1016,13 @@ export default function OrdenesPage() {
                                     <Input value={netoPreview.toLocaleString()} disabled />
                                 </div>
                             </div>
-                            {detalleError && <p className="mt-3 text-sm text-red-600">{detalleError}</p>}
+                            <ErrorDialog
+                                open={!!detalleError}
+                                onOpenChange={(open) => !open && setDetalleError(null)}
+                                titulo="No se pudo agregar el procedimiento"
+                                mensaje={detalleError}
+                                detalles={detalleErrorDetails}
+                            />
                             <Button className="mt-4" onClick={agregarDetalle} disabled={guardandoDetalle}>
                                 {guardandoDetalle && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 <Plus className="mr-2 h-4 w-4" />
@@ -1091,7 +1112,13 @@ export default function OrdenesPage() {
                                 )}
                             </div>
                         )}
-                        {ordenError && <p className="text-sm text-red-600">{ordenError}</p>}
+                        <ErrorDialog
+                            open={!!ordenError}
+                            onOpenChange={(open) => !open && setOrdenError(null)}
+                            titulo="No se pudo registrar la orden"
+                            mensaje={ordenError}
+                            detalles={ordenErrorDetails}
+                        />
                     </div>
                 </div>
             )}

@@ -2,9 +2,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
 
 export class ApiError extends Error {
     status: number;
-    constructor(status: number, message: string) {
+    /** Mensajes individuales sin unir (útil para mostrar cada error de validación por separado en un modal). */
+    details?: string[];
+    constructor(status: number, message: string, details?: string[]) {
         super(message);
         this.status = status;
+        this.details = details;
     }
 }
 
@@ -32,7 +35,8 @@ export async function apiFetch<T>(
         } catch {
             // respuesta sin cuerpo JSON, se mantiene el statusText
         }
-        throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message);
+        const details = Array.isArray(message) ? message : undefined;
+        throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message, details);
     }
 
     if (res.status === 204) return undefined as T;
@@ -97,7 +101,8 @@ export async function apiFetchMultipart<T>(
         } catch {
             // respuesta sin cuerpo JSON
         }
-        throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message);
+        const details = Array.isArray(message) ? message : undefined;
+        throw new ApiError(res.status, Array.isArray(message) ? message.join(", ") : message, details);
     }
 
     if (res.status === 204) return undefined as T;

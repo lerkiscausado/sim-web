@@ -8,9 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import {
     Table,
     TableBody,
@@ -66,11 +64,9 @@ interface OrdenDetalleDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     idOrden: number | null;
-    /** Si viene, se muestra un botón "Volver al Listado" en el pie del modal (además de cerrar con la X o clic afuera, que también dispara onOpenChange(false)). */
-    mostrarVolverAlListado?: boolean;
 }
 
-export function OrdenDetalleDialog({ open, onOpenChange, idOrden, mostrarVolverAlListado }: OrdenDetalleDialogProps) {
+export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalleDialogProps) {
     const [orden, setOrden] = useState<OrdenDetalle | null>(null);
     const [detalles, setDetalles] = useState<DetalleOrden[]>([]);
     const [loading, setLoading] = useState(false);
@@ -260,12 +256,6 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden, mostrarVolverA
                             </div>
                         )}
                     </div>
-                )}
-
-                {mostrarVolverAlListado && (
-                    <DialogFooter>
-                        <Button onClick={() => onOpenChange(false)}>Volver al Listado</Button>
-                    </DialogFooter>
                 )}
             </DialogContent>
         </Dialog>

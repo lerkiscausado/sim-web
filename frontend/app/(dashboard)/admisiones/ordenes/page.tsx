@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -141,7 +141,7 @@ export default function OrdenesPage() {
     const [listadoError, setListadoError] = useState<string | null>(null);
     const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
     const [verOrdenId, setVerOrdenId] = useState<number | null>(null);
-    const [verOrdenEsPreviaGuardado, setVerOrdenEsPreviaGuardado] = useState(false);
+    const [ordenGuardada, setOrdenGuardada] = useState<Orden | null>(null);
     const [ordenACancelar, setOrdenACancelar] = useState<OrdenListado | null>(null);
     const [cancelando, setCancelando] = useState(false);
     const [listadoQuery, setListadoQuery] = useState("");
@@ -441,8 +441,7 @@ export default function OrdenesPage() {
             setDetalles(detallesReales);
             setDetallesTemp([]);
             volverAlListado();
-            setVerOrdenEsPreviaGuardado(true);
-            setVerOrdenId(nuevaOrden.id);
+            setOrdenGuardada(nuevaOrden);
         } catch (err) {
             setOrdenError(err instanceof ApiError ? err.message : "No se pudo registrar la orden");
             setOrdenErrorDetails(err instanceof ApiError ? err.details : undefined);
@@ -759,10 +758,7 @@ export default function OrdenesPage() {
                                                         variant="ghost"
                                                         size="sm"
                                                         title="Ver orden"
-                                                        onClick={() => {
-                                                            setVerOrdenEsPreviaGuardado(false);
-                                                            setVerOrdenId(o.id);
-                                                        }}
+                                                        onClick={() => setVerOrdenId(o.id)}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
@@ -1160,15 +1156,28 @@ export default function OrdenesPage() {
 
             <OrdenDetalleDialog
                 open={!!verOrdenId}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setVerOrdenId(null);
-                        setVerOrdenEsPreviaGuardado(false);
-                    }
-                }}
+                onOpenChange={(open) => !open && setVerOrdenId(null)}
                 idOrden={verOrdenId}
-                mostrarVolverAlListado={verOrdenEsPreviaGuardado}
             />
+
+            <Dialog open={!!ordenGuardada} onOpenChange={(open) => !open && setOrdenGuardada(null)}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                        </div>
+                        <DialogTitle className="text-center">Orden Guardada</DialogTitle>
+                        <DialogDescription className="text-center">
+                            No. {ordenGuardada?.consecutivo || ordenGuardada?.id}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button className="w-full" onClick={() => setOrdenGuardada(null)}>
+                            Regresar al Listado
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={!!ordenACancelar} onOpenChange={(open) => !open && setOrdenACancelar(null)}>
                 <DialogContent className="max-w-md">

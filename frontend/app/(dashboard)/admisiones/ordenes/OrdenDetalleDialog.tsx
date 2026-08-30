@@ -102,7 +102,7 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+            <DialogContent className="max-h-[85vh] w-full max-w-5xl overflow-x-hidden overflow-y-auto sm:max-w-5xl">
                 <DialogHeader>
                     <DialogTitle>Detalle de la Orden {orden ? `— ${orden.consecutivo || orden.id}` : ""}</DialogTitle>
                     <DialogDescription>Información completa de la orden y los estudios asociados.</DialogDescription>
@@ -144,7 +144,7 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-3" style={{ borderColor: "var(--border-default)" }}>
+                        <div className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-4" style={{ borderColor: "var(--border-default)" }}>
                             <div>
                                 <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">No. de Orden</p>
                                 <p className="font-medium">{orden.numeroOrden}</p>
@@ -202,7 +202,7 @@ export function OrdenDetalleDialog({ open, onOpenChange, idOrden }: OrdenDetalle
                                 <p className="font-medium">{orden.empleado?.nombreEmpleado ?? "—"}</p>
                             </div>
                             {orden.comentarios && (
-                                <div className="col-span-2 sm:col-span-3">
+                                <div className="col-span-2 sm:col-span-4">
                                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Comentarios</p>
                                     <p className="font-medium">{orden.comentarios}</p>
                                 </div>

@@ -87,4 +87,9 @@ export class OrdenesController {
   cancelarDetalle(@Param('idDetalle', ParseIntPipe) idDetalle: number) {
     return this.ordenesService.cancelarDetalle(idDetalle);
   }
+
+  @Patch(':id/cancelar')
+  cancelarOrden(@Param('id', ParseIntPipe) id: number) {
+    return this.ordenesService.cancelarOrden(id);
+  }
 }

@@ -303,4 +303,27 @@ export class OrdenesService {
     detalle.estado = EstadoDetalleOrden.CANCELADO;
     return this.detalleOrdenRepository.save(detalle);
   }
+
+  /** Cancela la orden completa (y todas sus líneas de detalle en PENDIENTE/PROCESO). Solo si la orden está en PENDIENTE. */
+  async cancelarOrden(id: number) {
+    const orden = await this.ordenesRepository.findOne({ where: { id } });
+    if (!orden) throw new NotFoundException(`Orden ${id} no encontrada`);
+    if (orden.estado !== EstadoOrden.PENDIENTE) {
+      throw new BadRequestException(
+        `Solo se puede cancelar una orden en estado PENDIENTE (esta orden está en ${orden.estado}).`,
+      );
+    }
+    orden.estado = EstadoOrden.CANCELADO;
+    await this.ordenesRepository.save(orden);
+
+    await this.detalleOrdenRepository
+      .createQueryBuilder()
+      .update(DetalleOrden)
+      .set({ estado: EstadoDetalleOrden.CANCELADO })
+      .where('ID_ORDEN = :idOrden', { idOrden: String(id) })
+      .andWhere('ESTADO != :cancelado', { cancelado: EstadoDetalleOrden.CANCELADO })
+      .execute();
+
+    return orden;
+  }
 }

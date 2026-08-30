@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,15 @@ import {
 } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { ErrorDialog } from "@/components/ui/error-dialog";
+import { OrdenDetalleDialog } from "./OrdenDetalleDialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { PacienteFormDialog, type Paciente as PacienteCompleto, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
 import type {
@@ -131,6 +140,9 @@ export default function OrdenesPage() {
     const [listadoLoading, setListadoLoading] = useState(true);
     const [listadoError, setListadoError] = useState<string | null>(null);
     const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
+    const [verOrdenId, setVerOrdenId] = useState<number | null>(null);
+    const [ordenACancelar, setOrdenACancelar] = useState<OrdenListado | null>(null);
+    const [cancelando, setCancelando] = useState(false);
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
     const [filtroAnio, setFiltroAnio] = useState<string>("");
@@ -342,21 +354,18 @@ export default function OrdenesPage() {
         seleccionarPaciente(nuevo);
     }
 
-    async function abrirOrdenExistente(o: OrdenListado) {
-        setOrdenError(null);
-        setOrdenErrorDetails(undefined);
+    async function confirmarCancelarOrden() {
+        if (!ordenACancelar) return;
+        setCancelando(true);
         try {
-            const [ordenCompleta, detallesOrden] = await Promise.all([
-                api.get<any>(`/admisiones/ordenes/${o.id}`),
-                api.get<DetalleOrden[]>(`/admisiones/ordenes/${o.id}/detalles`),
-            ]);
-            setPaciente(ordenCompleta.paciente ?? null);
-            setOrden(ordenCompleta);
-            setDetalles(detallesOrden);
-            setHeader((h) => ({ ...h, idTipoEstudio: ordenCompleta.idTipoEstudio }));
-            setVista("orden");
+            await api.patch(`/admisiones/ordenes/${ordenACancelar.id}/cancelar`);
+            setOrdenACancelar(null);
+            cargarListado(listadoPage, listadoQuery, filtrosActuales);
         } catch (err) {
-            setListadoError(err instanceof ApiError ? err.message : "No se pudo abrir la orden");
+            setListadoError(err instanceof ApiError ? err.message : "No se pudo cancelar la orden");
+            setOrdenACancelar(null);
+        } finally {
+            setCancelando(false);
         }
     }
 
@@ -746,10 +755,20 @@ export default function OrdenesPage() {
                                                         variant="ghost"
                                                         size="sm"
                                                         title="Ver orden"
-                                                        onClick={() => abrirOrdenExistente(o)}
+                                                        onClick={() => setVerOrdenId(o.id)}
                                                     >
                                                         <Eye className="h-4 w-4" />
                                                     </Button>
+                                                    {estadoTexto(o.estado) === "PENDIENTE" && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            title="Cancelar orden"
+                                                            onClick={() => setOrdenACancelar(o)}
+                                                        >
+                                                            <Ban className="h-4 w-4" style={{ color: "#DC2626" }} />
+                                                        </Button>
+                                                    )}
                                                     {estadoTexto(o.estado) === "ATENDIDO" && (
                                                         <Button
                                                             variant="ghost"
@@ -1131,6 +1150,55 @@ export default function OrdenesPage() {
                 identificacionSugerida={searchTerm}
                 onSaved={alGuardarPacienteNuevo}
             />
+
+            <OrdenDetalleDialog
+                open={!!verOrdenId}
+                onOpenChange={(open) => !open && setVerOrdenId(null)}
+                idOrden={verOrdenId}
+            />
+
+            <Dialog open={!!ordenACancelar} onOpenChange={(open) => !open && setOrdenACancelar(null)}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                            <Ban className="h-6 w-6 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-center">Cancelar Orden</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Esta acción no se puede deshacer. La orden y todos sus estudios pendientes quedarán cancelados.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {ordenACancelar && (
+                        <div
+                            className="space-y-2 rounded-md border px-4 py-3 text-[13px]"
+                            style={{ borderColor: "var(--border-default)", background: "var(--surface-sunken, #f9fafb)" }}
+                        >
+                            <p>
+                                <span className="font-medium">Orden:</span> {ordenACancelar.consecutivo || ordenACancelar.id}
+                            </p>
+                            <p>
+                                <span className="font-medium">Paciente:</span>{" "}
+                                {ordenACancelar.paciente ? nombrePaciente(ordenACancelar.paciente).toUpperCase() : "—"}
+                            </p>
+                            <p>
+                                <span className="font-medium">Fecha de ingreso:</span> {ordenACancelar.fechaIngreso}
+                            </p>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setOrdenACancelar(null)} disabled={cancelando}>
+                            Volver
+                        </Button>
+                        <Button variant="destructive" onClick={confirmarCancelarOrden} disabled={cancelando}>
+                            {cancelando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Ban className="mr-2 h-4 w-4" />
+                            Cancelar Orden
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

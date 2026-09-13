@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -192,6 +192,8 @@ export default function OrdenesPage() {
     const [detalleErrorDetails, setDetalleErrorDetails] = useState<string[] | undefined>(undefined);
     const [guardandoDetalle, setGuardandoDetalle] = useState(false);
     const [cupsQuery, setCupsQuery] = useState("");
+    const [especimenQuery, setEspecimenQuery] = useState("");
+    const [especimenResultadosAbiertos, setEspecimenResultadosAbiertos] = useState(false);
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
 
     const cargarListado = useCallback(
@@ -340,6 +342,7 @@ export default function OrdenesPage() {
         setDetalles([]);
         setHeader(HEADER_INICIAL);
         setSearchTerm("");
+        setEspecimenQuery("");
         setDialogPacienteOpen(false);
         setVista("buscar-paciente");
     }
@@ -450,10 +453,23 @@ export default function OrdenesPage() {
         }
     }
 
-    function elegirCups(c: CupsItem) {
-        setDetalleForm((f) => ({ ...f, codigoCups: c.codigoCups, nombreCups: c.nombreCups }));
+    async function elegirCups(c: CupsItem) {
+        setDetalleForm((f) => ({ ...f, codigoCups: c.codigoCups, nombreCups: c.nombreCups, valor: undefined }));
         setCupsQuery(`${c.codigoCups} — ${c.nombreCups}`);
         setCupsResultados([]);
+
+        if (header.idContrato) {
+            try {
+                const tarifa = await api.get<number | null>(
+                    `/admisiones/ordenes/tarifa?idContrato=${header.idContrato}&codigoCups=${c.codigoCups}`,
+                );
+                if (tarifa !== null) {
+                    setDetalleForm((f) => ({ ...f, valor: tarifa }));
+                }
+            } catch {
+                // sin tarifa pactada para este CUPS: se deja en blanco para digitar manualmente
+            }
+        }
     }
 
     async function agregarDetalle() {
@@ -538,6 +554,11 @@ export default function OrdenesPage() {
         : detallesTemp.reduce((acc, d) => acc + (d.valor - d.copago), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
+    const especimenesFiltrados = useMemo(() => {
+        const q = especimenQuery.trim().toLowerCase();
+        if (!q) return especimenes;
+        return especimenes.filter((e) => e.nombre.toLowerCase().includes(q));
+    }, [especimenes, especimenQuery]);
     const totalPaginas = listado ? Math.max(1, Math.ceil(listado.total / listado.pageSize)) : 1;
 
     return (
@@ -952,7 +973,41 @@ export default function OrdenesPage() {
                                     </div>
                                     <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
                                     <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} />
-                                    <Selector label="Especimen" value={header.idEspecimen} onChange={(v) => setHeader((h) => ({ ...h, idEspecimen: v }))} options={especimenes} />
+                                    <div className="relative space-y-1.5">
+                                        <label className="text-[12.5px] font-medium">Especimen</label>
+                                        <Input
+                                            placeholder="Buscar espécimen…"
+                                            value={especimenQuery}
+                                            onChange={(e) => {
+                                                setEspecimenQuery(e.target.value);
+                                                setEspecimenResultadosAbiertos(true);
+                                                if (!e.target.value) setHeader((h) => ({ ...h, idEspecimen: undefined }));
+                                            }}
+                                            onFocus={() => setEspecimenResultadosAbiertos(true)}
+                                            onBlur={() => setTimeout(() => setEspecimenResultadosAbiertos(false), 150)}
+                                        />
+                                        {especimenResultadosAbiertos && especimenesFiltrados.length > 0 && (
+                                            <div
+                                                className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
+                                                style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
+                                            >
+                                                {especimenesFiltrados.map((e) => (
+                                                    <button
+                                                        key={e.id}
+                                                        type="button"
+                                                        className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
+                                                        onClick={() => {
+                                                            setHeader((h) => ({ ...h, idEspecimen: e.id }));
+                                                            setEspecimenQuery(e.nombre);
+                                                            setEspecimenResultadosAbiertos(false);
+                                                        }}
+                                                    >
+                                                        {e.nombre}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                     <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
                                 </div>
                             </div>

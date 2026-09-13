@@ -110,6 +110,19 @@ const HEADER_INICIAL = {
     comentarios: "",
 };
 
+/** Campos obligatorios del encabezado de la orden, con su etiqueta legible (para resaltar y para el mensaje de error detallado). */
+const CAMPOS_REQUERIDOS: { key: keyof typeof HEADER_INICIAL; label: string }[] = [
+    { key: "idContrato", label: "Entidad o Contrato" },
+    { key: "idSubentidad", label: "Subentidad" },
+    { key: "idSede", label: "Sede" },
+    { key: "idIngreso", label: "Tipo de Ingreso" },
+    { key: "idEmpleado", label: "Médico" },
+    { key: "idTipoAfiliado", label: "Tipo Afiliado" },
+    { key: "idTipoUsuario", label: "Regimen, Tipo Usuario" },
+    { key: "idTipoEstudio", label: "Tipo de Estudio" },
+    { key: "idEspecimen", label: "Especimen" },
+];
+
 const DETALLE_INICIAL = {
     codigoCups: "",
     nombreCups: "",
@@ -182,6 +195,7 @@ export default function OrdenesPage() {
     const [creandoOrden, setCreandoOrden] = useState(false);
     const [ordenError, setOrdenError] = useState<string | null>(null);
     const [ordenErrorDetails, setOrdenErrorDetails] = useState<string[] | undefined>(undefined);
+    const [intentoGuardarOrden, setIntentoGuardarOrden] = useState(false);
     const [orden, setOrden] = useState<Orden | null>(null);
     const [detalles, setDetalles] = useState<DetalleOrden[]>([]);
     const [detallesTemp, setDetallesTemp] = useState<DetalleTemp[]>([]);
@@ -343,6 +357,7 @@ export default function OrdenesPage() {
         setHeader(HEADER_INICIAL);
         setSearchTerm("");
         setEspecimenQuery("");
+        setIntentoGuardarOrden(false);
         setDialogPacienteOpen(false);
         setVista("buscar-paciente");
     }
@@ -398,21 +413,11 @@ export default function OrdenesPage() {
 
     async function crearOrden() {
         if (!paciente) return;
-        const requeridos: (keyof typeof header)[] = [
-            "idContrato",
-            "idSubentidad",
-            "idSede",
-            "idIngreso",
-            "idEmpleado",
-            "idTipoAfiliado",
-            "idTipoUsuario",
-            "idTipoEstudio",
-            "idEspecimen",
-        ];
-        const faltante = requeridos.find((k) => !header[k]);
-        if (faltante) {
-            setOrdenError("Completa todos los campos obligatorios de la orden.");
-            setOrdenErrorDetails(undefined);
+        setIntentoGuardarOrden(true);
+        const faltantes = CAMPOS_REQUERIDOS.filter((c) => !header[c.key]);
+        if (faltantes.length > 0) {
+            setOrdenError("Completa todos los campos obligatorios de la orden (resaltados en rojo).");
+            setOrdenErrorDetails(faltantes.map((c) => `Falta: ${c.label}`));
             return;
         }
         if (detallesTemp.length === 0) {
@@ -554,6 +559,10 @@ export default function OrdenesPage() {
         : detallesTemp.reduce((acc, d) => acc + (d.valor - d.copago), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
+    const camposFaltantes = useMemo(() => {
+        if (!intentoGuardarOrden) return new Set<string>();
+        return new Set(CAMPOS_REQUERIDOS.filter((c) => !header[c.key]).map((c) => c.key));
+    }, [header, intentoGuardarOrden]);
     const especimenesFiltrados = useMemo(() => {
         const q = especimenQuery.trim().toLowerCase();
         if (!q) return especimenes;
@@ -904,6 +913,7 @@ export default function OrdenesPage() {
                                     onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))}
                                     options={tiposAfiliado}
                                     disabled={!!orden}
+                                    error={camposFaltantes.has("idTipoAfiliado")}
                                 />
                                 <Selector
                                     label="Regimen, Tipo Usuario"
@@ -911,6 +921,7 @@ export default function OrdenesPage() {
                                     onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))}
                                     options={tiposUsuario}
                                     disabled={!!orden}
+                                    error={camposFaltantes.has("idTipoUsuario")}
                                 />
                                 <Selector
                                     label="Ambito del Procedimiento"
@@ -944,8 +955,8 @@ export default function OrdenesPage() {
                             <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                 <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} />
-                                    <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} />
+                                    <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} error={camposFaltantes.has("idContrato")} />
+                                    <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} error={camposFaltantes.has("idSubentidad")} />
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Fecha de Toma de Muestra</label>
                                         <Input
@@ -954,7 +965,7 @@ export default function OrdenesPage() {
                                             onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
                                         />
                                     </div>
-                                    <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} />
+                                    <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} error={camposFaltantes.has("idSede")} />
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
                                         <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
@@ -971,12 +982,16 @@ export default function OrdenesPage() {
                                             placeholder="Se genera automáticamente si se deja vacío"
                                         />
                                     </div>
-                                    <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} />
-                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} />
+                                    <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} error={camposFaltantes.has("idTipoEstudio")} />
+                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} error={camposFaltantes.has("idEmpleado")} />
                                     <div className="relative space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Especimen</label>
+                                        <label className="text-[12.5px] font-medium">
+                                            Especimen
+                                            {camposFaltantes.has("idEspecimen") && <span className="ml-1 text-red-600">*</span>}
+                                        </label>
                                         <Input
                                             placeholder="Buscar espécimen…"
+                                            className={camposFaltantes.has("idEspecimen") ? "border-red-500 ring-1 ring-red-500" : ""}
                                             value={especimenQuery}
                                             onChange={(e) => {
                                                 setEspecimenQuery(e.target.value);
@@ -1008,7 +1023,7 @@ export default function OrdenesPage() {
                                             </div>
                                         )}
                                     </div>
-                                    <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} />
+                                    <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} error={camposFaltantes.has("idIngreso")} />
                                 </div>
                             </div>
                         )}
@@ -1286,18 +1301,26 @@ function Selector({
     onChange,
     options,
     disabled,
+    error,
 }: {
     label: string;
     value: number | string | undefined;
     onChange: (v: number) => void;
     options: { id: number | string; nombre: string }[];
     disabled?: boolean;
+    error?: boolean;
 }) {
     return (
         <div className="space-y-1.5">
-            <label className="text-[12.5px] font-medium">{label}</label>
+            <label className="text-[12.5px] font-medium">
+                {label}
+                {error && <span className="ml-1 text-red-600">*</span>}
+            </label>
             <select
-                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-50"
+                className={`h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-50 ${
+                    error ? "border-red-500 ring-1 ring-red-500" : ""
+                }`}
+                style={error ? { borderColor: "#EF4444" } : undefined}
                 value={value ?? ""}
                 disabled={disabled}
                 onChange={(e) => onChange(Number(e.target.value))}

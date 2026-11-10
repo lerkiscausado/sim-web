@@ -220,6 +220,8 @@ export class CitologiaService {
       );
 
     await this.dataSource.transaction(async (manager) => {
+      // Quien firma queda como responsable del informe (en el VB.NET se guarda y firma en el mismo clic).
+      await manager.getRepository(Citologia).update({ idOrden }, { idEmpleado });
       await manager
         .getRepository(Ordenes)
         .update({ id: idOrden }, { estado: EstadoOrden.ATENDIDO });

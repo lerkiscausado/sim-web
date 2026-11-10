@@ -335,7 +335,7 @@ export class CitologiaPdfService {
         align: 'right',
       });
       etiqueta(doc, 'Estudio No:', X(582.3), Y(5), u(62.64), { size: 8 });
-      etiqueta(doc, 'Fecha Ingreso:', X(588.3), Y(23), u(69.25), { size: 8 });
+      etiqueta(doc, 'Fecha Ingreso:', X(588.3), Y(23), u(80), { size: 8 });
       etiqueta(
         doc,
         fechaCorta(orden.fechaIngreso),
@@ -344,7 +344,7 @@ export class CitologiaPdfService {
         u(83.02),
         { size: 8, align: 'right' },
       );
-      etiqueta(doc, 'Fecha Informe:', X(588.3), Y(36), u(69.25), { size: 8 });
+      etiqueta(doc, 'Fecha Informe:', X(588.3), Y(36), u(80), { size: 8 });
       etiqueta(
         doc,
         fechaCorta(c.updatedAt ?? c.fecha),
@@ -353,7 +353,7 @@ export class CitologiaPdfService {
         u(83.02),
         { size: 8, align: 'right' },
       );
-      etiqueta(doc, 'No. de Página:', X(588.3), Y(49), u(69.25), { size: 8 });
+      etiqueta(doc, 'No. de Página:', X(588.3), Y(49), u(80), { size: 8 });
       etiqueta(
         doc,
         `${i - rango.start + 1} / ${rango.count}`,

@@ -10,6 +10,11 @@ import { TomaMuestra } from './entities/toma-muestra.entity';
 import { Ordenes } from '../admisiones/entities/ordenes.entity';
 import { EstudiosGenerados } from '../documentos-soporte/entities/estudios-generados.entity';
 import { Empresa } from '../documentos-soporte/entities/empresa.entity';
+import { ImpresionPatologia } from './entities/impresion-patologia.entity';
+import { Especialistas } from '../seguridad/entities/especialistas.entity';
+import { DetalleOrden } from '../admisiones/entities/detalle-orden.entity';
+import { Registros } from '../seguridad/entities/registros.entity';
+import { CitologiaPdfService } from './citologia-pdf.service';
 import { PatologiaService } from './patologia.service';
 import { PatologiaPdfService } from './patologia-pdf.service';
 import { PatologiaController } from './patologia.controller';
@@ -17,7 +22,10 @@ import { EspecimenesService } from './especimenes.service';
 import { PlantillasPatologiaService } from './plantillas-patologia.service';
 import { PlantillasInformesService } from './plantillas-informes.service';
 import { PlantillasInformesController } from './plantillas-informes.controller';
-import { EspecimenesController, PlantillasPatologiaController } from './especimenes.controller';
+import {
+  EspecimenesController,
+  PlantillasPatologiaController,
+} from './especimenes.controller';
 import { CitologiaService } from './citologia.service';
 import { CitologiaController } from './citologia.controller';
 import { TomaMuestraService } from './toma-muestra.service';
@@ -36,11 +44,16 @@ import { TomaMuestraController } from './toma-muestra.controller';
       Ordenes,
       EstudiosGenerados,
       Empresa,
+      ImpresionPatologia,
+      Especialistas,
+      DetalleOrden,
+      Registros,
     ]),
   ],
   providers: [
     PatologiaService,
     PatologiaPdfService,
+    CitologiaPdfService,
     EspecimenesService,
     PlantillasPatologiaService,
     PlantillasInformesService,
@@ -55,6 +68,6 @@ import { TomaMuestraController } from './toma-muestra.controller';
     CitologiaController,
     TomaMuestraController,
   ],
-  exports: [PatologiaService],
+  exports: [PatologiaService, PatologiaPdfService, CitologiaPdfService],
 })
 export class AtencionesModule {}

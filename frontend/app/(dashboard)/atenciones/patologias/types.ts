@@ -21,6 +21,9 @@ export interface OrdenPendiente {
     };
     especimen?: { id: number; nombre: string };
     tipoEstudio?: { id: number; nombreTipoEstudio: string };
+    sede?: { id: number; nombre: string };
+    idSede?: number;
+    estado?: string;
 }
 
 export interface Especimen {
@@ -61,13 +64,13 @@ export interface InformePatologia {
 export interface UpsertPatologiaPayload {
     idOrden: number;
     tipoMuestra: string;
-    sitioLesion: string;
-    solicitado: string;
-    descripcionMacroscopica: string;
-    descripcionMicroscopica: string;
-    diagnostico: string;
+    sitioLesion?: string;
+    solicitado?: string;
+    descripcionMacroscopica?: string;
+    descripcionMicroscopica?: string;
+    diagnostico?: string;
     observaciones?: string;
-    codigoDiagnostico: string;
+    codigoDiagnostico?: string;
     idEspecimen?: number;
     codigoPatologia?: string;
     fechaSalida?: string;
@@ -91,6 +94,7 @@ export function calcularEdad(fechaNacimientoISO: string): number {
 
 export interface EstudioAnterior {
     id: number;
+    idOrden?: number;
     descripcionMacroscopica: string;
     descripcionMicroscopica: string;
     diagnostico: string;

@@ -1,40 +1,64 @@
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
+/**
+ * Campos del formulario frmPatologiaCD (licencia 16). En la BD se conservan
+ * los nombres de columna históricos, pero su significado en CD es:
+ * - descripcionMacroscopica → "Impresión Diagnóstica" (texto corto)
+ * - descripcionMicroscopica → "Resultado" (NEGATIVO / POSITIVO)
+ * - diagnostico             → "Descripción del Estudio" (HTML enriquecido)
+ * - tipoMuestra             → nombre del espécimen elegido (cboEspecimen.Text)
+ */
 export class UpsertPatologiaDto {
   @IsInt()
   idOrden: number;
 
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'El espécimen (tipo de muestra) es obligatorio' })
+  @MaxLength(100)
   tipoMuestra: string;
 
   @IsString()
-  @IsNotEmpty()
-  sitioLesion: string;
+  @IsOptional()
+  @MaxLength(50)
+  sitioLesion?: string;
 
   @IsString()
-  @IsNotEmpty()
-  solicitado: string;
+  @IsOptional()
+  @MaxLength(50)
+  solicitado?: string;
 
   @IsString()
-  descripcionMacroscopica: string;
+  @IsOptional()
+  descripcionMacroscopica?: string;
 
   @IsString()
-  descripcionMicroscopica: string;
+  @IsOptional()
+  @IsIn(['', 'NEGATIVO', 'POSITIVO'])
+  descripcionMicroscopica?: string;
 
   @IsString()
-  diagnostico: string;
+  @IsOptional()
+  diagnostico?: string;
 
   @IsString()
   @IsOptional()
   observaciones?: string;
 
-  /** Código CIE10 (tabla diagnosticos) */
+  /** Código CIE10 (tabla diagnosticos). Obligatorio solo para firmar. */
   @IsString()
-  @IsNotEmpty()
-  codigoDiagnostico: string;
+  @IsOptional()
+  @MaxLength(12)
+  codigoDiagnostico?: string;
 
-  /** Espécimen final tomado (actualiza también ordenes.ID_ESPECIMEN, igual que el VB.NET original) */
+  /** Espécimen final (actualiza también ordenes.ID_ESPECIMEN, igual que _dOrdenes.ActualizarEspecimen). */
   @IsInt()
   @IsOptional()
   idEspecimen?: number;

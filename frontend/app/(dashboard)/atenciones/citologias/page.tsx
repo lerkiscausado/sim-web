@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search } from "lucide-react";
+import { Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, FileDown, PenLine, Camera } from "lucide-react";
+import { abrirPdf } from "@/lib/descargas";
+import { ImagenesDialog } from "@/components/ordenes/ImagenesDialog";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,6 +216,10 @@ export default function CitologiasPage() {
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
     const [guardadoOk, setGuardadoOk] = useState(false);
+    const [firmar, setFirmar] = useState(false);
+    const [confirmarFirma, setConfirmarFirma] = useState(false);
+    const [generandoPdf, setGenerandoPdf] = useState(false);
+    const [imagenesAbierto, setImagenesAbierto] = useState(false);
 
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
@@ -346,14 +352,14 @@ export default function CitologiasPage() {
         }
     }
 
-    async function guardarInforme() {
-        if (!ordenActiva) return;
+    async function guardarInforme(): Promise<boolean> {
+        if (!ordenActiva) return false;
         setFormError(null);
         setGuardadoOk(false);
 
         if (!form.diagnostico) {
             setFormError("El diagnóstico es obligatorio.");
-            return;
+            return false;
         }
 
         setGuardando(true);
@@ -370,10 +376,49 @@ export default function CitologiasPage() {
             }
             await api.post("/atenciones/citologia", payload);
             setGuardadoOk(true);
+            return true;
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el informe");
+            return false;
         } finally {
             setGuardando(false);
+        }
+    }
+
+    async function onGuardar() {
+        const ok = await guardarInforme();
+        if (ok && firmar) setConfirmarFirma(true);
+    }
+
+    /** chkFirmarEstudio: firma y cierra el estudio (la orden pasa a ATENDIDO). */
+    async function firmarEstudio() {
+        if (!ordenActiva) return;
+        setConfirmarFirma(false);
+        setGuardando(true);
+        try {
+            await api.post(`/atenciones/citologia/orden/${ordenActiva.id}/firmar`);
+            setVista("listado");
+            setOrdenActiva(null);
+            setFirmar(false);
+            await cargarPendientes(searchTerm);
+        } catch (err) {
+            setFormError(err instanceof ApiError ? err.message : "No se pudo firmar el estudio");
+        } finally {
+            setGuardando(false);
+        }
+    }
+
+    async function vistaPrevia() {
+        if (!ordenActiva) return;
+        const ok = await guardarInforme();
+        if (!ok) return;
+        setGenerandoPdf(true);
+        try {
+            await abrirPdf(`/atenciones/citologia/orden/${ordenActiva.id}/pdf`);
+        } catch (err) {
+            setFormError(err instanceof ApiError ? err.message : "No se pudo generar el PDF");
+        } finally {
+            setGenerandoPdf(false);
         }
     }
 
@@ -451,7 +496,7 @@ export default function CitologiasPage() {
                                                         : ""}
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm" title="Vista previa" onClick={() => setPreviewAnterior(e)}>
+                                                    <Button variant="ghost" size="sm" title="Ver informe en PDF" onClick={() => abrirPdf(`/atenciones/citologia/orden/${e.orden.id}/pdf`).catch(() => setPreviewAnterior(e))}>
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </TableCell>
@@ -619,14 +664,46 @@ export default function CitologiasPage() {
                                 </p>
                             )}
 
-                            <Button className="mt-4" onClick={guardarInforme} disabled={guardando}>
-                                {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Guardar Informe
-                            </Button>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <label className="mr-auto flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
+                                    <input type="checkbox" checked={firmar} onChange={(e) => setFirmar(e.target.checked)} />
+                                    Firmar y cerrar el estudio
+                                </label>
+                                <Button variant="outline" onClick={() => setImagenesAbierto(true)}>
+                                    <Camera size={14} /> Imágenes
+                                </Button>
+                                <Button variant="outline" onClick={vistaPrevia} disabled={generandoPdf || guardando}>
+                                    {generandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown size={14} />}
+                                    Vista previa PDF
+                                </Button>
+                                <Button onClick={onGuardar} disabled={guardando}>
+                                    {guardando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : firmar ? <PenLine size={14} /> : null}
+                                    {firmar ? "Guardar y firmar" : "Guardar Informe"}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <ImagenesDialog open={imagenesAbierto} onOpenChange={setImagenesAbierto} idOrden={ordenActiva.id} titulo={`Orden ${ordenActiva.consecutivo}`} />
+                <Dialog open={confirmarFirma} onOpenChange={setConfirmarFirma}>
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Firmar Estudio</DialogTitle>
+                            <DialogDescription>
+                                ¿Desea Firmar y cerrar el Estudio? Si continúa no se podrán hacer cambios. La orden pasará a estado ATENDIDO.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => setConfirmarFirma(false)}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={firmarEstudio}>
+                                <PenLine size={14} /> Firmar
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
                 <Dialog open={!!previewAnterior} onOpenChange={(open) => !open && setPreviewAnterior(null)}>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>

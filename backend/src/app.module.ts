@@ -12,6 +12,7 @@ import { EndoscopiasModule } from './endoscopias/endoscopias.module';
 import { CatalogosModule } from './catalogos/catalogos.module';
 import { EntidadesContratosModule } from './entidades-contratos/entidades-contratos.module';
 import { PacientesModule } from './pacientes/pacientes.module';
+import { ConsultaOrdenesModule } from './consulta-ordenes/consulta-ordenes.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { PacientesModule } from './pacientes/pacientes.module';
     CatalogosModule,
     EntidadesContratosModule,
     PacientesModule,
+    ConsultaOrdenesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

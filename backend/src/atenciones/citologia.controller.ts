@@ -1,4 +1,18 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
+import type { Response } from 'express';
+import { CitologiaPdfService } from './citologia-pdf.service';
+import { enviarPdf } from './patologia.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
@@ -9,7 +23,10 @@ import { UpsertCitologiaDto } from './dto/upsert-citologia.dto';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermission('citologia')
 export class CitologiaController {
-  constructor(private readonly citologiaService: CitologiaService) {}
+  constructor(
+    private readonly citologiaService: CitologiaService,
+    private readonly citologiaPdfService: CitologiaPdfService,
+  ) {}
 
   @Get('pendientes')
   findPendientes(@Query('q') q?: string) {
@@ -29,5 +46,22 @@ export class CitologiaController {
   @Post()
   upsert(@Body() dto: UpsertCitologiaDto, @Req() req: any) {
     return this.citologiaService.upsert(dto, req.user.idEmpleado);
+  }
+
+  /** Firma el estudio (chkFirmarEstudio del VB.NET): la orden pasa a ATENDIDO. */
+  @Post('orden/:idOrden/firmar')
+  firmar(@Param('idOrden', ParseIntPipe) idOrden: number, @Req() req: any) {
+    return this.citologiaService.firmar(idOrden, req.user.idEmpleado);
+  }
+
+  @Get('orden/:idOrden/pdf')
+  async pdf(
+    @Param('idOrden', ParseIntPipe) idOrden: number,
+    @Res() res: Response,
+    @Query('descargar') descargar?: string,
+  ) {
+    const { buffer, nombreArchivo } =
+      await this.citologiaPdfService.generar(idOrden);
+    enviarPdf(res, buffer, nombreArchivo, descargar === '1');
   }
 }

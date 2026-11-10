@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, FileText, Building2, Tag, CalendarDays, DollarSign, Trash2, Eye, EyeOff, AlertCircle, Network } from "lucide-react";
+import { SubentidadesDialog } from "./SubentidadesDialog";
 import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -97,6 +98,7 @@ export default function ContratosPage() {
     const [entidadQuery, setEntidadQuery] = useState("");
     const [entidadResultadosAbiertos, setEntidadResultadosAbiertos] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const [contratoSubentidades, setContratoSubentidades] = useState<Contrato | null>(null);
 
     const cargar = useCallback(async (p: number, q?: string) => {
         setLoading(true);
@@ -343,6 +345,9 @@ export default function ContratosPage() {
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
+                                    <Button variant="ghost" size="sm" title="Subentidades" onClick={() => setContratoSubentidades(c)}>
+                                        <Network className="h-3.5 w-3.5" style={{ color: "#2563EB" }} />
+                                    </Button>
                                     <Button variant="ghost" size="sm" title="Editar" onClick={() => abrirEditar(c)}>
                                         <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                     </Button>
@@ -372,6 +377,11 @@ export default function ContratosPage() {
                 <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
             )}
 
+            <SubentidadesDialog
+                open={!!contratoSubentidades}
+                onOpenChange={(o) => !o && setContratoSubentidades(null)}
+                contrato={contratoSubentidades ? { id: contratoSubentidades.id, nombre: contratoSubentidades.nombre } : null}
+            />
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>

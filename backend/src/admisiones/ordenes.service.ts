@@ -7,8 +7,8 @@ import { TipoEstudio } from '../catalogos/entities/tipo-estudio.entity';
 import { EntregaResultados } from '../atenciones/entities/entrega-resultados.entity';
 import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CreateDetalleOrdenDto } from './dto/create-detalle-orden.dto';
+import { aISOLocal, hoyISO } from '../common/registros.util';
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
 const horaActual = () => new Date().toTimeString().slice(0, 8);
 
 /**
@@ -40,7 +40,7 @@ function sumarDiasHabiles(fechaISO: string, dias: number): string {
       agregados++;
     }
   }
-  return fecha.toISOString().slice(0, 10);
+  return aISOLocal(fecha);
 }
 
 @Injectable()

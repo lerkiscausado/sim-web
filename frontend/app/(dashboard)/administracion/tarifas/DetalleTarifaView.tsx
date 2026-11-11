@@ -17,6 +17,9 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
+import { Buscador } from "@/components/ui/buscador";
 
 interface CupsItem {
     codigoCups: string;
@@ -60,6 +63,7 @@ interface DetalleTarifaViewProps {
 }
 
 export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleTarifaViewProps) {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -148,6 +152,7 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
             await api.post(`/entidades-contratos/tarifas/${idTarifa}/detalle`, form);
             setForm(FORM_INICIAL);
             v.reiniciar();
+            avisar.exito("Procedimiento agregado a la tarifa.");
             setCupsQuery("");
             await cargar(page, searchTerm);
         } catch (err) {
@@ -191,36 +196,28 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                 <p className="mb-3 text-sm font-medium">Agregar procedimiento</p>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                     <Campo label="CUPS" nombre="codigoCups" error={v.error("codigoCups")} requerido className="relative col-span-2 md:col-span-1">
-                        <Input
+                        <Buscador
                             placeholder="Buscar por código o nombre..."
-                            value={cupsQuery}
-                            onChange={(e) => {
-                                setCupsQuery(e.target.value);
+                            texto={cupsQuery}
+                            onTexto={(t) => {
+                                setCupsQuery(t);
                                 // Si se edita el texto después de elegir, el CUPS deja de estar seleccionado.
                                 setForm((f) => (f.codigoCups ? { ...f, codigoCups: "" } : f));
                             }}
+                            resultados={cupsResultados}
+                            claveDe={(c) => c.codigoCups}
+                            onElegir={(c) => elegirCups(c)}
+                            renderItem={(c) => (
+                                <>
+                                    <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                </>
+                            )}
+                            sinResultados="No se encontraron CUPS."
                         />
-                        {cupsResultados.length > 0 && (
-                            <div
-                                className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                            >
-                                {cupsResultados.map((c) => (
-                                    <button
-                                        key={c.codigoCups}
-                                        type="button"
-                                        className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                        onClick={() => elegirCups(c)}
-                                    >
-                                        <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </Campo>
                     <Campo label="Tipo de Estudio" nombre="idTipoEstudio" error={v.error("idTipoEstudio")} requerido>
-                        <select
-                            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                        <Select
+                            className="w-full"
                             value={form.idTipoEstudio ?? ""}
                             onChange={(e) => setForm((f) => ({ ...f, idTipoEstudio: Number(e.target.value) || undefined }))}
                         >
@@ -230,18 +227,18 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                                     {t.nombreTipoEstudio}
                                 </option>
                             ))}
-                        </select>
+                        </Select>
                     </Campo>
                     <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Tipo de Atención</label>
-                        <select
-                            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                        <label className="text-[13px] font-medium">Tipo de Atención</label>
+                        <Select
+                            className="w-full"
                             value={form.tipoAtencion}
                             onChange={(e) => setForm((f) => ({ ...f, tipoAtencion: e.target.value as "CONSULTA" | "PROCEDIMIENTO" }))}
                         >
                             <option value="PROCEDIMIENTO">Procedimiento</option>
                             <option value="CONSULTA">Consulta</option>
-                        </select>
+                        </Select>
                     </div>
                     <Campo label="Valor" nombre="valor" error={v.error("valor")} requerido>
                         <Input

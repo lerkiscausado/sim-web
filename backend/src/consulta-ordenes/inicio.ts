@@ -1,7 +1,7 @@
 import { Controller, Get, Injectable, Req, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { hoyISO } from '../common/registros.util';
+import { aISOLocal, hoyISO } from '../common/registros.util';
 
 /** Resumen real para la página de Inicio (antes mostraba cifras de ejemplo). */
 @Injectable()
@@ -82,7 +82,7 @@ export class InicioService {
         ...a,
         fecha:
           a.fecha instanceof Date
-            ? a.fecha.toISOString().slice(0, 10)
+            ? aISOLocal(a.fecha)
             : String(a.fecha ?? '').slice(0, 10),
       })),
     };

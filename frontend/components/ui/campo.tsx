@@ -1,6 +1,12 @@
 import * as React from "react";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Buscador } from "@/components/ui/buscador";
+
+const CONTROLES: unknown[] = [Input, Select, Textarea, Buscador, "input", "select", "textarea"];
 
 /**
  * Envoltorio de un campo de formulario: etiqueta, control y mensaje de error.
@@ -27,23 +33,37 @@ export function Campo({
     labelClassName?: string;
     children: React.ReactNode;
 }) {
-    const idError = nombre ? `error-${nombre}` : undefined;
+    const idAuto = React.useId();
+    const idError = `${idAuto}-error`;
+
+    // Si el hijo es un control simple (Input, Select, Textarea), se enlaza con la etiqueta
+    // (clic en la etiqueta = foco en el campo) y con el mensaje de error para lectores de pantalla.
+    let idControl: string | undefined;
+    let contenido = children;
+    if (React.isValidElement<Record<string, unknown>>(children) && CONTROLES.includes(children.type)) {
+        idControl = (children.props.id as string | undefined) ?? `${idAuto}-control`;
+        contenido = React.cloneElement(children, {
+            id: idControl,
+            "aria-invalid": error ? true : undefined,
+            "aria-describedby": error ? idError : undefined,
+            "aria-required": requerido || undefined,
+        });
+    }
+
     return (
-        <div
-            data-campo={nombre}
-            className={cn("space-y-1.5", error && "campo-invalido", className)}
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? idError : undefined}
-        >
+        <div data-campo={nombre} className={cn("space-y-1.5", error && "campo-invalido", className)}>
             {label && (
-                <label className={cn("block text-[12.5px] font-medium", labelClassName, error && "text-red-600")}>
+                <label
+                    htmlFor={idControl}
+                    className={cn("block text-[13px] font-medium", labelClassName, error && "text-red-600")}
+                >
                     {label}
                     {requerido && <span className="ml-0.5 text-red-600">*</span>}
                 </label>
             )}
-            {children}
+            {contenido}
             {error ? (
-                <p id={idError} role="alert" className="flex items-start gap-1 text-[11.5px] leading-tight text-red-600">
+                <p id={idError} role="alert" className="flex items-start gap-1 text-[12px] leading-tight text-red-600">
                     <AlertCircle className="mt-px h-3 w-3 shrink-0" />
                     <span>{error}</span>
                 </p>

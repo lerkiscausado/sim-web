@@ -16,6 +16,8 @@ import { apiFetchMultipart, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 export interface Paciente {
     id: number;
@@ -77,6 +79,7 @@ export function PacienteFormDialog({
     identificacionSugerida,
     onSaved,
 }: PacienteFormDialogProps) {
+    const { avisar } = useFeedback();
     const [form, setForm] = useState(FORM_INICIAL);
     const [fotoArchivo, setFotoArchivo] = useState<File | null>(null);
     const [fotoPreview, setFotoPreview] = useState<string | null>(null);
@@ -164,6 +167,7 @@ export function PacienteFormDialog({
             let guardado: Paciente;
             if (editando) {
                 // Tipo de identificación e identificación no se envían: no son editables.
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { idTipoIdentificacion, identificacion, ...resto } = form;
                 guardado = await apiFetchMultipart<Paciente>(`/pacientes/${editando.id}`, "PATCH", resto, archivoFoto);
             } else {
@@ -171,6 +175,7 @@ export function PacienteFormDialog({
             }
             onSaved(guardado);
             onOpenChange(false);
+            avisar.exito(editando ? "Datos del paciente actualizados." : "Paciente registrado.");
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el paciente");
         } finally {
@@ -218,8 +223,8 @@ export function PacienteFormDialog({
 
                 <div className="grid grid-cols-2 gap-3 py-2">
                     <Campo label="Tipo de identificación" nombre="idTipoIdentificacion" error={v.error("idTipoIdentificacion")} requerido>
-                        <select
-                            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-60"
+                        <Select
+                            className="w-full" selectClassName="disabled:opacity-60"
                             value={form.idTipoIdentificacion}
                             disabled={!!editando}
                             onChange={(e) => setForm((f) => ({ ...f, idTipoIdentificacion: e.target.value }))}
@@ -230,7 +235,7 @@ export function PacienteFormDialog({
                                     {t.nombreTipoIdentificacion} ({t.id})
                                 </option>
                             ))}
-                        </select>
+                        </Select>
                     </Campo>
                     <Campo label="Identificación" nombre="identificacion" error={v.error("identificacion")} requerido>
                         <Input
@@ -264,14 +269,14 @@ export function PacienteFormDialog({
                         />
                     </Campo>
                     <Campo label="Sexo" nombre="sexo" error={v.error("sexo")} requerido>
-                        <select
-                            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                        <Select
+                            className="w-full"
                             value={form.sexo}
                             onChange={(e) => setForm((f) => ({ ...f, sexo: e.target.value }))}
                         >
                             <option value="F">Femenino</option>
                             <option value="M">Masculino</option>
-                        </select>
+                        </Select>
                     </Campo>
                     <Campo label="Fecha de nacimiento" nombre="fechaNacimiento" error={v.error("fechaNacimiento")} requerido>
                         <Input
@@ -300,8 +305,8 @@ export function PacienteFormDialog({
                         />
                     </Campo>
                     <Campo label="Estado civil" nombre="estadoCivil" error={v.error("estadoCivil")} requerido>
-                        <select
-                            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                        <Select
+                            className="w-full"
                             value={form.estadoCivil}
                             onChange={(e) => setForm((f) => ({ ...f, estadoCivil: e.target.value }))}
                         >
@@ -310,7 +315,7 @@ export function PacienteFormDialog({
                             <option value="UNION LIBRE">Unión libre</option>
                             <option value="DIVORCIADO">Divorciado(a)</option>
                             <option value="VIUDO">Viudo(a)</option>
-                        </select>
+                        </Select>
                     </Campo>
                 </div>
                 <ResumenErrores mensaje={v.resumen} />

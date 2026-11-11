@@ -32,6 +32,8 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface Cargo {
     id: number;
@@ -69,6 +71,7 @@ const FORM_INICIAL = {
 };
 
 export default function Empleados() {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [cargos, setCargos] = useState<Cargo[]>([]);
     const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
@@ -159,6 +162,7 @@ export default function Empleados() {
                 await api.post("/seguridad/empleados", form);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Cambios guardados." : "Registro creado.");
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
@@ -287,8 +291,8 @@ export default function Empleados() {
                             />
                         </Campo>
                         <Campo label="Cargo" nombre="idCargo" error={v.error("idCargo")} requerido>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-full"
                                 value={form.idCargo ?? ""}
                                 onChange={(e) => setForm((f) => ({ ...f, idCargo: Number(e.target.value) || undefined }))}
                             >
@@ -298,11 +302,11 @@ export default function Empleados() {
                                         {c.nombreCargo}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </Campo>
                         <Campo label="Especialidad" nombre="idEspecialidad" error={v.error("idEspecialidad")} requerido>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-full"
                                 value={form.idEspecialidad ?? ""}
                                 onChange={(e) => setForm((f) => ({ ...f, idEspecialidad: Number(e.target.value) || undefined }))}
                             >
@@ -312,7 +316,7 @@ export default function Empleados() {
                                         {e.nombreEspecialidad}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </Campo>
                         <Campo label="Registro médico (opcional)" nombre="registroMedico" error={v.error("registroMedico")}>
                             <Input

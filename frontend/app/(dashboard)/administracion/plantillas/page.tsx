@@ -24,6 +24,8 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface TipoEstudio {
     id: number;
@@ -70,6 +72,7 @@ const CAMPOS: { key: keyof typeof FORM_INICIAL; label: string }[] = [
 ];
 
 export default function PlantillasPage() {
+    const { avisar } = useFeedback();
     const [items, setItems] = useState<Plantilla[]>([]);
     const [tiposEstudio, setTiposEstudio] = useState<TipoEstudio[]>([]);
     const [especialistas, setEspecialistas] = useState<Especialista[]>([]);
@@ -146,6 +149,7 @@ export default function PlantillasPage() {
                 await api.post("/atenciones/plantillas-informes", form);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Cambios guardados." : "Registro creado.");
             await cargar();
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la plantilla");
@@ -238,8 +242,8 @@ export default function PlantillasPage() {
                     <div className="space-y-3 py-2">
                         <div className="grid grid-cols-2 gap-3">
                             <Campo label="Tipo de estudio" nombre="idTipoEstudio" error={v.error("idTipoEstudio")} requerido>
-                                <select
-                                    className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                <Select
+                                    className="w-full"
                                     value={form.idTipoEstudio ?? ""}
                                     onChange={(e) => setForm((f) => ({ ...f, idTipoEstudio: Number(e.target.value) || undefined }))}
                                 >
@@ -249,11 +253,11 @@ export default function PlantillasPage() {
                                             {t.nombreTipoEstudio}
                                         </option>
                                     ))}
-                                </select>
+                                </Select>
                             </Campo>
                             <Campo label="Especialista" nombre="idEspecialista" error={v.error("idEspecialista")} requerido>
-                                <select
-                                    className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                                <Select
+                                    className="w-full"
                                     value={form.idEspecialista ?? ""}
                                     onChange={(e) => setForm((f) => ({ ...f, idEspecialista: Number(e.target.value) || undefined }))}
                                 >
@@ -263,12 +267,12 @@ export default function PlantillasPage() {
                                             {e.nombre}
                                         </option>
                                     ))}
-                                </select>
+                                </Select>
                             </Campo>
                         </div>
                         {CAMPOS.map(({ key, label }) => (
                             <div key={key} className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">{label}</label>
+                                <label className="text-[13px] font-medium">{label}</label>
                                 <RichTextEditor
                                     rows={2}
                                     value={form[key] as string}

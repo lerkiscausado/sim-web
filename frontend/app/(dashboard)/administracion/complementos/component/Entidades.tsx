@@ -32,6 +32,8 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface EntidadItem {
     codigoEntidad: string;
@@ -52,6 +54,7 @@ interface Paginado {
 const FORM_INICIAL = { codigoEntidad: "", nombreEntidad: "", nit: "", direccion: "", telefono: "" };
 
 export default function Entidades() {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
@@ -133,12 +136,14 @@ export default function Entidades() {
         setFormError(null);
         try {
             if (editando) {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const { codigoEntidad, ...resto } = form;
                 await api.patch(`/entidades-contratos/entidades/${editando.codigoEntidad}`, resto);
             } else {
                 await api.post("/entidades-contratos/entidades", form);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Cambios guardados." : "Registro creado.");
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
@@ -182,15 +187,15 @@ export default function Entidades() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <select
-                        className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    <Select
+                        
                         value={filtroEstado}
                         onChange={(e) => setFiltroEstado(e.target.value)}
                     >
                         <option value="">Todos los estados</option>
                         <option value="A">Activos</option>
                         <option value="I">Inactivos</option>
-                    </select>
+                    </Select>
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 

@@ -6,6 +6,7 @@ import { CitasCanceladas } from './entities/citas-canceladas.entity';
 import { CreateAgendaDto } from './dto/create-agenda.dto';
 import { CancelarCitaDto } from './dto/cancelar-cita.dto';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
+import { hoyISO } from '../common/registros.util';
 
 @Injectable()
 export class AgendaService {
@@ -64,7 +65,7 @@ export class AgendaService {
     }
 
     const registroCancelacion = this.citasCanceladasRepository.create({
-      fecha: new Date().toISOString().slice(0, 10),
+      fecha: hoyISO(),
       idAgenda: cita.id,
       idMotivo: dto.idMotivo,
       motivo: dto.motivo,

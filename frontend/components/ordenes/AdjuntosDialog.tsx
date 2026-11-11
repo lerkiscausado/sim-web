@@ -9,6 +9,7 @@ import { api, apiFetchMultipart, ApiError } from "@/lib/api";
 import { Campo } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { abrirPdf } from "@/lib/descargas";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface Adjunto {
     id: number;
@@ -27,6 +28,7 @@ interface Props {
 
 /** Datos Adjuntos de una orden (frmAdjuntos): PDFs con un nombre descriptivo. */
 export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
+    const { confirmar } = useFeedback();
     const [lista, setLista] = useState<Adjunto[]>([]);
     const [cargando, setCargando] = useState(false);
     const [nombre, setNombre] = useState("");
@@ -85,7 +87,7 @@ export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
     }
 
     async function eliminar(a: Adjunto) {
-        if (!window.confirm(`¿Desea eliminar el archivo adjunto "${a.nombre ?? a.ruta}"?`)) return;
+        if (!(await confirmar({ titulo: "¿Eliminar el adjunto?", mensaje: `Se eliminará "${a.nombre ?? a.ruta}" de la orden.`, textoAceptar: "Eliminar", peligro: true }))) return;
         try {
             await api.delete(`/admisiones/consulta/adjuntos/${a.id}`);
             await cargar();

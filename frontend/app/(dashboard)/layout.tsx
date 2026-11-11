@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { FeedbackProvider } from "@/components/ui/feedback";
 import { useAuth } from "@/lib/auth";
 
 // The (dashboard) route group owns / in Next.js route groups.
@@ -25,5 +26,9 @@ export default function DashboardLayout({
         return null;
     }
 
-    return <AppLayout>{children}</AppLayout>;
+    return (
+        <FeedbackProvider>
+            <AppLayout>{children}</AppLayout>
+        </FeedbackProvider>
+    );
 }

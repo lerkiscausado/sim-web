@@ -93,11 +93,5 @@ export function nombrePaciente(p?: PacienteHistoria) {
         .join(" ");
 }
 
-export function calcularEdad(fechaNacimientoISO: string): number {
-    const nacimiento = new Date(fechaNacimientoISO);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const m = hoy.getMonth() - nacimiento.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-    return edad;
-}
+/** Utilidades de fecha en hora local (ver lib/fechas.ts). */
+export { calcularEdad } from "@/lib/fechas";

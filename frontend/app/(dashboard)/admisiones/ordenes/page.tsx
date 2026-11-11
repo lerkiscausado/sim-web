@@ -6,124 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { ErrorDialog } from "@/components/ui/error-dialog";
 import { OrdenDetalleDialog } from "./OrdenDetalleDialog";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { PacienteAvatar } from "@/components/ui/paciente-avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PacienteFormDialog, type Paciente as PacienteCompleto, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
-import type {
-    PacienteBusqueda,
-    LookupItem,
-    Contrato,
-    Sede,
-    Especimen,
-    CupsItem,
-    Orden,
-    DetalleOrden,
-    OrdenListado,
-    OrdenListadoResult,
-    Empleado,
-} from "./types";
+import type { PacienteBusqueda, LookupItem, Contrato, Sede, Especimen, CupsItem, Orden, DetalleOrden, OrdenListado, OrdenListadoResult, Empleado } from "./types";
 import { nombrePaciente, calcularEdad, sumarDiasHabiles, estadoTexto } from "./types";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
+import { Buscador } from "@/components/ui/buscador";
+import { CAMPOS_REQUERIDOS, EstadoBadge, HEADER_INICIAL, PacienteCard, Selector } from "./componentes";
+import { hoyISO } from "@/lib/fechas";
 
-const ESTADO_ESTILOS: Record<string, { bg: string; text: string; dot: string }> = {
-    PENDIENTE: { bg: "#FEF3C7", text: "#92400E", dot: "#D97706" },
-    PROCESO: { bg: "#DBEAFE", text: "#1E40AF", dot: "#2563EB" },
-    ATENDIDO: { bg: "#D1FAE5", text: "#065F46", dot: "#059669" },
-    CANCELADO: { bg: "#FEE2E2", text: "#991B1B", dot: "#DC2626" },
-    FACTURADO: { bg: "#EDE9FE", text: "#5B21B6", dot: "#7C3AED" },
-};
-
-function EstadoBadge({ estado }: { estado: string | string[] }) {
-    const texto = estadoTexto(estado);
-    const estilo = ESTADO_ESTILOS[texto] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
-    return (
-        <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
-            style={{ background: estilo.bg, color: estilo.text }}
-        >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: estilo.dot }} />
-            {texto}
-        </span>
-    );
-}
-
-/** Misma tarjeta que se usa en los resultados de búsqueda de paciente (foto + datos), reutilizada al ya tener el paciente seleccionado. */
-function PacienteCard({ p }: { p: PacienteBusqueda }) {
-    return (
-        <div
-            className="flex items-stretch gap-3 rounded-lg border p-4"
-            style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-        >
-            <PacienteAvatar idPaciente={p.id} />
-            <div className="min-w-0 flex-1">
-                <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                    {nombrePaciente(p).toUpperCase()}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    {p.idTipoIdentificacion}
-                    {p.identificacion}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Teléfono: {p.telefono || "—"}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">Correo: {p.correoElectronico || "—"}</p>
-            </div>
-        </div>
-    );
-}
 
 type Vista = "listado" | "buscar-paciente" | "orden";
 
-const HEADER_INICIAL = {
-    idContrato: undefined as number | undefined,
-    idSubentidad: undefined as number | undefined,
-    idSede: undefined as number | undefined,
-    idIngreso: undefined as number | undefined,
-    idEmpleado: undefined as number | undefined,
-    idTipoAfiliado: undefined as number | undefined,
-    idTipoUsuario: undefined as number | undefined,
-    idTipoEstudio: undefined as number | undefined,
-    idEspecimen: undefined as number | undefined,
-    idAmbito: undefined as number | undefined,
-    idFinalidadConsulta: undefined as number | undefined,
-    autorizacion: "",
-    numeroOrden: "",
-    fechaOrden: new Date().toISOString().slice(0, 10),
-    comentarios: "",
-};
 
-/** Campos obligatorios del encabezado de la orden, con su etiqueta legible (para resaltar y para el mensaje de error detallado). */
-const CAMPOS_REQUERIDOS: { key: keyof typeof HEADER_INICIAL; label: string }[] = [
-    { key: "idContrato", label: "Entidad o Contrato" },
-    { key: "idSubentidad", label: "Subentidad" },
-    { key: "idSede", label: "Sede" },
-    { key: "idIngreso", label: "Tipo de Ingreso" },
-    { key: "idEmpleado", label: "Médico" },
-    { key: "idTipoAfiliado", label: "Tipo Afiliado" },
-    { key: "idTipoUsuario", label: "Regimen, Tipo Usuario" },
-    { key: "idTipoEstudio", label: "Tipo de Estudio" },
-    { key: "idEspecimen", label: "Especimen" },
-];
 
 const DETALLE_INICIAL = {
     codigoCups: "",
@@ -148,6 +50,7 @@ function buscarPorNombre(opciones: LookupItem[], contiene: string) {
 }
 
 export default function OrdenesPage() {
+    const { avisar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
 
     // --- listado ---
@@ -193,7 +96,7 @@ export default function OrdenesPage() {
     const [finalidadesConsulta, setFinalidadesConsulta] = useState<LookupItem[]>([]);
 
     // --- orden en curso ---
-    const [header, setHeader] = useState(HEADER_INICIAL);
+    const [header, setHeader] = useState(() => ({ ...HEADER_INICIAL, fechaOrden: hoyISO() }));
     const [creandoOrden, setCreandoOrden] = useState(false);
     const [ordenError, setOrdenError] = useState<string | null>(null);
     const [ordenErrorDetails, setOrdenErrorDetails] = useState<string[] | undefined>(undefined);
@@ -208,7 +111,6 @@ export default function OrdenesPage() {
     const [guardandoDetalle, setGuardandoDetalle] = useState(false);
     const [cupsQuery, setCupsQuery] = useState("");
     const [especimenQuery, setEspecimenQuery] = useState("");
-    const [especimenResultadosAbiertos, setEspecimenResultadosAbiertos] = useState(false);
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
 
     const cargarListado = useCallback(
@@ -234,16 +136,22 @@ export default function OrdenesPage() {
         [],
     );
 
-    const filtrosActuales = {
-        anio: filtroAnio,
-        fechaInicio: filtroFechaInicio,
-        fechaFin: filtroFechaFin,
-        idTipoEstudio: filtroTipoEstudio,
-        estado: filtroEstado,
-    };
+    const filtrosActuales = useMemo(
+        () => ({
+            anio: filtroAnio,
+            fechaInicio: filtroFechaInicio,
+            fechaFin: filtroFechaFin,
+            idTipoEstudio: filtroTipoEstudio,
+            estado: filtroEstado,
+        }),
+        [filtroAnio, filtroFechaInicio, filtroFechaFin, filtroTipoEstudio, filtroEstado],
+    );
 
+    // Recarga al cambiar de página o de vista. Los cambios de búsqueda y filtros los atiende
+    // el efecto siguiente (con espera), por eso no se incluyen aquí.
     useEffect(() => {
         if (vista === "listado") cargarListado(listadoPage, listadoQuery, filtrosActuales);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [vista, listadoPage, cargarListado]);
 
     useEffect(() => {
@@ -253,7 +161,7 @@ export default function OrdenesPage() {
             cargarListado(1, listadoQuery, filtrosActuales);
         }, 350);
         return () => clearTimeout(t);
-    }, [listadoQuery, filtroAnio, filtroFechaInicio, filtroFechaFin, filtroTipoEstudio, filtroEstado, vista, cargarListado]);
+    }, [listadoQuery, filtrosActuales, vista, cargarListado]);
 
     useEffect(() => {
         api.get<number[]>("/admisiones/ordenes/anios").then(setAniosDisponibles).catch(() => setAniosDisponibles([]));
@@ -355,7 +263,7 @@ export default function OrdenesPage() {
         setPaciente(null);
         setOrden(null);
         setDetalles([]);
-        setHeader(HEADER_INICIAL);
+        setHeader({ ...HEADER_INICIAL, fechaOrden: hoyISO() });
         setSearchTerm("");
         setEspecimenQuery("");
         v.reiniciar();
@@ -442,6 +350,7 @@ export default function OrdenesPage() {
             });
             const detallesReales = await api.get<DetalleOrden[]>(`/admisiones/ordenes/${nuevaOrden.id}/detalles`);
             setOrden(nuevaOrden);
+            avisar.exito(`Orden registrada: ${nuevaOrden.consecutivo ?? nuevaOrden.numeroOrden}.`);
             setDetalles(detallesReales);
             setDetallesTemp([]);
             volverAlListado();
@@ -625,8 +534,8 @@ export default function OrdenesPage() {
                     <div className="flex flex-wrap items-end gap-4">
                         <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Año</label>
-                            <select
-                                className="h-9 w-28 rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-28"
                                 value={filtroAnio}
                                 onChange={(e) => setFiltroAnio(e.target.value)}
                             >
@@ -636,7 +545,7 @@ export default function OrdenesPage() {
                                         {a}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Fecha inicio</label>
@@ -658,8 +567,8 @@ export default function OrdenesPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Estudio</label>
-                            <select
-                                className="h-9 w-48 rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-48"
                                 value={filtroTipoEstudio}
                                 onChange={(e) => setFiltroTipoEstudio(e.target.value)}
                             >
@@ -669,12 +578,12 @@ export default function OrdenesPage() {
                                         {t.nombre}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <label className="text-[11px] font-medium text-muted-foreground">Estado</label>
-                            <select
-                                className="h-9 w-40 rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-40"
                                 value={filtroEstado}
                                 onChange={(e) => setFiltroEstado(e.target.value)}
                             >
@@ -684,7 +593,7 @@ export default function OrdenesPage() {
                                 <option value="ATENDIDO">Atendido</option>
                                 <option value="CANCELADO">Cancelado</option>
                                 <option value="FACTURADO">Facturado</option>
-                            </select>
+                            </Select>
                         </div>
                         <Button
                             variant="outline"
@@ -947,7 +856,7 @@ export default function OrdenesPage() {
                                     disabled={!!orden}
                                 />
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Comentarios</label>
+                                    <label className="text-[13px] font-medium">Comentarios</label>
                                     <Textarea
                                         rows={4}
                                         value={header.comentarios}
@@ -976,7 +885,7 @@ export default function OrdenesPage() {
                                     </Campo>
                                     <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} nombre="idSede" error={v.error("idSede")} />
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
+                                        <label className="text-[13px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
                                         <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
                                     </div>
                                     <Campo label="Autorización" nombre="autorizacion" error={v.error("autorizacion")}>
@@ -992,39 +901,23 @@ export default function OrdenesPage() {
                                     <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} nombre="idTipoEstudio" error={v.error("idTipoEstudio")} />
                                     <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} nombre="idEmpleado" error={v.error("idEmpleado")} />
                                     <Campo label="Especimen" nombre="idEspecimen" error={v.error("idEspecimen")} requerido className="relative">
-                                        <Input
+                                        <Buscador
                                             placeholder="Buscar espécimen…"
-                                            value={especimenQuery}
-                                            onChange={(e) => {
-                                                setEspecimenQuery(e.target.value);
-                                                setEspecimenResultadosAbiertos(true);
+                                            texto={especimenQuery}
+                                            onTexto={(t) => {
+                                                setEspecimenQuery(t);
                                                 // Al editar el texto, el espécimen elegido deja de estar seleccionado.
                                                 setHeader((h) => (h.idEspecimen ? { ...h, idEspecimen: undefined } : h));
                                             }}
-                                            onFocus={() => setEspecimenResultadosAbiertos(true)}
-                                            onBlur={() => setTimeout(() => setEspecimenResultadosAbiertos(false), 150)}
+                                            resultados={especimenesFiltrados}
+                                            claveDe={(e) => e.id}
+                                            textoDe={(e) => e.nombre}
+                                            onElegir={(e) => {
+                                                setHeader((h) => ({ ...h, idEspecimen: e.id }));
+                                                setEspecimenQuery(e.nombre);
+                                            }}
+                                            sinResultados="Ningún espécimen coincide."
                                         />
-                                        {especimenResultadosAbiertos && especimenesFiltrados.length > 0 && (
-                                            <div
-                                                className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                                style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                            >
-                                                {especimenesFiltrados.map((e) => (
-                                                    <button
-                                                        key={e.id}
-                                                        type="button"
-                                                        className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                        onClick={() => {
-                                                            setHeader((h) => ({ ...h, idEspecimen: e.id }));
-                                                            setEspecimenQuery(e.nombre);
-                                                            setEspecimenResultadosAbiertos(false);
-                                                        }}
-                                                    >
-                                                        {e.nombre}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
                                     </Campo>
                                     <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} nombre="idIngreso" error={v.error("idIngreso")} />
                                 </div>
@@ -1063,32 +956,24 @@ export default function OrdenesPage() {
                             <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <Campo label="CUPS" nombre="codigoCups" error={vDet.error("codigoCups")} requerido className="relative col-span-2">
-                                    <Input
+                                    <Buscador
                                         placeholder="Buscar por código o nombre..."
-                                        value={cupsQuery}
-                                        onChange={(e) => {
-                                            setCupsQuery(e.target.value);
+                                        texto={cupsQuery}
+                                        onTexto={(t) => {
+                                            setCupsQuery(t);
                                             // Al editar el texto, el CUPS elegido deja de estar seleccionado.
                                             setDetalleForm((f) => (f.codigoCups ? { ...f, codigoCups: "", nombreCups: "" } : f));
                                         }}
+                                        resultados={cupsResultados}
+                                        claveDe={(c) => c.codigoCups}
+                                        onElegir={(c) => elegirCups(c)}
+                                        renderItem={(c) => (
+                                            <>
+                                                <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
+                                            </>
+                                        )}
+                                        sinResultados="No se encontraron CUPS."
                                     />
-                                    {cupsResultados.length > 0 && (
-                                        <div
-                                            className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                            style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                        >
-                                            {cupsResultados.map((c) => (
-                                                <button
-                                                    key={c.codigoCups}
-                                                    type="button"
-                                                    className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onClick={() => elegirCups(c)}
-                                                >
-                                                    <span className="font-semibold">{c.codigoCups}</span> — {c.nombreCups}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </Campo>
                             </div>
                             <div className="mt-3 grid grid-cols-3 gap-3">
@@ -1108,7 +993,7 @@ export default function OrdenesPage() {
                                     />
                                 </Campo>
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Neto</label>
+                                    <label className="text-[13px] font-medium">Neto</label>
                                     <Input value={netoPreview.toLocaleString()} disabled />
                                 </div>
                             </div>
@@ -1305,40 +1190,3 @@ export default function OrdenesPage() {
     );
 }
 
-function Selector({
-    label,
-    value,
-    onChange,
-    options,
-    disabled,
-    nombre,
-    error,
-}: {
-    label: string;
-    value: number | string | undefined;
-    onChange: (v: number) => void;
-    options: { id: number | string; nombre: string }[];
-    disabled?: boolean;
-    nombre?: string;
-    /** Mensaje de validación; si hay mensaje, el campo se resalta en rojo. */
-    error?: string;
-}) {
-    const requerido = !!nombre && CAMPOS_REQUERIDOS.some((c) => c.key === nombre);
-    return (
-        <Campo label={label} nombre={nombre} error={error} requerido={requerido}>
-            <select
-                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-50"
-                value={value ?? ""}
-                disabled={disabled}
-                onChange={(e) => onChange(Number(e.target.value))}
-            >
-                <option value="">Seleccionar…</option>
-                {options.map((o) => (
-                    <option key={o.id} value={o.id}>
-                        {o.nombre}
-                    </option>
-                ))}
-            </select>
-        </Campo>
-    );
-}

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api";
 import { Campo } from "@/components/ui/campo";
 import { reglas, useValidacion, type Regla } from "@/lib/validacion";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface Subentidad {
     id: number;
@@ -25,6 +26,7 @@ interface Props {
 
 /** Subentidades del contrato (frmSubEntidades): sin al menos una activa no se pueden crear órdenes con el contrato. */
 export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
+    const { avisar } = useFeedback();
     const [lista, setLista] = useState<Subentidad[]>([]);
     const [cargando, setCargando] = useState(false);
     const [nuevo, setNuevo] = useState("");
@@ -78,6 +80,7 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
             await api.post("/entidades-contratos/subentidades", { idContrato: contrato.id, nombre: nuevo });
             setNuevo("");
             vNuevo.reiniciar();
+            avisar.exito("Subentidad agregada.");
             await cargar();
         } catch (e) {
             setError(e instanceof ApiError ? e.message : "No se pudo crear");
@@ -94,6 +97,7 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
             await api.patch(`/entidades-contratos/subentidades/${editando.id}`, { nombre: editando.nombre });
             setEditando(null);
             vEdicion.reiniciar();
+            avisar.exito("Subentidad renombrada.");
             await cargar();
         } catch (e) {
             setError(e instanceof ApiError ? e.message : "No se pudo actualizar");

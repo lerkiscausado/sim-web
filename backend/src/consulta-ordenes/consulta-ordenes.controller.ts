@@ -32,6 +32,7 @@ import { CorreoService } from './correo.service';
 import { InformesService } from './informes.service';
 import { enviarPdf } from '../atenciones/patologia.controller';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
+import { hoyISO } from '../common/registros.util';
 
 function filtros(q: Record<string, string | undefined>): FiltrosConsulta {
   const num = (v?: string) => (v && /^\d+$/.test(v) ? Number(v) : undefined);
@@ -95,7 +96,7 @@ export class ConsultaOrdenesController {
     descarga(
       res,
       buffer,
-      `Ordenes ${new Date().toISOString().slice(0, 10)}.xlsx`,
+      `Ordenes ${hoyISO()}.xlsx`,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
   }
@@ -107,7 +108,7 @@ export class ConsultaOrdenesController {
     enviarPdf(
       res,
       buffer,
-      `Ordenes ${new Date().toISOString().slice(0, 10)}.pdf`,
+      `Ordenes ${hoyISO()}.pdf`,
     );
   }
 
@@ -129,7 +130,7 @@ export class ConsultaOrdenesController {
     descarga(
       res,
       r.zip,
-      `Resultados ${new Date().toISOString().slice(0, 10)}.zip`,
+      `Resultados ${hoyISO()}.zip`,
       'application/zip',
     );
   }

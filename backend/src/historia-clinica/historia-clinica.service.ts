@@ -16,6 +16,7 @@ import {
   AddHistoriaProcedimientoDto,
   AddHistoriaRxsDto,
 } from './dto/add-historia-item.dto';
+import { hoyISO } from '../common/registros.util';
 
 /**
  * Tipos de estudio que alimentan la cola de Historia Clínica, réplica exacta
@@ -149,7 +150,7 @@ export class HistoriaClinicaService {
       historia = this.repo.create({
         idOrden,
         idDetalleOrden,
-        fechaHistoria: new Date().toISOString().slice(0, 10),
+        fechaHistoria: hoyISO(),
         idEspecialista,
         estado: 'A',
         ...campos,

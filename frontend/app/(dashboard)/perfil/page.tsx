@@ -8,6 +8,7 @@ import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { useAuth } from "@/lib/auth";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface Perfil {
     id: number;
@@ -17,6 +18,7 @@ interface Perfil {
 }
 
 export default function PerfilPage() {
+    const { avisar } = useFeedback();
     const { user } = useAuth();
     const [perfil, setPerfil] = useState<Perfil | null>(null);
     const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function PerfilPage() {
         try {
             await api.patch("/users/me/password", { actual, nueva });
             setOk(true);
+            avisar.exito("Contraseña actualizada.");
             setActual("");
             setNueva("");
             setRepetir("");

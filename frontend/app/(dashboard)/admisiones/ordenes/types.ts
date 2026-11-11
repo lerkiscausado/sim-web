@@ -68,17 +68,6 @@ export interface DetalleOrden {
     cups?: CupsItem;
 }
 
-/** Suma N días hábiles (lunes a viernes) a una fecha ISO — para previsualizar Fecha Entrega. */
-export function sumarDiasHabiles(fechaISO: string, dias: number): string {
-    const fecha = new Date(fechaISO + "T00:00:00");
-    let agregados = 0;
-    while (agregados < dias) {
-        fecha.setDate(fecha.getDate() + 1);
-        const diaSemana = fecha.getDay();
-        if (diaSemana !== 0 && diaSemana !== 6) agregados++;
-    }
-    return fecha.toISOString().slice(0, 10);
-}
 
 export interface OrdenListado {
     id: number;
@@ -105,16 +94,6 @@ export interface OrdenListado {
     sede?: { nombre: string };
 }
 
-export function calcularEdad(fechaNacimientoISO: string): number {
-    const nacimiento = new Date(fechaNacimientoISO);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const m = hoy.getMonth() - nacimiento.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-        edad--;
-    }
-    return edad;
-}
 
 export interface OrdenListadoResult {
     data: OrdenListado[];
@@ -139,3 +118,6 @@ export function estadoTexto(estado: string | string[] | null | undefined): strin
     if (Array.isArray(estado)) return estado[0] ?? "";
     return estado ?? "";
 }
+
+/** Utilidades de fecha en hora local (ver lib/fechas.ts). */
+export { calcularEdad, sumarDiasHabiles } from "@/lib/fechas";

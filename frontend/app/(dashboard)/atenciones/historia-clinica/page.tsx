@@ -29,6 +29,8 @@ import type {
     PacienteHistoria,
 } from "./types";
 import { nombrePaciente, calcularEdad } from "./types";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 const FORM_INICIAL: HistoriaClinicaData = {
     idOrden: 0,
@@ -94,6 +96,7 @@ const SECCIONES = [
 ] as const;
 
 export default function HistoriaClinicaPage() {
+    const { avisar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
     const [seccionActiva, setSeccionActiva] = useState<string>("motivo");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
@@ -114,7 +117,6 @@ export default function HistoriaClinicaPage() {
         frecuenciaCardiaca: [reglas.numero({ min: 20, max: 250, entero: true, mensaje: "Frecuencia cardíaca no válida (20 a 250 lpm)." })],
         frecuenciaRespiratoria: [reglas.numero({ min: 5, max: 80, entero: true, mensaje: "Frecuencia respiratoria no válida (5 a 80 rpm)." })],
     });
-    const [guardadoOk, setGuardadoOk] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
 
@@ -227,7 +229,6 @@ export default function HistoriaClinicaPage() {
         setOrdenActiva(orden);
         setFormError(null);
         v.reiniciar();
-        setGuardadoOk(false);
         setForm({ ...FORM_INICIAL, idOrden: orden.idOrden, idDetalleOrden: orden.idDetalleOrden });
         setVista("informe");
 
@@ -270,12 +271,11 @@ export default function HistoriaClinicaPage() {
     async function guardarInforme() {
         if (!ordenActiva) return;
         setFormError(null);
-        setGuardadoOk(false);
         if (!v.comprobar()) return;
         setGuardando(true);
         try {
             await api.post("/atenciones/historia-clinica", form);
-            setGuardadoOk(true);
+            avisar.exito("Historia clínica guardada.");
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la historia clínica");
         } finally {
@@ -289,6 +289,7 @@ export default function HistoriaClinicaPage() {
         setFormError(null);
         try {
             await api.patch(`/atenciones/historia-clinica/detalle-orden/${ordenActiva.idDetalleOrden}/firmar`);
+            avisar.exito("Historia clínica firmada.");
             volverAlListado();
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo firmar la historia");
@@ -469,8 +470,8 @@ export default function HistoriaClinicaPage() {
                     {/* Columna derecha: 70% */}
                     <div className="col-span-10 lg:col-span-7">
                         <div className="space-y-1.5">
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-full"
                                 value={seccionActiva}
                                 onChange={(e) => setSeccionActiva(e.target.value)}
                             >
@@ -479,7 +480,7 @@ export default function HistoriaClinicaPage() {
                                         {s.label}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                             <div>
                                 <h2 className="text-base font-bold" style={{ color: "var(--ink-primary)" }}>
                                     {SECCIONES.find((s) => s.value === seccionActiva)?.label}
@@ -495,11 +496,11 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Responsables</label>
+                                            <label className="text-[13px] font-medium">Responsables</label>
                                             <Input value={form.responsables ?? ""} onChange={(e) => setForm((f) => ({ ...f, responsables: e.target.value }))} />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Motivo de Consulta</label>
+                                            <label className="text-[13px] font-medium">Motivo de Consulta</label>
                                             <RichTextEditor rows={5} value={form.motivoConsulta ?? ""} onChange={(html) => setForm((f) => ({ ...f, motivoConsulta: html }))} />
                                         </div>
                                     </div>
@@ -511,7 +512,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Consulta de Control o Evolución</label>
+                                        <label className="text-[13px] font-medium">Consulta de Control o Evolución</label>
                                         <RichTextEditor rows={6} value={form.consultaControl ?? ""} onChange={(html) => setForm((f) => ({ ...f, consultaControl: html }))} />
                                     </div>
                                 </div>
@@ -522,7 +523,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Enfermedad Actual</label>
+                                        <label className="text-[13px] font-medium">Enfermedad Actual</label>
                                         <RichTextEditor rows={6} value={form.enfermedadActual ?? ""} onChange={(html) => setForm((f) => ({ ...f, enfermedadActual: html }))} />
                                     </div>
                                 </div>
@@ -552,7 +553,7 @@ export default function HistoriaClinicaPage() {
                                             <Input value={form.frecuenciaRespiratoria ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaRespiratoria: e.target.value }))} />
                                         </Campo>
                                         <div className="col-span-3 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Descripción del Examen Físico</label>
+                                            <label className="text-[13px] font-medium">Descripción del Examen Físico</label>
                                             <RichTextEditor rows={4} value={form.examenFisico ?? ""} onChange={(html) => setForm((f) => ({ ...f, examenFisico: html }))} />
                                         </div>
                                     </div>
@@ -565,14 +566,14 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Sistema</label>
-                                            <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={rxsForm.idRxs} onChange={(e) => setRxsForm((f) => ({ ...f, idRxs: e.target.value }))}>
+                                            <label className="text-[13px] font-medium">Sistema</label>
+                                            <Select className="w-full" value={rxsForm.idRxs} onChange={(e) => setRxsForm((f) => ({ ...f, idRxs: e.target.value }))}>
                                                 <option value="">Seleccionar…</option>
                                                 {rxsCatalogo.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                                            </select>
+                                            </Select>
                                         </div>
                                         <div className="col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Hallazgo</label>
+                                            <label className="text-[13px] font-medium">Hallazgo</label>
                                             <Input value={rxsForm.descripcion} onChange={(e) => setRxsForm((f) => ({ ...f, descripcion: e.target.value }))} />
                                         </div>
                                     </div>
@@ -598,7 +599,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Diagnóstico</label>
+                                        <label className="text-[13px] font-medium">Diagnóstico</label>
                                         <RichTextEditor rows={4} value={form.diagnostico ?? ""} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
                                     </div>
                                 </div>
@@ -606,7 +607,7 @@ export default function HistoriaClinicaPage() {
                                     <p className="mb-3 text-sm font-bold">Diagnósticos (CIE10)</p>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="relative col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Buscar CIE10</label>
+                                            <label className="text-[13px] font-medium">Buscar CIE10</label>
                                             <Input value={dxQuery} onChange={(e) => { setDxQuery(e.target.value); setDxElegido(null); }} placeholder="Código o nombre…" />
                                             {dxResultados.length > 0 && !dxElegido && (
                                                 <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
@@ -620,7 +621,7 @@ export default function HistoriaClinicaPage() {
                                             )}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Nota (opcional)</label>
+                                            <label className="text-[13px] font-medium">Nota (opcional)</label>
                                             <Input value={dxDescripcion} onChange={(e) => setDxDescripcion(e.target.value)} />
                                         </div>
                                     </div>
@@ -647,11 +648,11 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Análisis y Plan a Seguir</label>
+                                            <label className="text-[13px] font-medium">Análisis y Plan a Seguir</label>
                                             <RichTextEditor rows={5} value={form.planSeguir ?? ""} onChange={(html) => setForm((f) => ({ ...f, planSeguir: html }))} />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Recomendaciones</label>
+                                            <label className="text-[13px] font-medium">Recomendaciones</label>
                                             <RichTextEditor rows={3} value={form.recomendaciones ?? ""} onChange={(html) => setForm((f) => ({ ...f, recomendaciones: html }))} />
                                         </div>
                                     </div>
@@ -663,7 +664,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Formulación</label>
+                                        <label className="text-[13px] font-medium">Formulación</label>
                                         <RichTextEditor rows={3} value={form.formulacion ?? ""} onChange={(html) => setForm((f) => ({ ...f, formulacion: html }))} />
                                     </div>
                                 </div>
@@ -671,7 +672,7 @@ export default function HistoriaClinicaPage() {
                                     <p className="mb-3 text-sm font-bold">Medicamentos Formulados</p>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="relative space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Medicamento</label>
+                                            <label className="text-[13px] font-medium">Medicamento</label>
                                             <Input value={medQuery} onChange={(e) => { setMedQuery(e.target.value); setMedElegido(null); }} placeholder="Buscar…" />
                                             {medResultados.length > 0 && !medElegido && (
                                                 <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
@@ -685,22 +686,22 @@ export default function HistoriaClinicaPage() {
                                             )}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Vía de Administración</label>
-                                            <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={medForm.idViaAdministracion} onChange={(e) => setMedForm((f) => ({ ...f, idViaAdministracion: e.target.value }))}>
+                                            <label className="text-[13px] font-medium">Vía de Administración</label>
+                                            <Select className="w-full" value={medForm.idViaAdministracion} onChange={(e) => setMedForm((f) => ({ ...f, idViaAdministracion: e.target.value }))}>
                                                 <option value="">Seleccionar…</option>
                                                 {viasAdministracion.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                                            </select>
+                                            </Select>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Dosis</label>
+                                            <label className="text-[13px] font-medium">Dosis</label>
                                             <Input value={medForm.dosis} onChange={(e) => setMedForm((f) => ({ ...f, dosis: e.target.value }))} />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Cantidad</label>
+                                            <label className="text-[13px] font-medium">Cantidad</label>
                                             <Input value={medForm.cantidad} onChange={(e) => setMedForm((f) => ({ ...f, cantidad: e.target.value }))} />
                                         </div>
                                         <div className="col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Indicaciones</label>
+                                            <label className="text-[13px] font-medium">Indicaciones</label>
                                             <Input value={medForm.descripcion} onChange={(e) => setMedForm((f) => ({ ...f, descripcion: e.target.value }))} />
                                         </div>
                                     </div>
@@ -726,7 +727,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Laboratorios (texto libre)</label>
+                                        <label className="text-[13px] font-medium">Laboratorios (texto libre)</label>
                                         <RichTextEditor rows={2} value={form.laboratorios ?? ""} onChange={(html) => setForm((f) => ({ ...f, laboratorios: html }))} />
                                     </div>
                                 </div>
@@ -734,7 +735,7 @@ export default function HistoriaClinicaPage() {
                                     <p className="mb-3 text-sm font-bold">Laboratorios Solicitados</p>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="relative col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Examen (CUPS)</label>
+                                            <label className="text-[13px] font-medium">Examen (CUPS)</label>
                                             <Input value={labQuery} onChange={(e) => { setLabQuery(e.target.value); setLabElegido(null); }} placeholder="Buscar…" />
                                             {labResultados.length > 0 && !labElegido && (
                                                 <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
@@ -748,7 +749,7 @@ export default function HistoriaClinicaPage() {
                                             )}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Nota (opcional)</label>
+                                            <label className="text-[13px] font-medium">Nota (opcional)</label>
                                             <Input value={labDescripcion} onChange={(e) => setLabDescripcion(e.target.value)} />
                                         </div>
                                     </div>
@@ -774,7 +775,7 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Otros Estudios</label>
+                                        <label className="text-[13px] font-medium">Otros Estudios</label>
                                         <RichTextEditor rows={2} value={form.otrosEstudios ?? ""} onChange={(html) => setForm((f) => ({ ...f, otrosEstudios: html }))} />
                                     </div>
                                 </div>
@@ -782,7 +783,7 @@ export default function HistoriaClinicaPage() {
                                     <p className="mb-3 text-sm font-bold">Procedimientos</p>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="relative col-span-2 space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Procedimiento (CUPS)</label>
+                                            <label className="text-[13px] font-medium">Procedimiento (CUPS)</label>
                                             <Input value={procQuery} onChange={(e) => { setProcQuery(e.target.value); setProcElegido(null); }} placeholder="Buscar…" />
                                             {procResultados.length > 0 && !procElegido && (
                                                 <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
@@ -796,7 +797,7 @@ export default function HistoriaClinicaPage() {
                                             )}
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Descripción</label>
+                                            <label className="text-[13px] font-medium">Descripción</label>
                                             <Input value={procDescripcion} onChange={(e) => setProcDescripcion(e.target.value)} />
                                         </div>
                                     </div>
@@ -825,9 +826,6 @@ export default function HistoriaClinicaPage() {
                                 <p className="mb-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>
                                     {formError}
                                 </p>
-                            )}
-                            {guardadoOk && (
-                                <p className="mb-3 rounded-md bg-green-50 px-3 py-2 text-[12.5px] text-green-700">Historia guardada correctamente.</p>
                             )}
                             <div className="flex flex-wrap gap-2">
                                 <Button onClick={guardarInforme} disabled={guardando}>

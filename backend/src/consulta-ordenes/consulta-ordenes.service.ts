@@ -16,6 +16,7 @@ import { tablaPdf, ColumnaTabla } from '../reportes/tabla-pdf';
 import { fechaCorta, nombreArchivoSeguro } from '../reportes/pdf-utils';
 import { reciboEntregaPdf } from './recibo-entrega-pdf';
 import JSZip from 'jszip';
+import { aISOLocal } from '../common/registros.util';
 
 export interface FiltrosConsulta {
   anio?: number;
@@ -167,7 +168,7 @@ export class ConsultaOrdenesService {
   private normalizar(r: Record<string, unknown>): FilaConsulta {
     const fecha =
       r.fechaIngreso instanceof Date
-        ? r.fechaIngreso.toISOString().slice(0, 10)
+        ? aISOLocal(r.fechaIngreso)
         : String(r.fechaIngreso ?? '').slice(0, 10);
     return {
       orden: Number(r.orden),

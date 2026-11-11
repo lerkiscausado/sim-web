@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Home, Trash2, Bell, CheckCircle2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPreferencias, setPreferencias, PAGINAS_INICIO_DISPONIBLES, type Preferencias } from "@/lib/preferencias";
+import { Select } from "@/components/ui/select";
 
 export default function PreferenciasPage() {
     const [prefs, setPrefsState] = useState<Preferencias | null>(null);
@@ -56,8 +57,8 @@ export default function PreferenciasPage() {
                         <p className="mt-0.5 text-[12.5px] text-muted-foreground">
                             A dónde te lleva el sistema justo después de iniciar sesión.
                         </p>
-                        <select
-                            className="mt-2.5 h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                        <Select
+                            className="mt-2.5 w-full"
                             value={prefs.paginaInicio}
                             onChange={(e) => actualizar({ paginaInicio: e.target.value })}
                         >
@@ -66,7 +67,7 @@ export default function PreferenciasPage() {
                                     {p.label}
                                 </option>
                             ))}
-                        </select>
+                        </Select>
                     </div>
                 </div>
             </div>

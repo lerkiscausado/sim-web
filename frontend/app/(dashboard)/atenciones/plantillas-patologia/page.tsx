@@ -26,6 +26,7 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface PlantillaPatologia {
     id: number;
@@ -45,6 +46,7 @@ interface Paginado {
 const FORM_INICIAL = { nombre: "", macro: "", micro: "", diagnostico: "" };
 
 export default function PlantillasPatologiaPage() {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
@@ -126,6 +128,7 @@ export default function PlantillasPatologiaPage() {
                 await api.post("/atenciones/plantillas-patologia", form);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Cambios guardados." : "Registro creado.");
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la plantilla");

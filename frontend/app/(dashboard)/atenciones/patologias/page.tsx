@@ -1,24 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-    FileDown,
-    Loader2,
-    Microscope,
-    RefreshCw,
-    Eye,
-    Hash,
-    User,
-    TestTube2,
-    CalendarDays,
-    ArrowLeft,
-    Search,
-    Save,
-    PenLine,
-    Camera,
-    BookOpenText,
-    Paperclip,
-} from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Save, PenLine, Camera, BookOpenText, Paperclip } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion, type Regla } from "@/lib/validacion";
@@ -29,19 +12,21 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
-import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { ErrorDialog } from "@/components/ui/error-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ImagenesDialog } from "@/components/ordenes/ImagenesDialog";
 import { AdjuntosDialog } from "@/components/ordenes/AdjuntosDialog";
-import type { OrdenPendiente, Especimen, PlantillaPatologia, DiagnosticoCie10, InformePatologia, UpsertPatologiaPayload, EstudioAnterior } from "./types";
+import type { OrdenPendiente, PlantillaPatologia, DiagnosticoCie10, InformePatologia, UpsertPatologiaPayload, EstudioAnterior } from "./types";
 import { nombrePaciente, calcularEdad } from "./types";
+import { hoyISO } from "@/lib/fechas";
+import { useFeedback } from "@/components/ui/feedback";
+import { Select } from "@/components/ui/select";
+import { Buscador } from "@/components/ui/buscador";
+import { useAvisoSalida } from "@/lib/useAvisoSalida";
+import { PacienteCard, EspecimenPicker } from "./componentes";
 
-const hoy = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const hoy = hoyISO;
 
 /**
  * Campos de frmPatologiaCD (licencia 16). En la BD conservan sus nombres
@@ -61,87 +46,6 @@ const FORM_INICIAL = {
     fechaSalida: hoy(),
 };
 type Form = typeof FORM_INICIAL;
-
-function PacienteCard({ p }: { p: OrdenPendiente["paciente"] }) {
-    if (!p) return null;
-    return (
-        <div className="flex items-stretch gap-3 rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-            <PacienteAvatar idPaciente={p.id} />
-            <div className="min-w-0 flex-1">
-                <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                    {nombrePaciente(p).toUpperCase()}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    {p.idTipoIdentificacion}
-                    {p.identificacion}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Teléfono: {p.telefono || "—"}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">Correo: {p.correoElectronico || "—"}</p>
-            </div>
-        </div>
-    );
-}
-
-/** Buscador de espécimen (cboEspecimen): fija ordenes.ID_ESPECIMEN y patologia.TIPO_MUESTRA. */
-function EspecimenPicker({ valor, onElegir }: { valor: string; onElegir: (e: Especimen) => void }) {
-    const [q, setQ] = useState(valor);
-    const [abierto, setAbierto] = useState(false);
-    const [resultados, setResultados] = useState<Especimen[]>([]);
-    const [buscando, setBuscando] = useState(false);
-    useEffect(() => setQ(valor), [valor]);
-    useEffect(() => {
-        if (!abierto) return;
-        const t = setTimeout(async () => {
-            setBuscando(true);
-            try {
-                const r = await api.get<{ data: Especimen[] }>(`/atenciones/especimenes?estado=A&pageSize=25&q=${encodeURIComponent(q.trim())}`);
-                setResultados(r.data);
-            } catch {
-                setResultados([]);
-            } finally {
-                setBuscando(false);
-            }
-        }, 300);
-        return () => clearTimeout(t);
-    }, [q, abierto]);
-    return (
-        <div className="relative">
-            <Input
-                value={q}
-                placeholder="Buscar espécimen…"
-                onChange={(e) => {
-                    setQ(e.target.value);
-                    setAbierto(true);
-                }}
-                onFocus={() => setAbierto(true)}
-                onBlur={() => setTimeout(() => setAbierto(false), 180)}
-            />
-            {buscando && <Loader2 className="absolute right-2 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />}
-            {abierto && resultados.length > 0 && (
-                <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)" }}>
-                    {resultados.map((e) => (
-                        <button
-                            key={e.id}
-                            type="button"
-                            className="block w-full px-3 py-1.5 text-left text-[12.5px] hover:bg-black/5"
-                            onMouseDown={(ev) => ev.preventDefault()}
-                            onClick={() => {
-                                onElegir(e);
-                                setQ(e.nombre);
-                                setAbierto(false);
-                            }}
-                        >
-                            {e.nombre}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-}
 
 type Vista = "listado" | "informe";
 
@@ -167,12 +71,12 @@ export default function PatologiasPage() {
     const [confirmarFirma, setConfirmarFirma] = useState(false);
     const [generandoPdf, setGenerandoPdf] = useState(false);
     const [errorDlg, setErrorDlg] = useState<{ titulo: string; mensaje?: string; detalles?: string[] } | null>(null);
-    const [aviso, setAviso] = useState<string | null>(null);
     const [informeGuardado, setInformeGuardado] = useState<InformePatologia | null>(null);
     const [plantillaQuery, setPlantillaQuery] = useState("");
-    const [plantillaAbierta, setPlantillaAbierta] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [dialogo, setDialogo] = useState<"imagenes" | "adjuntos" | null>(null);
+    const { confirmar, avisar } = useFeedback();
+    useAvisoSalida(cambios);
 
     /**
      * Validación del formulario. Para guardar basta el espécimen; para firmar se exigen además
@@ -248,12 +152,21 @@ export default function PatologiasPage() {
     }
 
     async function abrirOrden(orden: OrdenPendiente) {
-        if (cambios && ordenActiva && !window.confirm("Tiene una Patologia pendiente por Guardar, Si continua se perderan los cambios ¿Desea Continuar?")) return;
+        if (
+            cambios &&
+            ordenActiva &&
+            !(await confirmar({
+                titulo: "Hay cambios sin guardar",
+                mensaje: "Tiene una patología pendiente por guardar. Si continúa se perderán los cambios.",
+                textoAceptar: "Descartar y continuar",
+                peligro: true,
+            }))
+        )
+            return;
         setOrdenActiva(orden);
         setInformeGuardado(null);
         setFirmar(false);
         v.reiniciar();
-        setAviso(null);
         setForm({ ...FORM_INICIAL, idEspecimen: orden.idEspecimen, tipoMuestra: orden.especimen?.nombre ?? "" });
         setCie10Query("");
         setCie10Nombre("");
@@ -293,16 +206,33 @@ export default function PatologiasPage() {
         }
     }
 
-    function volverAlListado() {
-        if (cambios && !window.confirm("Hay cambios sin guardar. ¿Desea salir sin guardarlos?")) return;
+    async function volverAlListado() {
+        if (
+            cambios &&
+            !(await confirmar({
+                titulo: "Hay cambios sin guardar",
+                mensaje: "¿Desea salir sin guardar los cambios del estudio?",
+                textoAceptar: "Salir sin guardar",
+                peligro: true,
+            }))
+        )
+            return;
         setVista("listado");
         setOrdenActiva(null);
         setCambios(false);
         cargarPendientes(searchTerm, idSede);
     }
 
-    function aplicarPlantilla(p: PlantillaPatologia) {
-        if (htmlToPlainText(form.descripcion) && !window.confirm(`¿Reemplazar la descripción actual por la plantilla "${p.nombre}"?`)) return;
+    async function aplicarPlantilla(p: PlantillaPatologia) {
+        if (
+            htmlToPlainText(form.descripcion) &&
+            !(await confirmar({
+                titulo: "¿Reemplazar la descripción?",
+                mensaje: `La descripción actual se reemplazará por la plantilla "${p.nombre}".`,
+                textoAceptar: "Reemplazar",
+            }))
+        )
+            return;
         editorKey.current++;
         setForm((f) => ({ ...f, descripcion: p.diagnostico || f.descripcion }));
         setCambios(true);
@@ -357,7 +287,7 @@ export default function PatologiasPage() {
         const ok = await guardar();
         if (!ok) return;
         if (firmar) setConfirmarFirma(true);
-        else setAviso("Estudio guardado.");
+        else avisar.exito("Estudio guardado.");
     }
 
     async function firmarEstudio() {
@@ -370,6 +300,7 @@ export default function PatologiasPage() {
             setVista("listado");
             setOrdenActiva(null);
             setError(null);
+            avisar.exito("Estudio firmado. La orden pasó a ATENDIDO.");
             await cargarPendientes(searchTerm, idSede);
         } catch (err) {
             setErrorDlg({
@@ -474,39 +405,27 @@ export default function PatologiasPage() {
 
                         {plantillas.length > 0 && (
                             <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                                <label className="flex items-center gap-1.5 text-[12.5px] font-medium">
+                                <label className="flex items-center gap-1.5 text-[13px] font-medium">
                                     <BookOpenText size={14} /> Aplicar plantilla al estudio
                                 </label>
                                 <div className="relative mt-1.5">
-                                    <Input
+                                    <Buscador
+                                        conIcono
+                                        aria-label="Buscar plantilla"
                                         placeholder="Buscar plantilla…"
-                                        value={plantillaQuery}
-                                        onChange={(e) => {
-                                            setPlantillaQuery(e.target.value);
-                                            setPlantillaAbierta(true);
+                                        texto={plantillaQuery}
+                                        onTexto={setPlantillaQuery}
+                                        resultados={plantillasFiltradas}
+                                        claveDe={(pl) => pl.id}
+                                        textoDe={(pl) => pl.nombre}
+                                        onElegir={(pl) => {
+                                            aplicarPlantilla(pl);
+                                            setPlantillaQuery(pl.nombre);
                                         }}
-                                        onFocus={() => setPlantillaAbierta(true)}
-                                        onBlur={() => setTimeout(() => setPlantillaAbierta(false), 150)}
+                                        sinResultados="Ninguna plantilla coincide."
+                                        minCaracteres={1}
+                                        claseLista="max-h-72"
                                     />
-                                    {plantillaAbierta && plantillasFiltradas.length > 0 && (
-                                        <div className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)" }}>
-                                            {plantillasFiltradas.map((pl) => (
-                                                <button
-                                                    key={pl.id}
-                                                    type="button"
-                                                    className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                    onMouseDown={(ev) => ev.preventDefault()}
-                                                    onClick={() => {
-                                                        aplicarPlantilla(pl);
-                                                        setPlantillaQuery(pl.nombre);
-                                                        setPlantillaAbierta(false);
-                                                    }}
-                                                >
-                                                    {pl.nombre}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -550,15 +469,15 @@ export default function PatologiasPage() {
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Consecutivo</label>
+                                    <label className="text-[13px] font-medium">Consecutivo</label>
                                     <Input value={ordenActiva.consecutivo} disabled />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Estudio</label>
+                                    <label className="text-[13px] font-medium">Estudio</label>
                                     <Input value={ordenActiva.tipoEstudio?.nombreTipoEstudio ?? ""} disabled />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Fecha ingreso</label>
+                                    <label className="text-[13px] font-medium">Fecha ingreso</label>
                                     <Input value={ordenActiva.fechaIngreso} disabled />
                                 </div>
                                 <Campo label="Fecha salida" nombre="fechaSalida" error={v.error("fechaSalida")}>
@@ -583,49 +502,45 @@ export default function PatologiasPage() {
                                     <Input value={form.impresionDiagnostica} onChange={(e) => set("impresionDiagnostica", e.target.value.toUpperCase())} />
                                 </Campo>
                                 <Campo label="Resultado" nombre="resultado" error={v.error("resultado")} requerido={firmar}>
-                                    <select
-                                        className={`h-9 w-full rounded-md border bg-transparent px-3 text-sm font-semibold ${form.resultado === "POSITIVO" ? "text-red-700" : ""}`}
+                                    <Select
+                                        className="w-full"
+                                        selectClassName={`font-semibold ${form.resultado === "POSITIVO" ? "text-red-700" : ""}`}
                                         value={form.resultado}
                                         onChange={(e) => set("resultado", e.target.value)}
                                     >
                                         <option value="">—</option>
                                         <option value="NEGATIVO">NEGATIVO</option>
                                         <option value="POSITIVO">POSITIVO</option>
-                                    </select>
+                                    </Select>
                                 </Campo>
                             </div>
 
                             <Campo label="Diagnóstico CIE10" nombre="codigoDiagnostico" error={v.error("codigoDiagnostico")} requerido={firmar} className="relative mt-3">
-                                <Input
+                                <Buscador
                                     placeholder="Buscar por código o nombre…"
-                                    value={cie10Query}
-                                    onChange={(e) => {
-                                        setCie10Query(e.target.value);
+                                    texto={cie10Query}
+                                    onTexto={(t) => {
+                                        setCie10Query(t);
                                         // Al editar el texto, el diagnóstico elegido deja de estar seleccionado.
                                         if (form.codigoDiagnostico) {
                                             set("codigoDiagnostico", "");
                                             setCie10Nombre("");
                                         }
                                     }}
+                                    resultados={cie10Resultados}
+                                    claveDe={(d) => d.codigoDiagnostico}
+                                    onElegir={(d) => elegirCie10(d)}
+                                    renderItem={(d) => (
+                                        <>
+                                            <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
+                                        </>
+                                    )}
+                                    sinResultados="No se encontraron diagnósticos."
                                 />
                                 {form.codigoDiagnostico && (
                                     <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
                                         {form.codigoDiagnostico} — {cie10Nombre || "(sin nombre)"}
                                     </p>
-                                )}
-                                {cie10Resultados.length > 0 && (
-                                    <div className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)" }}>
-                                        {cie10Resultados.map((d) => (
-                                            <button
-                                                key={d.codigoDiagnostico}
-                                                type="button"
-                                                className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                                onClick={() => elegirCie10(d)}
-                                            >
-                                                <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
-                                            </button>
-                                        ))}
-                                    </div>
                                 )}
                             </Campo>
 
@@ -634,14 +549,13 @@ export default function PatologiasPage() {
                             </Campo>
 
                             <div className="mt-3 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Observaciones</label>
+                                <label className="text-[13px] font-medium">Observaciones</label>
                                 <Textarea rows={2} value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} />
                             </div>
 
                             <div className="mt-3">
                                 <ResumenErrores mensaje={v.resumen} />
                             </div>
-                            {aviso && <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{aviso}</p>}
 
                             <div className="mt-4 flex flex-wrap items-center gap-2">
                                 <label className="mr-auto flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
@@ -726,14 +640,14 @@ export default function PatologiasPage() {
                     {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
                 </div>
                 {sedes.length > 1 && (
-                    <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={idSede} onChange={(e) => setIdSede(e.target.value)}>
+                    <Select value={idSede} onChange={(e) => setIdSede(e.target.value)}>
                         <option value="">Todas las sedes</option>
                         {sedes.map((s) => (
                             <option key={s.id} value={s.id}>
                                 {s.nombre}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 )}
             </div>
 

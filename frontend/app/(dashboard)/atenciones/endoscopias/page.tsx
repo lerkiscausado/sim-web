@@ -21,13 +21,17 @@ import {
 } from "@/components/ui/table";
 import type { OrdenPendiente, EndoscopiaData, EstudioAnterior, PacienteEndoscopia } from "./types";
 import { nombrePaciente, calcularEdad, plantillaPorEstudio } from "./types";
+import { hoyISO } from "@/lib/fechas";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
+import { Buscador } from "@/components/ui/buscador";
 
 function FORM_INICIAL(): EndoscopiaData {
     return {
         idOrden: 0,
         idDetalleOrden: 0,
-        fechaEstudio: new Date().toISOString().slice(0, 10),
-        fechaSalida: new Date().toISOString().slice(0, 10),
+        fechaEstudio: hoyISO(),
+        fechaSalida: hoyISO(),
         medicoSolicita: "",
         indicacion: "",
         medicamentos: "",
@@ -70,6 +74,7 @@ function PacienteCard({ p }: { p?: PacienteEndoscopia }) {
 type Vista = "listado" | "informe";
 
 export default function EndoscopiasPage() {
+    const { avisar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
     const [loading, setLoading] = useState(true);
@@ -92,7 +97,6 @@ export default function EndoscopiasPage() {
         campo1: [reglas.requerido("El reporte del procedimiento es obligatorio.")],
         diagnostico: [reglas.requerido("El diagnóstico es obligatorio.")],
     });
-    const [guardadoOk, setGuardadoOk] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -141,7 +145,6 @@ export default function EndoscopiasPage() {
         setOrdenActiva(orden);
         setFormError(null);
         v.reiniciar();
-        setGuardadoOk(false);
         setCie10Query("");
         setCie10Nombre("");
         setVista("informe");
@@ -188,14 +191,13 @@ export default function EndoscopiasPage() {
     async function guardarInforme() {
         if (!ordenActiva) return;
         setFormError(null);
-        setGuardadoOk(false);
 
         if (!v.comprobar()) return;
 
         setGuardando(true);
         try {
             await api.post("/atenciones/endoscopias", form);
-            setGuardadoOk(true);
+            avisar.exito("Reporte guardado.");
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el reporte");
         } finally {
@@ -209,6 +211,7 @@ export default function EndoscopiasPage() {
         setFormError(null);
         try {
             await api.patch(`/atenciones/endoscopias/detalle-orden/${ordenActiva.idDetalleOrden}/firmar`);
+            avisar.exito("Reporte firmado.");
             volverAlListado();
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo firmar el reporte");
@@ -309,16 +312,16 @@ export default function EndoscopiasPage() {
                                     <Input value={form.medicamentos ?? ""} onChange={(e) => setForm((f) => ({ ...f, medicamentos: e.target.value }))} />
                                 </Campo>
                                 <Campo label="Equipo" nombre="idEquipo" error={v.error("idEquipo")} requerido>
-                                    <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={form.idEquipo ?? ""} onChange={(e) => setForm((f) => ({ ...f, idEquipo: Number(e.target.value) || undefined }))}>
+                                    <Select className="w-full" value={form.idEquipo ?? ""} onChange={(e) => setForm((f) => ({ ...f, idEquipo: Number(e.target.value) || undefined }))}>
                                         <option value="">Seleccionar…</option>
                                         {equipos.map((eq) => <option key={eq.id} value={eq.id}>{eq.nombre}</option>)}
-                                    </select>
+                                    </Select>
                                 </Campo>
                                 <Campo label="Procedimiento Terapéutico" nombre="idProcedimientoTerapeutico" error={v.error("idProcedimientoTerapeutico")} requerido>
-                                    <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={form.idProcedimientoTerapeutico ?? ""} onChange={(e) => setForm((f) => ({ ...f, idProcedimientoTerapeutico: Number(e.target.value) || undefined }))}>
+                                    <Select className="w-full" value={form.idProcedimientoTerapeutico ?? ""} onChange={(e) => setForm((f) => ({ ...f, idProcedimientoTerapeutico: Number(e.target.value) || undefined }))}>
                                         <option value="">Seleccionar…</option>
                                         {procedimientos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                                    </select>
+                                    </Select>
                                 </Campo>
                             </div>
                         </div>
@@ -345,19 +348,21 @@ export default function EndoscopiasPage() {
                             </Campo>
 
                             <div className="relative mt-3 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Código CIE10</label>
-                                <Input placeholder="Buscar por código o nombre…" value={cie10Query} onChange={(e) => setCie10Query(e.target.value)} />
+                                <label className="text-[13px] font-medium">Código CIE10</label>
+                                <Buscador
+                                    placeholder="Buscar por código o nombre…" texto={cie10Query} onTexto={(t) => setCie10Query(t)}
+                                    resultados={cie10Resultados}
+                                    claveDe={(d) => d.codigoDiagnostico}
+                                    onElegir={(d) => elegirCie10(d)}
+                                    renderItem={(d) => (
+                                        <>
+                                            <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
+                                        </>
+                                    )}
+                                    sinResultados="No se encontraron diagnósticos."
+                                />
                                 {cie10Nombre && (
                                     <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>{form.codigoDiagnostico} — {cie10Nombre}</p>
-                                )}
-                                {cie10Resultados.length > 0 && (
-                                    <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md" style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}>
-                                        {cie10Resultados.map((d) => (
-                                            <button key={d.codigoDiagnostico} type="button" className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5" onClick={() => elegirCie10(d)}>
-                                                <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
-                                            </button>
-                                        ))}
-                                    </div>
                                 )}
                             </div>
 
@@ -367,9 +372,6 @@ export default function EndoscopiasPage() {
                                 <p className="mt-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>
                                     {formError}
                                 </p>
-                            )}
-                            {guardadoOk && (
-                                <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-[12.5px] text-green-700">Reporte guardado correctamente.</p>
                             )}
 
                             <div className="mt-4 flex flex-wrap gap-2">

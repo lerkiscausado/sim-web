@@ -7,10 +7,10 @@ export const TABLA_REGISTRO = {
   CITOLOGIA: 6,
 } as const;
 
-export const hoyISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+/** Fecha local "YYYY-MM-DD" (toISOString daría UTC: en Colombia, después de las 7 p. m. ya es mañana). */
+export const aISOLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const hoyISO = () => aISOLocal(new Date());
 export const horaActual = () => new Date().toTimeString().slice(0, 8);
 
 /**

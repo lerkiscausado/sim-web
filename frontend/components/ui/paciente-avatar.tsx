@@ -11,15 +11,14 @@ interface PacienteAvatarProps {
 }
 
 export function PacienteAvatar({ idPaciente, width = 72 }: PacienteAvatarProps) {
-    const [url, setUrl] = useState<string | null>(null);
-    const [cargando, setCargando] = useState(true);
+    // Foto cargada para un paciente concreto: si cambia el id, mientras llega la nueva se considera "cargando".
+    const [foto, setFoto] = useState<{ id: number; url: string | null } | null>(null);
+    const cargando = foto?.id !== idPaciente;
+    const url = foto && foto.id === idPaciente ? foto.url : null;
 
     useEffect(() => {
         let cancelado = false;
         let objectUrl: string | null = null;
-
-        setCargando(true);
-        setUrl(null);
 
         apiFetchBlobUrl(`/pacientes/${idPaciente}/foto`)
             .then((u) => {
@@ -28,13 +27,11 @@ export function PacienteAvatar({ idPaciente, width = 72 }: PacienteAvatarProps) 
                     return;
                 }
                 objectUrl = u;
-                setUrl(u);
+                setFoto({ id: idPaciente, url: u });
             })
             .catch(() => {
                 // sin foto cargada (404) u otro error: se muestra el ícono
-            })
-            .finally(() => {
-                if (!cancelado) setCargando(false);
+                if (!cancelado) setFoto({ id: idPaciente, url: null });
             });
 
         return () => {

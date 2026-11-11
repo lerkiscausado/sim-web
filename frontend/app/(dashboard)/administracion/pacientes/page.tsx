@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { PacienteFormDialog, type Paciente, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
+import { calcularEdad } from "@/lib/fechas";
 
 interface Paginated {
     data: Paciente[];
@@ -41,15 +42,6 @@ interface Paginated {
 
 function nombreCompleto(p: Paciente) {
     return [p.primerNombre, p.segundoNombre, p.primerApellido, p.segundoApellido].filter(Boolean).join(" ");
-}
-
-function calcularEdad(fechaNacimientoISO: string): number {
-    const nacimiento = new Date(fechaNacimientoISO);
-    const hoy = new Date();
-    let edad = hoy.getFullYear() - nacimiento.getFullYear();
-    const m = hoy.getMonth() - nacimiento.getMonth();
-    if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
-    return edad;
 }
 
 export default function PacientesPage() {

@@ -39,6 +39,8 @@ import { CorreoDialog } from "@/components/ordenes/CorreoDialog";
 import { api, ApiError } from "@/lib/api";
 import { abrirPdf, descargarArchivo } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
+import { useFeedback } from "@/components/ui/feedback";
+import { Select } from "@/components/ui/select";
 
 interface FilaConsulta {
     orden: number;
@@ -107,6 +109,7 @@ const firmado = (f: FilaConsulta) => f.estado === "ATENDIDO" || f.estado === "FA
  * sobre la orden seleccionada (informe, adjuntos, imágenes, correo, recibo).
  */
 export default function ConsultarOrdenesPage() {
+    const { confirmar } = useFeedback();
     const { hasPermission } = useAuth();
     const anioActual = new Date().getFullYear();
     const [anios, setAnios] = useState<number[]>([]);
@@ -208,7 +211,7 @@ export default function ConsultarOrdenesPage() {
         const texto = ids.length
             ? `Se exportarán los resultados de ${ids.length} órdenes seleccionadas.`
             : `No hay órdenes marcadas: se exportarán las ${cuantos} órdenes del filtro actual${resultado.total > 300 ? " (máximo 300)" : ""}.`;
-        if (!window.confirm(`${texto}\n\nEste proceso puede tomar unos minutos. ¿Desea continuar?`)) return;
+        if (!(await confirmar({ titulo: "Exportar lote de resultados", mensaje: `${texto}\n\nEste proceso puede tomar unos minutos.`, textoAceptar: "Exportar" }))) return;
         await ejecutar(
             "lote",
             async () => {
@@ -302,14 +305,14 @@ export default function ConsultarOrdenesPage() {
                 </div>
                 <label className="space-y-1 text-[11.5px] font-medium">
                     <span className="block">Año</span>
-                    <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={filtros.anio} onChange={(e) => cambiar("anio", e.target.value)}>
+                    <Select value={filtros.anio} onChange={(e) => cambiar("anio", e.target.value)}>
                         <option value="">Todos</option>
                         {(anios.length ? anios : [anioActual]).map((a) => (
                             <option key={a} value={a}>
                                 {a}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </label>
                 <label className="space-y-1 text-[11.5px] font-medium">
                     <span className="block">Desde</span>
@@ -321,36 +324,36 @@ export default function ConsultarOrdenesPage() {
                 </label>
                 <label className="space-y-1 text-[11.5px] font-medium">
                     <span className="block">Estado</span>
-                    <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={filtros.estado} onChange={(e) => cambiar("estado", e.target.value)}>
+                    <Select value={filtros.estado} onChange={(e) => cambiar("estado", e.target.value)}>
                         <option value="">Todos</option>
                         {ESTADOS.map((e) => (
                             <option key={e} value={e}>
                                 {e}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </label>
                 <label className="space-y-1 text-[11.5px] font-medium">
                     <span className="block">Sede</span>
-                    <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={filtros.idSede} onChange={(e) => cambiar("idSede", e.target.value)}>
+                    <Select value={filtros.idSede} onChange={(e) => cambiar("idSede", e.target.value)}>
                         <option value="">Todas</option>
                         {sedes.map((s) => (
                             <option key={s.id} value={s.id}>
                                 {s.nombre}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </label>
                 <label className="space-y-1 text-[11.5px] font-medium">
                     <span className="block">Estudio</span>
-                    <select className="h-9 rounded-md border bg-transparent px-2 text-sm" value={filtros.idTipoEstudio} onChange={(e) => cambiar("idTipoEstudio", e.target.value)}>
+                    <Select value={filtros.idTipoEstudio} onChange={(e) => cambiar("idTipoEstudio", e.target.value)}>
                         <option value="">Todos</option>
                         {tipos.map((t) => (
                             <option key={t.id} value={t.id}>
                                 {t.nombreTipoEstudio}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                 </label>
                 {hayFiltrosExtra && (
                     <Button

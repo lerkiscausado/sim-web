@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, ApiError } from "@/lib/api";
 import { apiUrl, urlImagen } from "@/lib/descargas";
+import { useFeedback } from "@/components/ui/feedback";
+import { Select } from "@/components/ui/select";
 
 interface Imagen {
     id: number;
@@ -34,6 +36,7 @@ interface Props {
  * archivos, y galería de las imágenes ya guardadas de la orden.
  */
 export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
+    const { confirmar } = useFeedback();
     const [guardadas, setGuardadas] = useState<(Imagen & { url?: string })[]>([]);
     const [pendientes, setPendientes] = useState<Pendiente[]>([]);
     const [texto, setTexto] = useState("");
@@ -167,7 +170,7 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
     }
 
     async function eliminar(img: Imagen) {
-        if (!window.confirm("¿Desea eliminar esta imagen del estudio?")) return;
+        if (!(await confirmar({ titulo: "¿Eliminar esta imagen?", mensaje: "La imagen dejará de aparecer en el estudio.", textoAceptar: "Eliminar", peligro: true }))) return;
         try {
             await api.delete(`/admisiones/consulta/imagenes/${img.id}`);
             await cargar();
@@ -204,8 +207,8 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                                         <CameraOff size={14} /> Apagar
                                     </Button>
                                     {camaras.length > 1 && (
-                                        <select
-                                            className="h-9 rounded-md border bg-transparent px-2 text-sm"
+                                        <Select
+                                            
                                             value={camaraId}
                                             onChange={(e) => iniciarCamara(e.target.value)}
                                         >
@@ -214,7 +217,7 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                                                     {c.label || `Cámara ${i + 1}`}
                                                 </option>
                                             ))}
-                                        </select>
+                                        </Select>
                                     )}
                                 </>
                             ) : (

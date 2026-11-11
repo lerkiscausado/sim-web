@@ -25,6 +25,8 @@ import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { CATEGORIAS_PERMISOS } from "./permisos-config";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface Empleado {
     id: number;
@@ -50,6 +52,7 @@ const FORM_NUEVO_INICIAL = {
 };
 
 export default function UsuariosSistemaPage() {
+    const { avisar } = useFeedback();
     const [usuarios, setUsuarios] = useState<UsuarioSistema[]>([]);
     const [empleados, setEmpleados] = useState<Empleado[]>([]);
     const [loading, setLoading] = useState(true);
@@ -130,6 +133,7 @@ export default function UsuariosSistemaPage() {
         try {
             await api.post("/users", formNuevo);
             setDialogNuevoOpen(false);
+            avisar.exito("Usuario registrado.");
             await cargar();
         } catch (err) {
             setNuevoError(err instanceof ApiError ? err.message : "No se pudo registrar el usuario");
@@ -166,6 +170,7 @@ export default function UsuariosSistemaPage() {
             if (formEdit.pass) payload.pass = formEdit.pass;
             await api.patch(`/users/${editando.id}`, payload);
             setEditando(null);
+            avisar.exito("Usuario actualizado.");
             await cargar();
         } catch (err) {
             setEditError(err instanceof ApiError ? err.message : "No se pudo guardar el usuario");
@@ -259,8 +264,8 @@ export default function UsuariosSistemaPage() {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <Campo label="Empleado" nombre="idEmpleado" error={vNuevo.error("idEmpleado")} requerido>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <Select
+                                className="w-full"
                                 value={formNuevo.idEmpleado ?? ""}
                                 onChange={(e) => setFormNuevo((f) => ({ ...f, idEmpleado: Number(e.target.value) || undefined }))}
                             >
@@ -270,7 +275,7 @@ export default function UsuariosSistemaPage() {
                                         {e.nombreEmpleado} {e.cargo?.nombreCargo ? `— ${e.cargo.nombreCargo}` : ""}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </Campo>
                         <Campo label="Usuario" nombre="usuario" error={vNuevo.error("usuario")} requerido>
                             <Input

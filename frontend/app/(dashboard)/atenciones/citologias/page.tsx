@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, FileDown, PenLine, Camera } from "lucide-react";
+import { Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, FileDown, PenLine, Camera } from "lucide-react";
 import { abrirPdf } from "@/lib/descargas";
 import { ImagenesDialog } from "@/components/ordenes/ImagenesDialog";
 import { api, ApiError } from "@/lib/api";
@@ -11,214 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { PacienteAvatar } from "@/components/ui/paciente-avatar";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
-import type {
-    OrdenPendiente,
-    InformeCitologia,
-    AntecedentesTomaMuestra,
-    EstudioAnterior,
-} from "./types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import type { OrdenPendiente, InformeCitologia, AntecedentesTomaMuestra, EstudioAnterior } from "./types";
 import { nombrePaciente, calcularEdad } from "./types";
+import { hoyISO } from "@/lib/fechas";
+import { useFeedback } from "@/components/ui/feedback";
+import { CALIDAD_MUESTRA, CATEGORIZACION_GENERAL, MICROORGANISMOS, OHNN, CELULAS_ESCAMOSAS, CELULAS_GLANDULARES_ATIPICAS, CELULAS_GLANDULARES_NEOPLASIA, CELULAS_GLANDULARES_OTROS, FLORA_BACILAR, INFLAMACION, TODOS_LOS_CHECKS, CUELLO, FLUJO, FORM_INICIAL, ANTECEDENTES_INICIAL } from "./constantes";
+import { PacienteCard, GrupoChecks } from "./componentes";
+import type { ChecksState } from "./constantes";
 
 // Etiquetas clínicas reales, extraídas de frmCitologiaGeneral.Designer.vb (Properties.Caption)
-const CALIDAD_MUESTRA = [
-    { key: "cm1", label: "Satisfactoria Zona de Transformación Presente" },
-    { key: "cm2", label: "Satisfactoria Zona de Transformación Ausente" },
-    { key: "cm3", label: "Insatisfactoria" },
-    { key: "cm4", label: "Rechazada" },
-];
-const CATEGORIZACION_GENERAL = [
-    { key: "cg1", label: "Negativa para Lesión Intraepitelial o Malignidad" },
-    { key: "cg2", label: "Anormalidad de Células Epiteliales" },
-];
-const MICROORGANISMOS = [
-    { key: "m1", label: "Bacterias con Morfologías compatibles con Actynomices" },
-    { key: "m2", label: "Cambios Celulares Compatibles al Herpes Virus Simple" },
-    { key: "m3", label: "Trichomonas Vaginalis" },
-    { key: "m4", label: "Candidiasis Vaginalis" },
-    { key: "m5", label: "Vaginosis Bacteriana" },
-    { key: "m6", label: "Otros Cambios" },
-];
-const OHNN = [
-    { key: "ohnn1", label: "Inflamación" },
-    { key: "ohnn2", label: "Radiación" },
-    { key: "ohnn3", label: "Cambios por DIU" },
-    { key: "ohnn4", label: "Células Endometriales Después de los 40 años" },
-    { key: "ohnn5", label: "Células Glandulares Posthisterectomía" },
-    { key: "ohnn6", label: "Atrofia" },
-];
-const CELULAS_ESCAMOSAS = [
-    { key: "ace1", label: "De Significado Indeterminado (ASC-US)" },
-    { key: "ace2", label: "No se Descarta Lesión Intraepitelial Escamosa de Alto Grado (ASC-H)" },
-    { key: "ace3", label: "Lesión Intraepitelial Escamosa de Bajo Grado LIE BG (Comprende Infección por el VPH y NIC I)" },
-    { key: "ace4", label: "Lesión Intraepitelial Escamosa de Alto Grado LIE AG (Comprende NIC II Y NIC III y Carcinoma in Situ)" },
-    { key: "ace5", label: "Carcinoma Escamocelular" },
-];
-const CELULAS_GLANDULARES_ATIPICAS = [
-    { key: "acg1", label: "Endocervicales" },
-    { key: "acg2", label: "Endometriales" },
-];
-const CELULAS_GLANDULARES_NEOPLASIA = [
-    { key: "acg3", label: "Endocervicales" },
-    { key: "acg4", label: "Endometriales" },
-];
-const CELULAS_GLANDULARES_OTROS = [
-    { key: "acg5", label: "Adenocarcinoma IN SITU" },
-    { key: "acg8", label: "Otros" },
-];
-const FLORA_BACILAR = [
-    { key: "fb1", label: "Escasa" },
-    { key: "fb2", label: "Moderada" },
-    { key: "fb3", label: "Aumentada" },
-];
-const INFLAMACION = [
-    { key: "i1", label: "Leve" },
-    { key: "i2", label: "Moderada" },
-    { key: "i3", label: "Severa" },
-];
-const TODOS_LOS_CHECKS = [
-    ...CALIDAD_MUESTRA,
-    ...CATEGORIZACION_GENERAL,
-    ...MICROORGANISMOS,
-    ...OHNN,
-    ...CELULAS_ESCAMOSAS,
-    ...CELULAS_GLANDULARES_ATIPICAS,
-    ...CELULAS_GLANDULARES_NEOPLASIA,
-    ...CELULAS_GLANDULARES_OTROS,
-    ...FLORA_BACILAR,
-    ...INFLAMACION,
-].map((c) => c.key);
-
-const CUELLO = [
-    { key: "s", label: "Sano" },
-    { key: "u", label: "Ulcerado" },
-    { key: "l", label: "Lacerado" },
-];
-const FLUJO = [
-    { key: "bn", label: "Blanco" },
-    { key: "cn", label: "Claro" },
-    { key: "ba", label: "Amarillo" },
-    { key: "o", label: "Con Olor" },
-];
-
-type ChecksState = Record<string, boolean>;
-
-const FORM_INICIAL = {
-    checks: Object.fromEntries(TODOS_LOS_CHECKS.map((k) => [k, false])) as ChecksState,
-    cm5: "",
-    observaciones: "",
-    diagnostico: "",
-    fechaSalida: new Date().toISOString().slice(0, 10),
-};
-
-const ANTECEDENTES_INICIAL = {
-    g: "",
-    p: "",
-    a: "",
-    c: "",
-    ivsa: "",
-    mpf: "",
-    fum: "",
-    fuc: "",
-    fup: "",
-    checks: { s: false, u: false, l: false, bn: false, cn: false, ba: false, o: false } as ChecksState,
-    observaciones: "",
-};
-
-/** Misma tarjeta de paciente (foto + datos) usada en Pacientes, Órdenes y Patologías. */
-function PacienteCard({ p }: { p: OrdenPendiente["paciente"] }) {
-    if (!p) return null;
-    return (
-        <div
-            className="flex items-stretch gap-3 rounded-lg border p-4"
-            style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-        >
-            <PacienteAvatar idPaciente={p.id} />
-            <div className="min-w-0 flex-1">
-                <p className="font-bold" style={{ color: "var(--ink-primary)" }}>
-                    {nombrePaciente(p).toUpperCase()}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    {p.idTipoIdentificacion}
-                    {p.identificacion}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                    Edad: {calcularEdad(p.fechaNacimiento)} años · Sexo: {p.sexo === "M" ? "Masculino" : "Femenino"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">Teléfono: {p.telefono || "—"}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">Correo: {p.correoElectronico || "—"}</p>
-            </div>
-        </div>
-    );
-}
-
-function GrupoChecks({
-    titulo,
-    items,
-    checks,
-    onToggle,
-    nombre,
-    error,
-}: {
-    titulo: string;
-    items: { key: string; label: string }[];
-    checks: ChecksState;
-    onToggle: (key: string, value: boolean) => void;
-    /** Nombre del grupo para la validación (lleva el foco al primer grupo con error). */
-    nombre?: string;
-    error?: string;
-}) {
-    return (
-        <div
-            data-campo={nombre}
-            className={`rounded-lg border p-4 ${error ? "campo-invalido" : ""}`}
-            style={{ background: "var(--surface-raised)", borderColor: error ? "var(--destructive)" : "var(--border-default)" }}
-        >
-            <p className="mb-3 text-[12.5px] font-bold" style={{ color: error ? "var(--destructive)" : "var(--ink-primary)" }}>
-                {titulo}
-                {error && <span className="ml-0.5">*</span>}
-            </p>
-            {error && (
-                <p role="alert" className="-mt-2 mb-3 flex items-center gap-1 text-[11.5px] text-red-600">
-                    <AlertCircle className="h-3 w-3 shrink-0" />
-                    {error}
-                </p>
-            )}
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {items.map((item) => (
-                    <label key={item.key} className="flex items-start gap-2 text-[12.5px]">
-                        <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={!!checks[item.key]}
-                            onChange={(e) => onToggle(item.key, e.target.checked)}
-                        />
-                        <span>{item.label}</span>
-                    </label>
-                ))}
-            </div>
-        </div>
-    );
-}
 
 type Vista = "listado" | "informe";
 
 export default function CitologiasPage() {
+    const { avisar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
     const [loading, setLoading] = useState(true);
@@ -226,14 +34,13 @@ export default function CitologiasPage() {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [ordenActiva, setOrdenActiva] = useState<OrdenPendiente | null>(null);
-    const [form, setForm] = useState(FORM_INICIAL);
+    const [form, setForm] = useState(() => ({ ...FORM_INICIAL, fechaSalida: hoyISO() }));
     const [antecedentes, setAntecedentes] = useState(ANTECEDENTES_INICIAL);
     const [guardando, setGuardando] = useState(false);
     const [guardandoAntecedentes, setGuardandoAntecedentes] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
-    const [guardadoOk, setGuardadoOk] = useState(false);
     const [firmar, setFirmar] = useState(false);
     const [confirmarFirma, setConfirmarFirma] = useState(false);
     const [generandoPdf, setGenerandoPdf] = useState(false);
@@ -327,8 +134,7 @@ export default function CitologiasPage() {
         setFormError(null);
         v.reiniciar();
         vAnt.reiniciar();
-        setGuardadoOk(false);
-        setForm(FORM_INICIAL);
+        setForm({ ...FORM_INICIAL, fechaSalida: hoyISO() });
         setAntecedentes({ ...ANTECEDENTES_INICIAL, idUsuario: orden.idUsuario } as typeof ANTECEDENTES_INICIAL & { idUsuario: number });
         setEstudiosAnteriores([]);
         setVista("informe");
@@ -380,7 +186,7 @@ export default function CitologiasPage() {
                     cm5: existente.cm5 ?? "",
                     observaciones: existente.observaciones ?? "",
                     diagnostico: existente.diagnostico ?? "",
-                    fechaSalida: new Date().toISOString().slice(0, 10),
+                    fechaSalida: hoyISO(),
                 });
             }
         } catch {
@@ -428,7 +234,6 @@ export default function CitologiasPage() {
     async function guardarInforme(): Promise<boolean> {
         if (!ordenActiva) return false;
         setFormError(null);
-        setGuardadoOk(false);
 
         if (!v.comprobar()) return false;
 
@@ -445,7 +250,7 @@ export default function CitologiasPage() {
                 payload[key] = form.checks[key] ? "1" : "0";
             }
             await api.post("/atenciones/citologia", payload);
-            setGuardadoOk(true);
+            avisar.exito("Informe guardado.");
             return true;
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el informe");
@@ -468,6 +273,7 @@ export default function CitologiasPage() {
         setGuardando(true);
         try {
             await api.post(`/atenciones/citologia/orden/${ordenActiva.id}/firmar`);
+            avisar.exito("Estudio firmado. La orden pasó a ATENDIDO.");
             setVista("listado");
             setOrdenActiva(null);
             setFirmar(false);
@@ -584,31 +390,31 @@ export default function CitologiasPage() {
                         <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-[12.5px] font-bold">Antecedentes Gineco-obstétricos</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <Campo label="G" labelClassName="text-[11px]" nombre="g" error={vAnt.error("g")}>
+                                <Campo label="G" labelClassName="text-[12px]" nombre="g" error={vAnt.error("g")}>
                                     <Input value={antecedentes.g} onChange={(e) => setAntecedentes((a) => ({ ...a, g: e.target.value }))} />
                                 </Campo>
-                                <Campo label="P" labelClassName="text-[11px]" nombre="p" error={vAnt.error("p")}>
+                                <Campo label="P" labelClassName="text-[12px]" nombre="p" error={vAnt.error("p")}>
                                     <Input value={antecedentes.p} onChange={(e) => setAntecedentes((a) => ({ ...a, p: e.target.value }))} />
                                 </Campo>
-                                <Campo label="A" labelClassName="text-[11px]" nombre="a" error={vAnt.error("a")}>
+                                <Campo label="A" labelClassName="text-[12px]" nombre="a" error={vAnt.error("a")}>
                                     <Input value={antecedentes.a} onChange={(e) => setAntecedentes((a) => ({ ...a, a: e.target.value }))} />
                                 </Campo>
-                                <Campo label="C" labelClassName="text-[11px]" nombre="c" error={vAnt.error("c")}>
+                                <Campo label="C" labelClassName="text-[12px]" nombre="c" error={vAnt.error("c")}>
                                     <Input value={antecedentes.c} onChange={(e) => setAntecedentes((a) => ({ ...a, c: e.target.value }))} />
                                 </Campo>
-                                <Campo label="IVSA" labelClassName="text-[11px]" nombre="ivsa" error={vAnt.error("ivsa")} className="col-span-2">
+                                <Campo label="IVSA" labelClassName="text-[12px]" nombre="ivsa" error={vAnt.error("ivsa")} className="col-span-2">
                                     <Input value={antecedentes.ivsa} onChange={(e) => setAntecedentes((a) => ({ ...a, ivsa: e.target.value }))} />
                                 </Campo>
-                                <Campo label="MPF" labelClassName="text-[11px]" nombre="mpf" error={vAnt.error("mpf")} className="col-span-2">
+                                <Campo label="MPF" labelClassName="text-[12px]" nombre="mpf" error={vAnt.error("mpf")} className="col-span-2">
                                     <Input value={antecedentes.mpf} onChange={(e) => setAntecedentes((a) => ({ ...a, mpf: e.target.value }))} />
                                 </Campo>
-                                <Campo label="FUM" labelClassName="text-[11px]" nombre="fum" error={vAnt.error("fum")}>
+                                <Campo label="FUM" labelClassName="text-[12px]" nombre="fum" error={vAnt.error("fum")}>
                                     <Input value={antecedentes.fum} onChange={(e) => setAntecedentes((a) => ({ ...a, fum: e.target.value }))} />
                                 </Campo>
-                                <Campo label="FUC" labelClassName="text-[11px]" nombre="fuc" error={vAnt.error("fuc")}>
+                                <Campo label="FUC" labelClassName="text-[12px]" nombre="fuc" error={vAnt.error("fuc")}>
                                     <Input value={antecedentes.fuc} onChange={(e) => setAntecedentes((a) => ({ ...a, fuc: e.target.value }))} />
                                 </Campo>
-                                <Campo label="FUP" labelClassName="text-[11px]" nombre="fup" error={vAnt.error("fup")}>
+                                <Campo label="FUP" labelClassName="text-[12px]" nombre="fup" error={vAnt.error("fup")}>
                                     <Input value={antecedentes.fup} onChange={(e) => setAntecedentes((a) => ({ ...a, fup: e.target.value }))} />
                                 </Campo>
                             </div>
@@ -737,11 +543,6 @@ export default function CitologiasPage() {
                                     style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}
                                 >
                                     {formError}
-                                </p>
-                            )}
-                            {guardadoOk && (
-                                <p className="mt-3 rounded-md bg-green-50 px-3 py-2 text-[12.5px] text-green-700">
-                                    Informe guardado correctamente.
                                 </p>
                             )}
 

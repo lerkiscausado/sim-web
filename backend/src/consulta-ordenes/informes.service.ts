@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Informes } from '../documentos-soporte/entities/informes.entity';
 import { EstadoActivoInactivo } from '../common/enums/estado.enum';
+import { aISOLocal } from '../common/registros.util';
 
 const MAX_FILAS = 5000;
 
@@ -104,7 +105,7 @@ export class InformesService {
           const v = f[k];
           o[k] =
             v instanceof Date
-              ? v.toISOString().slice(0, 10)
+              ? aISOLocal(v)
               : Buffer.isBuffer(v)
                 ? '[binario]'
                 : v;

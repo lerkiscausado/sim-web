@@ -27,6 +27,9 @@ import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { getPreferencias } from "@/lib/preferencias";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
+import { Buscador } from "@/components/ui/buscador";
 
 interface Entidad {
     codigoEntidad: string;
@@ -81,6 +84,7 @@ interface Paginado {
 }
 
 export default function ContratosPage() {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [entidades, setEntidades] = useState<Entidad[]>([]);
     const [tarifas, setTarifas] = useState<Tarifa[]>([]);
@@ -98,7 +102,6 @@ export default function ContratosPage() {
     const [contratoAEliminar, setContratoAEliminar] = useState<Contrato | null>(null);
     const [eliminando, setEliminando] = useState(false);
     const [entidadQuery, setEntidadQuery] = useState("");
-    const [entidadResultadosAbiertos, setEntidadResultadosAbiertos] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const v = useValidacion(form, {
         codigoEntidad: [reglas.requerido("Busca y selecciona la entidad de la lista.")],
@@ -209,6 +212,7 @@ export default function ContratosPage() {
                 await api.post("/entidades-contratos/contratos", payload);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Contrato actualizado." : "Contrato creado. Recuerda agregar sus subentidades.");
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar el contrato");
@@ -391,39 +395,24 @@ export default function ContratosPage() {
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-2">
                         <Campo label="Entidad" nombre="codigoEntidad" error={v.error("codigoEntidad")} requerido className="relative">
-                            <Input
+                            <Buscador
                                 placeholder="Escribe al menos 3 letras…"
-                                value={entidadQuery}
-                                onChange={(e) => {
-                                    setEntidadQuery(e.target.value);
-                                    setEntidadResultadosAbiertos(true);
+                                texto={entidadQuery}
+                                onTexto={(t) => {
+                                    setEntidadQuery(t);
                                     // Al cambiar el texto, la entidad elegida deja de estar seleccionada.
                                     setForm((f) => (f.codigoEntidad ? { ...f, codigoEntidad: "" } : f));
                                 }}
-                                onFocus={() => setEntidadResultadosAbiertos(true)}
-                                onBlur={() => setTimeout(() => setEntidadResultadosAbiertos(false), 150)}
+                                resultados={entidadesFiltradas}
+                                claveDe={(e) => e.codigoEntidad}
+                                textoDe={(e) => `${e.codigoEntidad} - ${e.nombreEntidad}`}
+                                onElegir={(e) => {
+                                    setForm((f) => ({ ...f, codigoEntidad: e.codigoEntidad }));
+                                    setEntidadQuery(`${e.codigoEntidad} - ${e.nombreEntidad}`);
+                                }}
+                                sinResultados="Ninguna entidad coincide."
+                                minCaracteres={3}
                             />
-                            {entidadResultadosAbiertos && entidadesFiltradas.length > 0 && (
-                                <div
-                                    className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border shadow-md"
-                                    style={{ background: "var(--surface-raised, #fff)", borderColor: "var(--border-default)" }}
-                                >
-                                    {entidadesFiltradas.map((e) => (
-                                        <button
-                                            key={e.codigoEntidad}
-                                            type="button"
-                                            className="block w-full px-3 py-2 text-left text-[12.5px] hover:bg-black/5"
-                                            onClick={() => {
-                                                setForm((f) => ({ ...f, codigoEntidad: e.codigoEntidad }));
-                                                setEntidadQuery(`${e.codigoEntidad} - ${e.nombreEntidad}`);
-                                                setEntidadResultadosAbiertos(false);
-                                            }}
-                                        >
-                                            {e.codigoEntidad} - {e.nombreEntidad}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
                         </Campo>
                         <Campo label="Nombre del contrato" nombre="nombre" error={v.error("nombre")} requerido>
                             <Input
@@ -438,16 +427,16 @@ export default function ContratosPage() {
                             />
                         </Campo>
                         <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Tipo de contrato</label>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <label className="text-[13px] font-medium">Tipo de contrato</label>
+                            <Select
+                                className="w-full"
                                 value={form.tipoContrato}
                                 onChange={(e) => setForm((f) => ({ ...f, tipoContrato: e.target.value }))}
                             >
                                 <option value="EVENTO">Evento</option>
                                 <option value="CAPITADO">Capitado</option>
                                 <option value="PAQUETE">Paquete</option>
-                            </select>
+                            </Select>
                         </div>
                         <Campo label="Fecha inicio" nombre="fechaInicio" error={v.error("fechaInicio")}>
                             <Input
@@ -464,9 +453,9 @@ export default function ContratosPage() {
                             />
                         </Campo>
                         <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Tarifa aplicada</label>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <label className="text-[13px] font-medium">Tarifa aplicada</label>
+                            <Select
+                                className="w-full"
                                 value={form.idTarifa ?? ""}
                                 onChange={(e) => setForm((f) => ({ ...f, idTarifa: Number(e.target.value) || undefined }))}
                             >
@@ -476,18 +465,18 @@ export default function ContratosPage() {
                                         {t.nombreTarifa}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">¿Genera RIPS?</label>
-                            <select
-                                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+                            <label className="text-[13px] font-medium">¿Genera RIPS?</label>
+                            <Select
+                                className="w-full"
                                 value={form.rips}
                                 onChange={(e) => setForm((f) => ({ ...f, rips: e.target.value }))}
                             >
                                 <option value="NO">No</option>
                                 <option value="SI">Sí</option>
-                            </select>
+                            </Select>
                         </div>
                         <Campo label="Usuario portal externo" nombre="usuario" error={v.error("usuario")} requerido>
                             <Input

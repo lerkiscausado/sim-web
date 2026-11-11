@@ -40,11 +40,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // La sesión vive en localStorage, que solo existe en el navegador: se lee después del primer
+    // render para que el HTML del servidor y el del cliente coincidan (hidratación).
     useEffect(() => {
         const stored = window.localStorage.getItem(USER_KEY);
         const token = window.localStorage.getItem(TOKEN_KEY);
         if (stored && token) {
             try {
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza con localStorage (sistema externo)
                 setUser(JSON.parse(stored));
             } catch {
                 window.localStorage.removeItem(USER_KEY);

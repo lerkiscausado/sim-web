@@ -32,6 +32,8 @@ import {
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { Select } from "@/components/ui/select";
+import { useFeedback } from "@/components/ui/feedback";
 
 interface CupsItem {
     codigoCups: string;
@@ -47,6 +49,7 @@ interface Paginado {
 }
 
 export default function Cups() {
+    const { avisar } = useFeedback();
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
@@ -124,6 +127,7 @@ export default function Cups() {
                 await api.post("/catalogos/cups", form);
             }
             setDialogOpen(false);
+            avisar.exito(editando ? "Cambios guardados." : "Registro creado.");
             await cargar(page, searchTerm);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar");
@@ -169,15 +173,15 @@ export default function Cups() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    <select
-                        className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                    <Select
+                        
                         value={filtroEstado}
                         onChange={(e) => setFiltroEstado(e.target.value)}
                     >
                         <option value="">Todos los estados</option>
                         <option value="A">Activos</option>
                         <option value="I">Inactivos</option>
-                    </select>
+                    </Select>
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 

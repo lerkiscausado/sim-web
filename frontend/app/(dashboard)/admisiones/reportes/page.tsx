@@ -10,6 +10,8 @@ import { ErrorDialog } from "@/components/ui/error-dialog";
 import { api, ApiError } from "@/lib/api";
 import { abrirPdf } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
+import { hoyISO } from "@/lib/fechas";
+import { Select } from "@/components/ui/select";
 
 interface Informe {
     id: number;
@@ -25,10 +27,7 @@ interface ResultadoInforme {
     truncado: boolean;
 }
 
-const hoy = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const hoy = hoyISO;
 
 function aCsv(columnas: string[], filas: Record<string, unknown>[]) {
     const esc = (v: unknown) => {
@@ -184,7 +183,7 @@ export default function ReportesPage() {
                     )}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <select className="h-9 min-w-[280px] rounded-md border bg-transparent px-2 text-sm" value={idInforme} onChange={(e) => ejecutar(e.target.value)}>
+                    <Select className="min-w-[280px]" value={idInforme} onChange={(e) => ejecutar(e.target.value)}>
                         <option value="">Seleccione un informe…</option>
                         {informes.map((i) => (
                             <option key={i.id} value={i.id}>
@@ -192,7 +191,7 @@ export default function ReportesPage() {
                                 {i.estado !== "A" ? " (inactivo)" : ""}
                             </option>
                         ))}
-                    </select>
+                    </Select>
                     {idInforme && (
                         <Button variant="outline" size="sm" onClick={() => ejecutar(idInforme)} disabled={ejecutando}>
                             {ejecutando ? <Loader2 className="animate-spin" size={14} /> : <Play size={14} />}

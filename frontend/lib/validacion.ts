@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { deISOLocal, hoyISO } from "./fechas";
 
 /**
  * Validación de formularios del lado del cliente.
@@ -94,15 +95,13 @@ export const reglas = {
     fecha:
         (mensaje = "Fecha no válida.") =>
         (v: unknown) =>
-            vacio(v) || !Number.isNaN(new Date(texto(v)).getTime()) ? null : mensaje,
+            vacio(v) || deISOLocal(texto(v)) ? null : mensaje,
 
     fechaNoFutura:
         (mensaje = "La fecha no puede ser posterior a hoy.") =>
         (v: unknown) => {
             if (vacio(v)) return null;
-            const hoy = new Date();
-            const limite = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
-            return texto(v).slice(0, 10) > limite ? mensaje : null;
+            return texto(v).slice(0, 10) > hoyISO() ? mensaje : null;
         },
 
     /** La fecha debe ser igual o posterior a la de otro campo del mismo formulario. */

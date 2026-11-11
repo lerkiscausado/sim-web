@@ -69,7 +69,7 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [filtroTipoEstudio, setFiltroTipoEstudio] = useState("");
-    const [pageSize, setPageSize] = useTamanoPagina("detalle-tarifa", 10);
+    const [pageSize, setPageSize] = useTamanoPagina("detalle-tarifa");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

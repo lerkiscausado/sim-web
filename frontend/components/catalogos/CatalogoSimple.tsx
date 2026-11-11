@@ -67,7 +67,7 @@ export function CatalogoSimple({
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina(`catalogo${endpoint}`, 20);
+    const [pageSize, setPageSize] = useTamanoPagina(`catalogo${endpoint}`);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

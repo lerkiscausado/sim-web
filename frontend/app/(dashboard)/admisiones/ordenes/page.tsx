@@ -66,7 +66,7 @@ export default function OrdenesPage() {
     const [cancelando, setCancelando] = useState(false);
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
-    const [listadoPageSize, setListadoPageSize] = useTamanoPagina("ordenes", 15);
+    const [listadoPageSize, setListadoPageSize] = useTamanoPagina("ordenes");
     const [filtroAnio, setFiltroAnio] = useState<string>("");
     const [filtroFechaInicio, setFiltroFechaInicio] = useState("");
     const [filtroFechaFin, setFiltroFechaFin] = useState("");

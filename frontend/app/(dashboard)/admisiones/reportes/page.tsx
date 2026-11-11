@@ -99,7 +99,7 @@ export default function ReportesPage() {
         if (!q) return resultado.filas;
         return resultado.filas.filter((f) => resultado.columnas.some((c) => String(f[c] ?? "").toLowerCase().includes(q)));
     }, [resultado, filtro]);
-    const tablaInforme = usePaginacionLocal(filasVisibles, "informe-resultado", { defecto: 50 });
+    const tablaInforme = usePaginacionLocal(filasVisibles, "informe-resultado");
 
     function exportarCsv() {
         if (!resultado) return;

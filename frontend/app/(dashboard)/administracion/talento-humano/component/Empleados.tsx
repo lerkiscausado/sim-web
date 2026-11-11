@@ -80,7 +80,7 @@ export default function Empleados() {
     const [page, setPage] = useState(1);
     const [filtroEstado, setFiltroEstado] = useState("");
     const [filtroCargo, setFiltroCargo] = useState("");
-    const [pageSize, setPageSize] = useTamanoPagina("empleados", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("empleados");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

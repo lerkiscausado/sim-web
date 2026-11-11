@@ -49,7 +49,7 @@ export default function TarifasPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [filtroEstado, setFiltroEstado] = useState("");
-    const [pageSize, setPageSize] = useTamanoPagina("tarifas", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("tarifas");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

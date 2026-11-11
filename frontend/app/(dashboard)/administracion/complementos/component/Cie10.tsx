@@ -55,7 +55,7 @@ export default function Cie10() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina("cie10", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("cie10");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const PREFIJO = "sim_filas_";
+/** Filas por página con que abre toda tabla, hasta que el usuario elija otro valor. */
+export const TAMANO_PAGINA_DEFECTO = 10;
+
+// v2: se descartan los valores guardados antes de fijar 10 como predeterminado.
+const PREFIJO = "sim_filas_v2_";
 
 function leerTamano(clave: string, defecto: number): number {
     if (typeof window === "undefined") return defecto;
@@ -18,7 +22,7 @@ function leerTamano(clave: string, defecto: number): number {
  * Tamaño de página de una tabla, recordado por tabla en este navegador.
  * `clave` identifica la tabla (p. ej. "cups", "contratos").
  */
-export function useTamanoPagina(clave: string, defecto = 20) {
+export function useTamanoPagina(clave: string, defecto = TAMANO_PAGINA_DEFECTO) {
     const [pageSize, setPageSizeState] = useState(defecto);
 
     // Se lee después del primer render para no romper la hidratación (localStorage no existe en el servidor).
@@ -52,7 +56,7 @@ export function usePaginacionLocal<T>(
     clave: string,
     opciones: { filtro?: (item: T, texto: string) => boolean; defecto?: number } = {},
 ) {
-    const [pageSize, setPageSize] = useTamanoPagina(clave, opciones.defecto ?? 20);
+    const [pageSize, setPageSize] = useTamanoPagina(clave, opciones.defecto ?? TAMANO_PAGINA_DEFECTO);
     const [page, setPage] = useState(1);
     const [busqueda, setBusqueda] = useState("");
     const { filtro } = opciones;

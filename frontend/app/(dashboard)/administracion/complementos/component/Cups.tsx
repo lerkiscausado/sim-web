@@ -55,7 +55,7 @@ export default function Cups() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina("cups", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("cups");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

@@ -60,7 +60,7 @@ export default function Entidades() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina("entidades", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("entidades");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

@@ -41,7 +41,7 @@ import { abrirPdf, descargarArchivo } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
 import { useFeedback } from "@/components/ui/feedback";
 import { Select } from "@/components/ui/select";
-import { useTamanoPagina } from "@/lib/useTabla";
+import { TAMANO_PAGINA_DEFECTO, useTamanoPagina } from "@/lib/useTabla";
 
 interface FilaConsulta {
     orden: number;
@@ -127,8 +127,8 @@ export default function ConsultarOrdenesPage() {
     });
     const [qDebounced, setQDebounced] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina("consulta-ordenes", 50);
-    const [resultado, setResultado] = useState<Resultado>({ data: [], total: 0, page: 1, pageSize: 50 });
+    const [pageSize, setPageSize] = useTamanoPagina("consulta-ordenes");
+    const [resultado, setResultado] = useState<Resultado>({ data: [], total: 0, page: 1, pageSize: TAMANO_PAGINA_DEFECTO });
     const [cargando, setCargando] = useState(false);
     const [trabajando, setTrabajando] = useState<string | null>(null);
     const [error, setError] = useState<{ titulo: string; mensaje: string; detalles?: string[] } | null>(null);

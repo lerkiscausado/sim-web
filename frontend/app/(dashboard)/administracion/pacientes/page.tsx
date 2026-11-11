@@ -51,7 +51,7 @@ export default function PacientesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
     const [filtroSexo, setFiltroSexo] = useState("");
-    const [pageSize, setPageSize] = useTamanoPagina("pacientes", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("pacientes");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

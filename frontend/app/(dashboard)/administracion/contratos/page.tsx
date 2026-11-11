@@ -93,7 +93,7 @@ export default function ContratosPage() {
     const [page, setPage] = useState(1);
     const [filtroVigencia, setFiltroVigencia] = useState("");
     const [filtroTipo, setFiltroTipo] = useState("");
-    const [pageSize, setPageSize] = useTamanoPagina("contratos", 20);
+    const [pageSize, setPageSize] = useTamanoPagina("contratos");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

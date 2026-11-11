@@ -51,7 +51,7 @@ export default function PlantillasPatologiaPage() {
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useTamanoPagina("plantillas-patologia", 15);
+    const [pageSize, setPageSize] = useTamanoPagina("plantillas-patologia");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 

@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, Paperclip, Trash2, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api, apiFetchMultipart, ApiError } from "@/lib/api";
+import { Campo } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { abrirPdf } from "@/lib/descargas";
 
 interface Adjunto {
@@ -32,6 +34,15 @@ export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
     const [subiendo, setSubiendo] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [inputKey, setInputKey] = useState(0);
+    const formAdjunto = useMemo(() => ({ nombre, archivo }), [nombre, archivo]);
+    const v = useValidacion(formAdjunto, {
+        nombre: [reglas.requerido("El nombre del adjunto es obligatorio."), reglas.minLong(3), reglas.maxLong(100)],
+        archivo: [
+            reglas.requerido("Selecciona el archivo PDF."),
+            (a) => (a instanceof File && a.type !== "application/pdf" && !/\.pdf$/i.test(a.name) ? "Solo se permiten archivos PDF." : null),
+            (a) => (a instanceof File && a.size > 25 * 1024 * 1024 ? "El archivo supera el máximo de 25 MB." : null),
+        ],
+    });
 
     const cargar = useCallback(async () => {
         if (!idOrden) return;
@@ -56,10 +67,7 @@ export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
 
     async function subir() {
         if (!idOrden) return;
-        if (!nombre.trim() || !archivo) {
-            setError("El Campo Nombre es Obligatorio o no ha seleccionado el adjunto");
-            return;
-        }
+        if (!v.comprobar() || !archivo) return;
         setSubiendo(true);
         setError(null);
         try {
@@ -67,6 +75,7 @@ export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
             setNombre("");
             setArchivo(null);
             setInputKey((k) => k + 1);
+            v.reiniciar();
             await cargar();
         } catch (e) {
             setError(e instanceof ApiError ? e.message : "No se pudo subir el adjunto");
@@ -103,9 +112,13 @@ export function AdjuntosDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                     <DialogDescription>{titulo ?? (idOrden ? `Orden No. ${idOrden}` : "")}</DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-2 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto]">
-                    <Input placeholder="Nombre del adjunto" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={100} />
-                    <Input key={inputKey} type="file" accept="application/pdf" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} />
+                <div className="grid items-start gap-2 rounded-md border p-3 sm:grid-cols-[1fr_1fr_auto]">
+                    <Campo nombre="nombre" error={v.error("nombre")}>
+                        <Input placeholder="Nombre del adjunto" value={nombre} onChange={(e) => setNombre(e.target.value)} maxLength={100} />
+                    </Campo>
+                    <Campo nombre="archivo" error={v.error("archivo")}>
+                        <Input key={inputKey} type="file" accept="application/pdf" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} />
+                    </Campo>
                     <Button onClick={subir} disabled={subiendo}>
                         {subiendo ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />}
                         Adjuntar

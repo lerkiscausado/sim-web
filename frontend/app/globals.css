@@ -286,3 +286,15 @@ h4 {
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+/* Campo con error de validación (componente <Campo>): resalta el control en rojo. */
+.campo-invalido :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea, button[role="combobox"], .rte-caja) {
+  border-color: var(--destructive) !important;
+  box-shadow: 0 0 0 1px var(--destructive);
+}
+.campo-invalido :is(input, select, textarea, button[role="combobox"]):focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 25%, transparent);
+}
+.campo-invalido input[type="checkbox"] {
+  outline: 2px solid var(--destructive);
+  outline-offset: 1px;
+}

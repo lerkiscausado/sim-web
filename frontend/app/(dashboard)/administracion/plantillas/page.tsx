@@ -22,6 +22,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface TipoEstudio {
     id: number;
@@ -78,6 +80,10 @@ export default function PlantillasPage() {
     const [editando, setEditando] = useState<Plantilla | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        idTipoEstudio: [reglas.requerido("Selecciona el tipo de estudio.")],
+        idEspecialista: [reglas.requerido("Selecciona el especialista.")],
+    });
     const [guardando, setGuardando] = useState(false);
     const [previewItem, setPreviewItem] = useState<Plantilla | null>(null);
 
@@ -108,6 +114,7 @@ export default function PlantillasPage() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -124,14 +131,12 @@ export default function PlantillasPage() {
             campo6: p.campo6 ?? "",
         });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.idTipoEstudio || !form.idEspecialista) {
-            setFormError("Tipo de estudio y especialista son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -232,8 +237,7 @@ export default function PlantillasPage() {
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Tipo de estudio</label>
+                            <Campo label="Tipo de estudio" nombre="idTipoEstudio" error={v.error("idTipoEstudio")} requerido>
                                 <select
                                     className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                     value={form.idTipoEstudio ?? ""}
@@ -246,9 +250,8 @@ export default function PlantillasPage() {
                                         </option>
                                     ))}
                                 </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Especialista</label>
+                            </Campo>
+                            <Campo label="Especialista" nombre="idEspecialista" error={v.error("idEspecialista")} requerido>
                                 <select
                                     className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                     value={form.idEspecialista ?? ""}
@@ -261,7 +264,7 @@ export default function PlantillasPage() {
                                         </option>
                                     ))}
                                 </select>
-                            </div>
+                            </Campo>
                         </div>
                         {CAMPOS.map(({ key, label }) => (
                             <div key={key} className="space-y-1.5">
@@ -273,6 +276,7 @@ export default function PlantillasPage() {
                                 />
                             </div>
                         ))}
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

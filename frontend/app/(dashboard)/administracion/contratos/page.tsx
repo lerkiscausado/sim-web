@@ -24,6 +24,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { getPreferencias } from "@/lib/preferencias";
 
 interface Entidad {
@@ -98,6 +100,16 @@ export default function ContratosPage() {
     const [entidadQuery, setEntidadQuery] = useState("");
     const [entidadResultadosAbiertos, setEntidadResultadosAbiertos] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        codigoEntidad: [reglas.requerido("Busca y selecciona la entidad de la lista.")],
+        nombre: [reglas.requerido("El nombre del contrato es obligatorio."), reglas.maxLong(100)],
+        numeroContrato: [reglas.maxLong(50)],
+        fechaInicio: [reglas.fecha()],
+        fechaFinal: [reglas.requerido("La fecha final es obligatoria."), reglas.fecha(), reglas.fechaDesde<typeof form>("fechaInicio", "la fecha de inicio")],
+        usuario: [reglas.requerido("El usuario del portal es obligatorio."), reglas.minLong(4), reglas.maxLong(50), reglas.patron(/^[A-Za-z0-9._-]+$/, "Sin espacios ni caracteres especiales (solo letras, números, . _ -).")],
+        contrasena: [reglas.si(() => !editando, reglas.requerido("La contraseña es obligatoria para un contrato nuevo.")), reglas.minLong(6), reglas.maxLong(50)],
+        confirmarContrasena: [(c, f) => (f.contrasena && c !== f.contrasena ? "Las contraseñas no coinciden." : null)],
+    });
     const [contratoSubentidades, setContratoSubentidades] = useState<Contrato | null>(null);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -181,18 +193,7 @@ export default function ContratosPage() {
     }, [entidades, entidadQuery]);
 
     async function guardar() {
-        if (!form.codigoEntidad || !form.nombre || !form.fechaFinal || !form.usuario) {
-            setFormError("Entidad, nombre, fecha final y usuario son obligatorios.");
-            return;
-        }
-        if (!editando && !form.contrasena) {
-            setFormError("La contraseña es obligatoria para un contrato nuevo.");
-            return;
-        }
-        if (form.contrasena && form.contrasena !== form.confirmarContrasena) {
-            setFormError("Las contraseñas no coinciden.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -389,15 +390,15 @@ export default function ContratosPage() {
                         <DialogDescription>{editando ? "Actualiza los datos y la tarifa del contrato." : "Registra un nuevo contrato con una entidad."}</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-3 py-2">
-                        <div className="relative space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Entidad</label>
+                        <Campo label="Entidad" nombre="codigoEntidad" error={v.error("codigoEntidad")} requerido className="relative">
                             <Input
                                 placeholder="Escribe al menos 3 letras…"
                                 value={entidadQuery}
                                 onChange={(e) => {
                                     setEntidadQuery(e.target.value);
                                     setEntidadResultadosAbiertos(true);
-                                    if (!e.target.value) setForm((f) => ({ ...f, codigoEntidad: "" }));
+                                    // Al cambiar el texto, la entidad elegida deja de estar seleccionada.
+                                    setForm((f) => (f.codigoEntidad ? { ...f, codigoEntidad: "" } : f));
                                 }}
                                 onFocus={() => setEntidadResultadosAbiertos(true)}
                                 onBlur={() => setTimeout(() => setEntidadResultadosAbiertos(false), 150)}
@@ -423,21 +424,19 @@ export default function ContratosPage() {
                                     ))}
                                 </div>
                             )}
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nombre del contrato</label>
+                        </Campo>
+                        <Campo label="Nombre del contrato" nombre="nombre" error={v.error("nombre")} requerido>
                             <Input
                                 value={form.nombre}
                                 onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Número de contrato</label>
+                        </Campo>
+                        <Campo label="Número de contrato" nombre="numeroContrato" error={v.error("numeroContrato")}>
                             <Input
                                 value={form.numeroContrato}
                                 onChange={(e) => setForm((f) => ({ ...f, numeroContrato: e.target.value }))}
                             />
-                        </div>
+                        </Campo>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Tipo de contrato</label>
                             <select
@@ -450,22 +449,20 @@ export default function ContratosPage() {
                                 <option value="PAQUETE">Paquete</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Fecha inicio</label>
+                        <Campo label="Fecha inicio" nombre="fechaInicio" error={v.error("fechaInicio")}>
                             <Input
                                 type="date"
                                 value={form.fechaInicio}
                                 onChange={(e) => setForm((f) => ({ ...f, fechaInicio: e.target.value }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Fecha final</label>
+                        </Campo>
+                        <Campo label="Fecha final" nombre="fechaFinal" error={v.error("fechaFinal")} requerido>
                             <Input
                                 type="date"
                                 value={form.fechaFinal}
                                 onChange={(e) => setForm((f) => ({ ...f, fechaFinal: e.target.value }))}
                             />
-                        </div>
+                        </Campo>
                         <div className="space-y-1.5">
                             <label className="text-[12.5px] font-medium">Tarifa aplicada</label>
                             <select
@@ -492,17 +489,18 @@ export default function ContratosPage() {
                                 <option value="SI">Sí</option>
                             </select>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Usuario portal externo</label>
+                        <Campo label="Usuario portal externo" nombre="usuario" error={v.error("usuario")} requerido>
                             <Input
                                 value={form.usuario}
                                 onChange={(e) => setForm((f) => ({ ...f, usuario: e.target.value }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">
-                                {editando ? "Nueva contraseña (opcional)" : "Contraseña"}
-                            </label>
+                        </Campo>
+                        <Campo
+                            label={editando ? "Nueva contraseña (opcional)" : "Contraseña"}
+                            nombre="contrasena"
+                            error={v.error("contrasena")}
+                            requerido={!editando}
+                        >
                             <div className="relative">
                                 <Input
                                     type={mostrarContrasena ? "text" : "password"}
@@ -519,11 +517,12 @@ export default function ContratosPage() {
                                     {mostrarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">
-                                {editando ? "Repetir nueva contraseña" : "Repetir contraseña"}
-                            </label>
+                        </Campo>
+                        <Campo
+                            label={editando ? "Repetir nueva contraseña" : "Repetir contraseña"}
+                            nombre="confirmarContrasena"
+                            error={v.error("confirmarContrasena")}
+                        >
                             <div className="relative">
                                 <Input
                                     type={mostrarConfirmarContrasena ? "text" : "password"}
@@ -540,8 +539,9 @@ export default function ContratosPage() {
                                     {mostrarConfirmarContrasena ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                        </div>
+                        </Campo>
                     </div>
+                    <ResumenErrores mensaje={v.resumen} />
                     {formError && (
                         <p
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px]"

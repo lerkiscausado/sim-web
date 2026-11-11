@@ -15,6 +15,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { ErrorDialog } from "@/components/ui/error-dialog";
 import { OrdenDetalleDialog } from "./OrdenDetalleDialog";
 import {
@@ -195,7 +197,6 @@ export default function OrdenesPage() {
     const [creandoOrden, setCreandoOrden] = useState(false);
     const [ordenError, setOrdenError] = useState<string | null>(null);
     const [ordenErrorDetails, setOrdenErrorDetails] = useState<string[] | undefined>(undefined);
-    const [intentoGuardarOrden, setIntentoGuardarOrden] = useState(false);
     const [orden, setOrden] = useState<Orden | null>(null);
     const [detalles, setDetalles] = useState<DetalleOrden[]>([]);
     const [detallesTemp, setDetallesTemp] = useState<DetalleTemp[]>([]);
@@ -357,7 +358,8 @@ export default function OrdenesPage() {
         setHeader(HEADER_INICIAL);
         setSearchTerm("");
         setEspecimenQuery("");
-        setIntentoGuardarOrden(false);
+        v.reiniciar();
+        vDet.reiniciar();
         setDialogPacienteOpen(false);
         setVista("buscar-paciente");
     }
@@ -413,13 +415,7 @@ export default function OrdenesPage() {
 
     async function crearOrden() {
         if (!paciente) return;
-        setIntentoGuardarOrden(true);
-        const faltantes = CAMPOS_REQUERIDOS.filter((c) => !header[c.key]);
-        if (faltantes.length > 0) {
-            setOrdenError("Completa todos los campos obligatorios de la orden (resaltados en rojo).");
-            setOrdenErrorDetails(faltantes.map((c) => `Falta: ${c.label}`));
-            return;
-        }
+        if (!v.comprobar()) return;
         if (detallesTemp.length === 0) {
             setOrdenError("Agrega al menos un estudio antes de registrar la orden.");
             setOrdenErrorDetails(undefined);
@@ -478,16 +474,7 @@ export default function OrdenesPage() {
     }
 
     async function agregarDetalle() {
-        if (!detalleForm.codigoCups) {
-            setDetalleError("Selecciona un CUPS.");
-            setDetalleErrorDetails(undefined);
-            return;
-        }
-        if (!header.idAmbito) {
-            setDetalleError("Selecciona el Ámbito del Procedimiento en la columna izquierda.");
-            setDetalleErrorDetails(undefined);
-            return;
-        }
+        if (!vDet.comprobar()) return;
         setGuardandoDetalle(true);
         setDetalleError(null);
         setDetalleErrorDetails(undefined);
@@ -532,6 +519,7 @@ export default function OrdenesPage() {
                 ]);
             }
             setDetalleForm(DETALLE_INICIAL);
+            vDet.reiniciar();
             setCupsQuery("");
         } catch (err) {
             setDetalleError(err instanceof ApiError ? err.message : "No se pudo agregar el procedimiento");
@@ -559,10 +547,30 @@ export default function OrdenesPage() {
         : detallesTemp.reduce((acc, d) => acc + (d.valor - d.copago), 0);
 
     const netoPreview = (detalleForm.valor ?? 0) - (detalleForm.copago ?? 0);
-    const camposFaltantes = useMemo(() => {
-        if (!intentoGuardarOrden) return new Set<string>();
-        return new Set(CAMPOS_REQUERIDOS.filter((c) => !header[c.key]).map((c) => c.key));
-    }, [header, intentoGuardarOrden]);
+    /** Validación del encabezado de la orden: obligatorios (CAMPOS_REQUERIDOS) y formato de los opcionales. */
+    const v = useValidacion(header, {
+        ...Object.fromEntries(CAMPOS_REQUERIDOS.map((c) => [c.key, [reglas.requerido(`Falta: ${c.label}.`)]])),
+        idEspecimen: [reglas.requerido("Busca y selecciona el espécimen de la lista.")],
+        fechaOrden: [
+            reglas.requerido("La fecha de toma de muestra es obligatoria."),
+            reglas.fecha(),
+            reglas.fechaNoFutura("La fecha de toma de muestra no puede ser posterior a hoy."),
+        ],
+        autorizacion: [reglas.maxLong(50), reglas.patron(/^[A-Za-z0-9\- ]+$/, "Solo letras, números y guion.")],
+        numeroOrden: [reglas.maxLong(50), reglas.patron(/^[A-Za-z0-9\-]+$/, "Solo letras, números y guion, sin espacios.")],
+    });
+
+    /** Validación del estudio que se va a agregar (el ámbito se elige en la columna izquierda). */
+    const formDetalle = useMemo(() => ({ ...detalleForm, idAmbito: header.idAmbito }), [detalleForm, header.idAmbito]);
+    const vDet = useValidacion(formDetalle, {
+        codigoCups: [reglas.requerido("Busca y selecciona un CUPS de la lista.")],
+        idAmbito: [reglas.requerido("Selecciona el ámbito del procedimiento.")],
+        valor: [reglas.numero({ min: 0, entero: true, mensaje: "Valor no válido (número entero ≥ 0)." })],
+        copago: [
+            reglas.numero({ min: 0, entero: true, mensaje: "Copago no válido (número entero ≥ 0)." }),
+            (c, f) => (f.valor !== undefined && Number(c) > Number(f.valor) ? "El copago no puede superar el valor." : null),
+        ],
+    });
     const especimenesFiltrados = useMemo(() => {
         const q = especimenQuery.trim().toLowerCase();
         if (!q) return especimenes;
@@ -913,7 +921,7 @@ export default function OrdenesPage() {
                                     onChange={(v) => setHeader((h) => ({ ...h, idTipoAfiliado: v }))}
                                     options={tiposAfiliado}
                                     disabled={!!orden}
-                                    error={camposFaltantes.has("idTipoAfiliado")}
+                                    nombre="idTipoAfiliado" error={v.error("idTipoAfiliado")}
                                 />
                                 <Selector
                                     label="Regimen, Tipo Usuario"
@@ -921,10 +929,12 @@ export default function OrdenesPage() {
                                     onChange={(v) => setHeader((h) => ({ ...h, idTipoUsuario: v }))}
                                     options={tiposUsuario}
                                     disabled={!!orden}
-                                    error={camposFaltantes.has("idTipoUsuario")}
+                                    nombre="idTipoUsuario" error={v.error("idTipoUsuario")}
                                 />
                                 <Selector
                                     label="Ambito del Procedimiento"
+                                    nombre="idAmbito"
+                                    error={vDet.error("idAmbito")}
                                     value={header.idAmbito}
                                     onChange={(v) => setHeader((h) => ({ ...h, idAmbito: v }))}
                                     options={ambitos}
@@ -955,48 +965,41 @@ export default function OrdenesPage() {
                             <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                 <p className="mb-3 text-sm font-medium">Datos de la Orden</p>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} error={camposFaltantes.has("idContrato")} />
-                                    <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} error={camposFaltantes.has("idSubentidad")} />
-                                    <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Fecha de Toma de Muestra</label>
+                                    <Selector label="Entidad o Contrato" value={header.idContrato} onChange={(v) => setHeader((h) => ({ ...h, idContrato: v, idSubentidad: undefined }))} options={contratos.map((c) => ({ id: c.id, nombre: `${c.nombre} — ${c.entidad?.nombreEntidad ?? c.codigoEntidad}` }))} nombre="idContrato" error={v.error("idContrato")} />
+                                    <Selector label="Subentidad" value={header.idSubentidad} onChange={(v) => setHeader((h) => ({ ...h, idSubentidad: v }))} options={subentidades} disabled={!header.idContrato} nombre="idSubentidad" error={v.error("idSubentidad")} />
+                                    <Campo label="Fecha de Toma de Muestra" nombre="fechaOrden" error={v.error("fechaOrden")} requerido>
                                         <Input
                                             type="date"
                                             value={header.fechaOrden}
                                             onChange={(e) => setHeader((h) => ({ ...h, fechaOrden: e.target.value }))}
                                         />
-                                    </div>
-                                    <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} error={camposFaltantes.has("idSede")} />
+                                    </Campo>
+                                    <Selector label="Sede" value={header.idSede} onChange={(v) => setHeader((h) => ({ ...h, idSede: v }))} options={sedes} nombre="idSede" error={v.error("idSede")} />
                                     <div className="space-y-1.5">
                                         <label className="text-[12.5px] font-medium">Fecha Entrega (calculada, +7 días hábiles)</label>
                                         <Input value={sumarDiasHabiles(header.fechaOrden, 7)} disabled />
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">Autorizacion</label>
+                                    <Campo label="Autorización" nombre="autorizacion" error={v.error("autorizacion")}>
                                         <Input value={header.autorizacion} onChange={(e) => setHeader((h) => ({ ...h, autorizacion: e.target.value }))} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">No. de Orden (opcional, se sugiere una)</label>
+                                    </Campo>
+                                    <Campo label="No. de Orden (opcional, se sugiere una)" nombre="numeroOrden" error={v.error("numeroOrden")}>
                                         <Input
                                             value={header.numeroOrden}
                                             onChange={(e) => setHeader((h) => ({ ...h, numeroOrden: e.target.value }))}
                                             placeholder="Se genera automáticamente si se deja vacío"
                                         />
-                                    </div>
-                                    <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} error={camposFaltantes.has("idTipoEstudio")} />
-                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} error={camposFaltantes.has("idEmpleado")} />
-                                    <div className="relative space-y-1.5">
-                                        <label className="text-[12.5px] font-medium">
-                                            Especimen
-                                            {camposFaltantes.has("idEspecimen") && <span className="ml-1 text-red-600">*</span>}
-                                        </label>
+                                    </Campo>
+                                    <Selector label="Tipo de Estudio" value={header.idTipoEstudio} onChange={(v) => setHeader((h) => ({ ...h, idTipoEstudio: v }))} options={tiposEstudio} nombre="idTipoEstudio" error={v.error("idTipoEstudio")} />
+                                    <Selector label="Médico" value={header.idEmpleado} onChange={(v) => setHeader((h) => ({ ...h, idEmpleado: v }))} options={empleados.map((e) => ({ id: e.id, nombre: `${e.nombreEmpleado}${e.cargo ? ` — ${e.cargo.nombreCargo}` : ""}` }))} nombre="idEmpleado" error={v.error("idEmpleado")} />
+                                    <Campo label="Especimen" nombre="idEspecimen" error={v.error("idEspecimen")} requerido className="relative">
                                         <Input
                                             placeholder="Buscar espécimen…"
-                                            className={camposFaltantes.has("idEspecimen") ? "border-red-500 ring-1 ring-red-500" : ""}
                                             value={especimenQuery}
                                             onChange={(e) => {
                                                 setEspecimenQuery(e.target.value);
                                                 setEspecimenResultadosAbiertos(true);
-                                                if (!e.target.value) setHeader((h) => ({ ...h, idEspecimen: undefined }));
+                                                // Al editar el texto, el espécimen elegido deja de estar seleccionado.
+                                                setHeader((h) => (h.idEspecimen ? { ...h, idEspecimen: undefined } : h));
                                             }}
                                             onFocus={() => setEspecimenResultadosAbiertos(true)}
                                             onBlur={() => setTimeout(() => setEspecimenResultadosAbiertos(false), 150)}
@@ -1022,8 +1025,8 @@ export default function OrdenesPage() {
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
-                                    <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} error={camposFaltantes.has("idIngreso")} />
+                                    </Campo>
+                                    <Selector label="Tipo de Ingreso" value={header.idIngreso} onChange={(v) => setHeader((h) => ({ ...h, idIngreso: v }))} options={ingresos} nombre="idIngreso" error={v.error("idIngreso")} />
                                 </div>
                             </div>
                         )}
@@ -1059,12 +1062,15 @@ export default function OrdenesPage() {
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-sm font-medium">Seleccione Estudios</p>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="relative col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">CUPS</label>
+                                <Campo label="CUPS" nombre="codigoCups" error={vDet.error("codigoCups")} requerido className="relative col-span-2">
                                     <Input
                                         placeholder="Buscar por código o nombre..."
                                         value={cupsQuery}
-                                        onChange={(e) => setCupsQuery(e.target.value)}
+                                        onChange={(e) => {
+                                            setCupsQuery(e.target.value);
+                                            // Al editar el texto, el CUPS elegido deja de estar seleccionado.
+                                            setDetalleForm((f) => (f.codigoCups ? { ...f, codigoCups: "", nombreCups: "" } : f));
+                                        }}
                                     />
                                     {cupsResultados.length > 0 && (
                                         <div
@@ -1083,30 +1089,31 @@ export default function OrdenesPage() {
                                             ))}
                                         </div>
                                     )}
-                                </div>
+                                </Campo>
                             </div>
                             <div className="mt-3 grid grid-cols-3 gap-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Valor</label>
+                                <Campo label="Valor" nombre="valor" error={vDet.error("valor")}>
                                     <Input
                                         type="number"
                                         placeholder="Tarifa del contrato"
                                         value={detalleForm.valor ?? ""}
                                         onChange={(e) => setDetalleForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
                                     />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Copago</label>
+                                </Campo>
+                                <Campo label="Copago" nombre="copago" error={vDet.error("copago")}>
                                     <Input
                                         type="number"
                                         value={detalleForm.copago ?? 0}
                                         onChange={(e) => setDetalleForm((f) => ({ ...f, copago: Number(e.target.value) || 0 }))}
                                     />
-                                </div>
+                                </Campo>
                                 <div className="space-y-1.5">
                                     <label className="text-[12.5px] font-medium">Neto</label>
                                     <Input value={netoPreview.toLocaleString()} disabled />
                                 </div>
+                            </div>
+                            <div className="mt-3">
+                                <ResumenErrores mensaje={vDet.resumen} />
                             </div>
                             <ErrorDialog
                                 open={!!detalleError}
@@ -1196,11 +1203,14 @@ export default function OrdenesPage() {
                             <div className="flex items-center justify-between">
                                 <p className="text-base font-semibold">Total orden: ${totalOrden.toLocaleString()}</p>
                                 {!orden && (
+                                    <div className="flex items-center gap-3">
+                                        <ResumenErrores mensaje={v.resumen} />
                                     <Button onClick={crearOrden} disabled={creandoOrden}>
                                         {creandoOrden && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         <ClipboardPlus className="mr-2 h-4 w-4" />
                                         Registrar Orden
                                     </Button>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -1301,6 +1311,7 @@ function Selector({
     onChange,
     options,
     disabled,
+    nombre,
     error,
 }: {
     label: string;
@@ -1308,19 +1319,15 @@ function Selector({
     onChange: (v: number) => void;
     options: { id: number | string; nombre: string }[];
     disabled?: boolean;
-    error?: boolean;
+    nombre?: string;
+    /** Mensaje de validación; si hay mensaje, el campo se resalta en rojo. */
+    error?: string;
 }) {
+    const requerido = !!nombre && CAMPOS_REQUERIDOS.some((c) => c.key === nombre);
     return (
-        <div className="space-y-1.5">
-            <label className="text-[12.5px] font-medium">
-                {label}
-                {error && <span className="ml-1 text-red-600">*</span>}
-            </label>
+        <Campo label={label} nombre={nombre} error={error} requerido={requerido}>
             <select
-                className={`h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-50 ${
-                    error ? "border-red-500 ring-1 ring-red-500" : ""
-                }`}
-                style={error ? { borderColor: "#EF4444" } : undefined}
+                className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-50"
                 value={value ?? ""}
                 disabled={disabled}
                 onChange={(e) => onChange(Number(e.target.value))}
@@ -1332,6 +1339,6 @@ function Selector({
                     </option>
                 ))}
             </select>
-        </div>
+        </Campo>
     );
 }

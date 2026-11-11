@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface Cargo {
     id: number;
@@ -79,6 +81,12 @@ export default function Empleados() {
     const [editando, setEditando] = useState<EmpleadoItem | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        nombreEmpleado: [reglas.requerido("El nombre es obligatorio."), reglas.minLong(3), reglas.maxLong(100)],
+        idCargo: [reglas.requerido("Selecciona el cargo.")],
+        idEspecialidad: [reglas.requerido("Selecciona la especialidad.")],
+        registroMedico: [reglas.maxLong(50)],
+    });
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -123,6 +131,7 @@ export default function Empleados() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -135,14 +144,12 @@ export default function Empleados() {
             registroMedico: item.registroMedico ?? "",
         });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.nombreEmpleado || !form.idCargo || !form.idEspecialidad) {
-            setFormError("Nombre, cargo y especialidad son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -272,16 +279,14 @@ export default function Empleados() {
                         <DialogDescription>{editando ? "Actualiza los datos del empleado." : "Registra un nuevo empleado asistencial o administrativo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nombre completo</label>
+                        <Campo label="Nombre completo" nombre="nombreEmpleado" error={v.error("nombreEmpleado")} requerido>
                             <Input
                                 value={form.nombreEmpleado}
                                 onChange={(e) => setForm((f) => ({ ...f, nombreEmpleado: e.target.value }))}
                                 maxLength={50}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Cargo</label>
+                        </Campo>
+                        <Campo label="Cargo" nombre="idCargo" error={v.error("idCargo")} requerido>
                             <select
                                 className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                 value={form.idCargo ?? ""}
@@ -294,9 +299,8 @@ export default function Empleados() {
                                     </option>
                                 ))}
                             </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Especialidad</label>
+                        </Campo>
+                        <Campo label="Especialidad" nombre="idEspecialidad" error={v.error("idEspecialidad")} requerido>
                             <select
                                 className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                 value={form.idEspecialidad ?? ""}
@@ -309,15 +313,15 @@ export default function Empleados() {
                                     </option>
                                 ))}
                             </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Registro médico (opcional)</label>
+                        </Campo>
+                        <Campo label="Registro médico (opcional)" nombre="registroMedico" error={v.error("registroMedico")}>
                             <Input
                                 value={form.registroMedico}
                                 onChange={(e) => setForm((f) => ({ ...f, registroMedico: e.target.value }))}
                                 maxLength={10}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

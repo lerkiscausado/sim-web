@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, FileDown, PenLine, Camera } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, FileDown, PenLine, Camera } from "lucide-react";
 import { abrirPdf } from "@/lib/descargas";
 import { ImagenesDialog } from "@/components/ordenes/ImagenesDialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -170,17 +172,33 @@ function GrupoChecks({
     items,
     checks,
     onToggle,
+    nombre,
+    error,
 }: {
     titulo: string;
     items: { key: string; label: string }[];
     checks: ChecksState;
     onToggle: (key: string, value: boolean) => void;
+    /** Nombre del grupo para la validación (lleva el foco al primer grupo con error). */
+    nombre?: string;
+    error?: string;
 }) {
     return (
-        <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-            <p className="mb-3 text-[12.5px] font-bold" style={{ color: "var(--ink-primary)" }}>
+        <div
+            data-campo={nombre}
+            className={`rounded-lg border p-4 ${error ? "campo-invalido" : ""}`}
+            style={{ background: "var(--surface-raised)", borderColor: error ? "var(--destructive)" : "var(--border-default)" }}
+        >
+            <p className="mb-3 text-[12.5px] font-bold" style={{ color: error ? "var(--destructive)" : "var(--ink-primary)" }}>
                 {titulo}
+                {error && <span className="ml-0.5">*</span>}
             </p>
+            {error && (
+                <p role="alert" className="-mt-2 mb-3 flex items-center gap-1 text-[11.5px] text-red-600">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    {error}
+                </p>
+            )}
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                 {items.map((item) => (
                     <label key={item.key} className="flex items-start gap-2 text-[12.5px]">
@@ -221,6 +239,59 @@ export default function CitologiasPage() {
     const [generandoPdf, setGenerandoPdf] = useState(false);
     const [imagenesAbierto, setImagenesAbierto] = useState(false);
 
+    /**
+     * Validación del informe. Para guardar se exige el diagnóstico; para firmar, además,
+     * la calidad de la muestra y la categorización general (sistema Bethesda).
+     */
+    const exigirFirma = useRef(false);
+    const marcados = (keys: string[]) => keys.filter((k) => form.checks[k]).length;
+    const formValidar = useMemo(
+        () => ({
+            calidad: marcados(CALIDAD_MUESTRA.map((c) => c.key)),
+            categorizacion: marcados(CATEGORIZACION_GENERAL.map((c) => c.key)),
+            cm5: form.cm5,
+            motivoRequerido: !!(form.checks.cm3 || form.checks.cm4),
+            diagnostico: form.diagnostico,
+            observaciones: form.observaciones,
+            fechaSalida: form.fechaSalida,
+        }),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [form],
+    );
+    const v = useValidacion(formValidar, {
+        fechaSalida: [
+            reglas.requerido("La fecha de salida es obligatoria."),
+            reglas.fecha(),
+            (fs) =>
+                fs && ordenActiva?.fechaIngreso && String(fs).slice(0, 10) < ordenActiva.fechaIngreso.slice(0, 10)
+                    ? "No puede ser anterior a la fecha de ingreso."
+                    : null,
+        ],
+        calidad: [
+            (n) => (exigirFirma.current && n === 0 ? "Marca la calidad de la muestra para poder firmar." : null),
+            (n) => (Number(n) > 1 ? "Marca solo una opción de calidad de la muestra." : null),
+        ],
+        categorizacion: [
+            (n) => (exigirFirma.current && n === 0 ? "Marca la categorización general para poder firmar." : null),
+            (n) => (Number(n) > 1 ? "Marca solo una categorización general." : null),
+        ],
+        cm5: [reglas.si((f) => f.motivoRequerido, reglas.requerido("Especifica el motivo (muestra insatisfactoria o rechazada).")), reglas.maxLong(200)],
+        diagnostico: [reglas.requerido("El diagnóstico es obligatorio.")],
+    });
+
+    const NUMERO_CORTO = reglas.patron(/^\d{1,2}$/, "Número de 0 a 99.");
+    const vAnt = useValidacion(antecedentes, {
+        g: [NUMERO_CORTO],
+        p: [NUMERO_CORTO],
+        a: [NUMERO_CORTO],
+        c: [NUMERO_CORTO],
+        ivsa: [reglas.numero({ min: 8, max: 70, entero: true, mensaje: "Edad no válida (8 a 70 años)." })],
+        mpf: [reglas.maxLong(50)],
+        fum: [reglas.maxLong(20)],
+        fuc: [reglas.maxLong(20)],
+        fup: [reglas.maxLong(20)],
+    });
+
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
         setError(null);
@@ -254,6 +325,8 @@ export default function CitologiasPage() {
     async function abrirOrden(orden: OrdenPendiente) {
         setOrdenActiva(orden);
         setFormError(null);
+        v.reiniciar();
+        vAnt.reiniciar();
         setGuardadoOk(false);
         setForm(FORM_INICIAL);
         setAntecedentes({ ...ANTECEDENTES_INICIAL, idUsuario: orden.idUsuario } as typeof ANTECEDENTES_INICIAL & { idUsuario: number });
@@ -322,7 +395,7 @@ export default function CitologiasPage() {
     }
 
     async function guardarAntecedentes() {
-        if (!ordenActiva) return;
+        if (!ordenActiva || !vAnt.comprobar()) return;
         setGuardandoAntecedentes(true);
         try {
             await api.post("/atenciones/toma-muestra", {
@@ -357,10 +430,7 @@ export default function CitologiasPage() {
         setFormError(null);
         setGuardadoOk(false);
 
-        if (!form.diagnostico) {
-            setFormError("El diagnóstico es obligatorio.");
-            return false;
-        }
+        if (!v.comprobar()) return false;
 
         setGuardando(true);
         try {
@@ -386,6 +456,7 @@ export default function CitologiasPage() {
     }
 
     async function onGuardar() {
+        exigirFirma.current = firmar;
         const ok = await guardarInforme();
         if (ok && firmar) setConfirmarFirma(true);
     }
@@ -410,6 +481,7 @@ export default function CitologiasPage() {
 
     async function vistaPrevia() {
         if (!ordenActiva) return;
+        exigirFirma.current = false;
         const ok = await guardarInforme();
         if (!ok) return;
         setGenerandoPdf(true);
@@ -440,15 +512,17 @@ export default function CitologiasPage() {
                             <p className="text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                                 Fecha de ingreso: <span className="font-medium">{ordenActiva.fechaIngreso}</span>
                             </p>
-                            <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                                Fecha de salida:
-                                <Input
-                                    type="date"
-                                    className="h-8 w-auto"
-                                    value={form.fechaSalida}
-                                    onChange={(e) => setForm((f) => ({ ...f, fechaSalida: e.target.value }))}
-                                />
-                            </label>
+                            <Campo nombre="fechaSalida" error={v.error("fechaSalida")}>
+                                <label className="flex items-center gap-2 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                                    Fecha de salida:
+                                    <Input
+                                        type="date"
+                                        className="h-8 w-auto"
+                                        value={form.fechaSalida}
+                                        onChange={(e) => setForm((f) => ({ ...f, fechaSalida: e.target.value }))}
+                                    />
+                                </label>
+                            </Campo>
                         </div>
                     </div>
                     <Button variant="outline" size="sm" onClick={volverAlListado}>
@@ -510,42 +584,33 @@ export default function CitologiasPage() {
                         <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-[12.5px] font-bold">Antecedentes Gineco-obstétricos</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">G</label>
+                                <Campo label="G" labelClassName="text-[11px]" nombre="g" error={vAnt.error("g")}>
                                     <Input value={antecedentes.g} onChange={(e) => setAntecedentes((a) => ({ ...a, g: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">P</label>
+                                </Campo>
+                                <Campo label="P" labelClassName="text-[11px]" nombre="p" error={vAnt.error("p")}>
                                     <Input value={antecedentes.p} onChange={(e) => setAntecedentes((a) => ({ ...a, p: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">A</label>
+                                </Campo>
+                                <Campo label="A" labelClassName="text-[11px]" nombre="a" error={vAnt.error("a")}>
                                     <Input value={antecedentes.a} onChange={(e) => setAntecedentes((a) => ({ ...a, a: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">C</label>
+                                </Campo>
+                                <Campo label="C" labelClassName="text-[11px]" nombre="c" error={vAnt.error("c")}>
                                     <Input value={antecedentes.c} onChange={(e) => setAntecedentes((a) => ({ ...a, c: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1">
-                                    <label className="text-[11px] font-medium">IVSA</label>
+                                </Campo>
+                                <Campo label="IVSA" labelClassName="text-[11px]" nombre="ivsa" error={vAnt.error("ivsa")} className="col-span-2">
                                     <Input value={antecedentes.ivsa} onChange={(e) => setAntecedentes((a) => ({ ...a, ivsa: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1">
-                                    <label className="text-[11px] font-medium">MPF</label>
+                                </Campo>
+                                <Campo label="MPF" labelClassName="text-[11px]" nombre="mpf" error={vAnt.error("mpf")} className="col-span-2">
                                     <Input value={antecedentes.mpf} onChange={(e) => setAntecedentes((a) => ({ ...a, mpf: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">FUM</label>
+                                </Campo>
+                                <Campo label="FUM" labelClassName="text-[11px]" nombre="fum" error={vAnt.error("fum")}>
                                     <Input value={antecedentes.fum} onChange={(e) => setAntecedentes((a) => ({ ...a, fum: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">FUC</label>
+                                </Campo>
+                                <Campo label="FUC" labelClassName="text-[11px]" nombre="fuc" error={vAnt.error("fuc")}>
                                     <Input value={antecedentes.fuc} onChange={(e) => setAntecedentes((a) => ({ ...a, fuc: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium">FUP</label>
+                                </Campo>
+                                <Campo label="FUP" labelClassName="text-[11px]" nombre="fup" error={vAnt.error("fup")}>
                                     <Input value={antecedentes.fup} onChange={(e) => setAntecedentes((a) => ({ ...a, fup: e.target.value }))} />
-                                </div>
+                                </Campo>
                             </div>
 
                             <p className="mb-1.5 mt-3 text-[11px] font-bold text-muted-foreground">Cuello</p>
@@ -594,15 +659,30 @@ export default function CitologiasPage() {
 
                     {/* Columna derecha: 70% */}
                     <div className="col-span-10 space-y-4 lg:col-span-7">
-                        <GrupoChecks titulo="Calidad de la Muestra" items={CALIDAD_MUESTRA} checks={form.checks} onToggle={toggleCheck} />
+                        <GrupoChecks
+                            titulo="Calidad de la Muestra"
+                            items={CALIDAD_MUESTRA}
+                            checks={form.checks}
+                            onToggle={toggleCheck}
+                            nombre="calidad"
+                            error={v.error("calidad")}
+                        />
                         {mostrarMotivo && (
                             <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                                <label className="text-[12.5px] font-medium">Especifique Motivo</label>
-                                <Input className="mt-1.5" value={form.cm5} onChange={(e) => setForm((f) => ({ ...f, cm5: e.target.value }))} />
+                                <Campo label="Especifique Motivo" nombre="cm5" error={v.error("cm5")} requerido>
+                                    <Input value={form.cm5} maxLength={200} onChange={(e) => setForm((f) => ({ ...f, cm5: e.target.value }))} />
+                                </Campo>
                             </div>
                         )}
 
-                        <GrupoChecks titulo="Categorización General" items={CATEGORIZACION_GENERAL} checks={form.checks} onToggle={toggleCheck} />
+                        <GrupoChecks
+                            titulo="Categorización General"
+                            items={CATEGORIZACION_GENERAL}
+                            checks={form.checks}
+                            onToggle={toggleCheck}
+                            nombre="categorizacion"
+                            error={v.error("categorizacion")}
+                        />
                         <GrupoChecks titulo="Microorganismos" items={MICROORGANISMOS} checks={form.checks} onToggle={toggleCheck} />
                         <GrupoChecks titulo="Otros Hallazgos No Neoplásicos (cambios reactivos asociados a:)" items={OHNN} checks={form.checks} onToggle={toggleCheck} />
                         <GrupoChecks titulo="Anormalidades en Células Escamosas (ASC)" items={CELULAS_ESCAMOSAS} checks={form.checks} onToggle={toggleCheck} />
@@ -641,15 +721,16 @@ export default function CitologiasPage() {
                         <GrupoChecks titulo="Inflamación" items={INFLAMACION} checks={form.checks} onToggle={toggleCheck} />
 
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <div className="space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Observaciones</label>
+                            <Campo label="Observaciones" nombre="observaciones" error={v.error("observaciones")}>
                                 <Textarea rows={3} value={form.observaciones} onChange={(e) => setForm((f) => ({ ...f, observaciones: e.target.value }))} />
-                            </div>
-                            <div className="mt-3 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Diagnóstico</label>
+                            </Campo>
+                            <Campo label="Diagnóstico" nombre="diagnostico" error={v.error("diagnostico")} requerido className="mt-3">
                                 <Textarea rows={4} value={form.diagnostico} onChange={(e) => setForm((f) => ({ ...f, diagnostico: e.target.value }))} />
-                            </div>
+                            </Campo>
 
+                            <div className="mt-3">
+                                <ResumenErrores mensaje={v.resumen ?? vAnt.resumen} />
+                            </div>
                             {formError && (
                                 <p
                                     className="mt-3 rounded-md px-3 py-2 text-[12.5px]"
@@ -666,7 +747,17 @@ export default function CitologiasPage() {
 
                             <div className="mt-4 flex flex-wrap items-center gap-2">
                                 <label className="mr-auto flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
-                                    <input type="checkbox" checked={firmar} onChange={(e) => setFirmar(e.target.checked)} />
+                                    <input
+                                        type="checkbox"
+                                        checked={firmar}
+                                        onChange={(e) => {
+                                            setFirmar(e.target.checked);
+                                            if (!e.target.checked) {
+                                                exigirFirma.current = false;
+                                                v.reiniciar();
+                                            }
+                                        }}
+                                    />
                                     Firmar y cerrar el estudio
                                 </label>
                                 <Button variant="outline" onClick={() => setImagenesAbierto(true)}>

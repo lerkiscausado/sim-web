@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Plus, Trash2, PenLine } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -104,6 +106,14 @@ export default function HistoriaClinicaPage() {
     const [guardando, setGuardando] = useState(false);
     const [firmando, setFirmando] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        peso: [reglas.numero({ min: 0.5, max: 400, mensaje: "Peso no válido (0,5 a 400 kg)." })],
+        talla: [reglas.numero({ min: 20, max: 250, mensaje: "Talla no válida (20 a 250 cm)." })],
+        temperatura: [reglas.numero({ min: 30, max: 45, mensaje: "Temperatura no válida (30 a 45 °C)." })],
+        tensionArterial: [reglas.patron(/^\d{2,3}\s*\/\s*\d{2,3}$/, "Formato sistólica/diastólica, ej. 120/80.")],
+        frecuenciaCardiaca: [reglas.numero({ min: 20, max: 250, entero: true, mensaje: "Frecuencia cardíaca no válida (20 a 250 lpm)." })],
+        frecuenciaRespiratoria: [reglas.numero({ min: 5, max: 80, entero: true, mensaje: "Frecuencia respiratoria no válida (5 a 80 rpm)." })],
+    });
     const [guardadoOk, setGuardadoOk] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
@@ -216,6 +226,7 @@ export default function HistoriaClinicaPage() {
     async function abrirOrden(orden: OrdenPendiente) {
         setOrdenActiva(orden);
         setFormError(null);
+        v.reiniciar();
         setGuardadoOk(false);
         setForm({ ...FORM_INICIAL, idOrden: orden.idOrden, idDetalleOrden: orden.idDetalleOrden });
         setVista("informe");
@@ -260,6 +271,7 @@ export default function HistoriaClinicaPage() {
         if (!ordenActiva) return;
         setFormError(null);
         setGuardadoOk(false);
+        if (!v.comprobar()) return;
         setGuardando(true);
         try {
             await api.post("/atenciones/historia-clinica", form);
@@ -272,7 +284,7 @@ export default function HistoriaClinicaPage() {
     }
 
     async function firmarHistoria() {
-        if (!ordenActiva) return;
+        if (!ordenActiva || !v.comprobar()) return;
         setFirmando(true);
         setFormError(null);
         try {
@@ -521,30 +533,24 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="grid grid-cols-3 gap-3">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Peso (kg)</label>
+                                        <Campo label="Peso (kg)" nombre="peso" error={v.error("peso")}>
                                             <Input type="number" value={form.peso ?? ""} onChange={(e) => setForm((f) => ({ ...f, peso: Number(e.target.value) || undefined }))} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Talla (cm)</label>
+                                        </Campo>
+                                        <Campo label="Talla (cm)" nombre="talla" error={v.error("talla")}>
                                             <Input type="number" value={form.talla ?? ""} onChange={(e) => setForm((f) => ({ ...f, talla: Number(e.target.value) || undefined }))} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Temperatura</label>
+                                        </Campo>
+                                        <Campo label="Temperatura" nombre="temperatura" error={v.error("temperatura")}>
                                             <Input value={form.temperatura ?? ""} onChange={(e) => setForm((f) => ({ ...f, temperatura: e.target.value }))} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Tensión Arterial</label>
+                                        </Campo>
+                                        <Campo label="Tensión Arterial" nombre="tensionArterial" error={v.error("tensionArterial")}>
                                             <Input value={form.tensionArterial ?? ""} onChange={(e) => setForm((f) => ({ ...f, tensionArterial: e.target.value }))} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Frecuencia Cardíaca</label>
+                                        </Campo>
+                                        <Campo label="Frecuencia Cardíaca" nombre="frecuenciaCardiaca" error={v.error("frecuenciaCardiaca")}>
                                             <Input value={form.frecuenciaCardiaca ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaCardiaca: e.target.value }))} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[12.5px] font-medium">Frecuencia Respiratoria</label>
+                                        </Campo>
+                                        <Campo label="Frecuencia Respiratoria" nombre="frecuenciaRespiratoria" error={v.error("frecuenciaRespiratoria")}>
                                             <Input value={form.frecuenciaRespiratoria ?? ""} onChange={(e) => setForm((f) => ({ ...f, frecuenciaRespiratoria: e.target.value }))} />
-                                        </div>
+                                        </Campo>
                                         <div className="col-span-3 space-y-1.5">
                                             <label className="text-[12.5px] font-medium">Descripción del Examen Físico</label>
                                             <RichTextEditor rows={4} value={form.examenFisico ?? ""} onChange={(html) => setForm((f) => ({ ...f, examenFisico: html }))} />
@@ -814,6 +820,7 @@ export default function HistoriaClinicaPage() {
 
                         {/* Acciones globales: siempre visibles, sin importar la ficha activa */}
                         <div className="mt-4 rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                            <ResumenErrores mensaje={v.resumen} />
                             {formError && (
                                 <p className="mb-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>
                                     {formError}

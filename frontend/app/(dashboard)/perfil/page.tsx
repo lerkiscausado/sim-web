@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { User, Briefcase, ShieldCheck, KeyRound, Eye, EyeOff, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { useAuth } from "@/lib/auth";
 
 interface Perfil {
@@ -28,6 +30,17 @@ export default function PerfilPage() {
     const [error, setError] = useState<string | null>(null);
     const [ok, setOk] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const formClave = useMemo(() => ({ actual, nueva, repetir }), [actual, nueva, repetir]);
+    const v = useValidacion(formClave, {
+        actual: [reglas.requerido("Escribe tu contraseña actual.")],
+        nueva: [
+            reglas.requerido("Escribe la nueva contraseña."),
+            reglas.minLong(4),
+            reglas.maxLong(50),
+            (n, f) => (n && n === f.actual ? "Debe ser distinta de la contraseña actual." : null),
+        ],
+        repetir: [reglas.requerido("Repite la nueva contraseña."), (r, f) => (r && r !== f.nueva ? "Las contraseñas no coinciden." : null)],
+    });
 
     useEffect(() => {
         api
@@ -39,18 +52,7 @@ export default function PerfilPage() {
     async function cambiarContrasena() {
         setError(null);
         setOk(false);
-        if (!actual || !nueva) {
-            setError("Completa la contraseña actual y la nueva.");
-            return;
-        }
-        if (nueva !== repetir) {
-            setError("Las contraseñas nuevas no coinciden.");
-            return;
-        }
-        if (nueva.length < 4) {
-            setError("La nueva contraseña debe tener al menos 4 caracteres.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         try {
             await api.patch("/users/me/password", { actual, nueva });
@@ -58,6 +60,7 @@ export default function PerfilPage() {
             setActual("");
             setNueva("");
             setRepetir("");
+            v.reiniciar();
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cambiar la contraseña");
         } finally {
@@ -140,8 +143,7 @@ export default function PerfilPage() {
                 </p>
 
                 <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Contraseña actual</label>
+                    <Campo label="Contraseña actual" nombre="actual" error={v.error("actual")} requerido>
                         <div className="relative">
                             <Input
                                 type={mostrarActual ? "text" : "password"}
@@ -158,10 +160,9 @@ export default function PerfilPage() {
                                 {mostrarActual ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
                         </div>
-                    </div>
+                    </Campo>
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nueva contraseña</label>
+                        <Campo label="Nueva contraseña" nombre="nueva" error={v.error("nueva")} requerido>
                             <div className="relative">
                                 <Input
                                     type={mostrarNueva ? "text" : "password"}
@@ -178,9 +179,8 @@ export default function PerfilPage() {
                                     {mostrarNueva ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Repetir nueva contraseña</label>
+                        </Campo>
+                        <Campo label="Repetir nueva contraseña" nombre="repetir" error={v.error("repetir")} requerido>
                             <div className="relative">
                                 <Input
                                     type={mostrarRepetir ? "text" : "password"}
@@ -197,9 +197,10 @@ export default function PerfilPage() {
                                     {mostrarRepetir ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                        </div>
+                        </Campo>
                     </div>
 
+                    <ResumenErrores mensaje={v.resumen} />
                     {error && (
                         <p
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px]"

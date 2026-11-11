@@ -95,7 +95,7 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, classNa
     const minHeight = `${rows * 1.5}rem`;
 
     return (
-        <div className={cn("rounded-md border overflow-hidden", className)}>
+        <div className={cn("rte-caja rounded-md border overflow-hidden", className)}>
             <div className="flex items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1">
                 <ToolbarButton icon={Bold} label="Negrita" onClick={() => exec("bold")} />
                 <ToolbarButton icon={Italic} label="Cursiva" onClick={() => exec("italic")} />

@@ -15,6 +15,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface CupsItem {
     codigoCups: string;
@@ -69,6 +71,12 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
     const [cupsQuery, setCupsQuery] = useState("");
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        codigoCups: [reglas.requerido("Busca y selecciona un CUPS de la lista.")],
+        idTipoEstudio: [reglas.requerido("Selecciona el tipo de estudio.")],
+        valor: [reglas.requerido("El valor es obligatorio."), reglas.numero({ min: 0, entero: true, mensaje: "Valor no válido (número entero ≥ 0)." })],
+        descuento: [reglas.numero({ min: 0, entero: true, mensaje: "Descuento no válido (número entero ≥ 0)." }), (d, f) => (Number(d) > 0 && f.valor !== undefined && Number(d) > Number(f.valor) ? "El descuento no puede superar el valor." : null)],
+    });
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(
@@ -133,15 +141,13 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
     }
 
     async function agregar() {
-        if (!form.codigoCups || !form.idTipoEstudio || form.valor === undefined) {
-            setFormError("CUPS, Tipo de Estudio y Valor son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
             await api.post(`/entidades-contratos/tarifas/${idTarifa}/detalle`, form);
             setForm(FORM_INICIAL);
+            v.reiniciar();
             setCupsQuery("");
             await cargar(page, searchTerm);
         } catch (err) {
@@ -184,12 +190,15 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
             <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <p className="mb-3 text-sm font-medium">Agregar procedimiento</p>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                    <div className="relative col-span-2 space-y-1.5 md:col-span-1">
-                        <label className="text-[12.5px] font-medium">CUPS</label>
+                    <Campo label="CUPS" nombre="codigoCups" error={v.error("codigoCups")} requerido className="relative col-span-2 md:col-span-1">
                         <Input
                             placeholder="Buscar por código o nombre..."
                             value={cupsQuery}
-                            onChange={(e) => setCupsQuery(e.target.value)}
+                            onChange={(e) => {
+                                setCupsQuery(e.target.value);
+                                // Si se edita el texto después de elegir, el CUPS deja de estar seleccionado.
+                                setForm((f) => (f.codigoCups ? { ...f, codigoCups: "" } : f));
+                            }}
                         />
                         {cupsResultados.length > 0 && (
                             <div
@@ -208,9 +217,8 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                                 ))}
                             </div>
                         )}
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Tipo de Estudio</label>
+                    </Campo>
+                    <Campo label="Tipo de Estudio" nombre="idTipoEstudio" error={v.error("idTipoEstudio")} requerido>
                         <select
                             className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                             value={form.idTipoEstudio ?? ""}
@@ -223,7 +231,7 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                                 </option>
                             ))}
                         </select>
-                    </div>
+                    </Campo>
                     <div className="space-y-1.5">
                         <label className="text-[12.5px] font-medium">Tipo de Atención</label>
                         <select
@@ -235,22 +243,23 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                             <option value="CONSULTA">Consulta</option>
                         </select>
                     </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Valor</label>
+                    <Campo label="Valor" nombre="valor" error={v.error("valor")} requerido>
                         <Input
                             type="number"
                             value={form.valor ?? ""}
                             onChange={(e) => setForm((f) => ({ ...f, valor: Number(e.target.value) || undefined }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Descuento</label>
+                    </Campo>
+                    <Campo label="Descuento" nombre="descuento" error={v.error("descuento")}>
                         <Input
                             type="number"
                             value={form.descuento}
                             onChange={(e) => setForm((f) => ({ ...f, descuento: Number(e.target.value) || 0 }))}
                         />
-                    </div>
+                    </Campo>
+                </div>
+                <div className="mt-3">
+                    <ResumenErrores mensaje={v.resumen} />
                 </div>
                 {formError && <p className="mt-3 text-sm text-red-600">{formError}</p>}
                 <Button className="mt-4" size="sm" onClick={agregar} disabled={guardando}>

@@ -24,6 +24,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface PlantillaPatologia {
     id: number;
@@ -54,6 +56,15 @@ export default function PlantillasPatologiaPage() {
     const [editando, setEditando] = useState<PlantillaPatologia | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        nombre: [reglas.requerido("El nombre de la plantilla es obligatorio."), reglas.minLong(3), reglas.maxLong(100)],
+        diagnostico: [
+            (_d, f) =>
+                [f.macro, f.micro, f.diagnostico].every((x) => reglas.requerido()(x))
+                    ? "La plantilla está vacía: escribe al menos el diagnóstico o una de las descripciones."
+                    : null,
+        ],
+    });
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string) => {
@@ -92,6 +103,7 @@ export default function PlantillasPatologiaPage() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -99,14 +111,12 @@ export default function PlantillasPatologiaPage() {
         setEditando(p);
         setForm({ nombre: p.nombre, macro: p.macro, micro: p.micro, diagnostico: p.diagnostico });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.nombre) {
-            setFormError("El nombre de la plantilla es obligatorio.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -218,39 +228,36 @@ export default function PlantillasPatologiaPage() {
                         <DialogDescription>{editando ? "Actualiza el texto macro, micro o diagnóstico de esta plantilla." : "Crea una nueva plantilla de macro, micro o diagnóstico."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nombre</label>
+                        <Campo label="Nombre" nombre="nombre" error={v.error("nombre")} requerido>
                             <Input
                                 value={form.nombre}
                                 onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
                                 maxLength={100}
                                 placeholder="Ej: Biopsia de piel — nevus benigno"
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción macroscópica</label>
+                        </Campo>
+                        <Campo label="Descripción macroscópica" nombre="macro" error={v.error("macro")}>
                             <RichTextEditor
                                 rows={3}
                                 value={form.macro}
                                 onChange={(html) => setForm((f) => ({ ...f, macro: html }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción microscópica</label>
+                        </Campo>
+                        <Campo label="Descripción microscópica" nombre="micro" error={v.error("micro")}>
                             <RichTextEditor
                                 rows={3}
                                 value={form.micro}
                                 onChange={(html) => setForm((f) => ({ ...f, micro: html }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Diagnóstico</label>
+                        </Campo>
+                        <Campo label="Diagnóstico" nombre="diagnostico" error={v.error("diagnostico")}>
                             <RichTextEditor
                                 rows={3}
                                 value={form.diagnostico}
                                 onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Activity, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, PenLine } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -79,6 +81,17 @@ export default function EndoscopiasPage() {
     const [guardando, setGuardando] = useState(false);
     const [firmando, setFirmando] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        fechaEstudio: [reglas.requerido("La fecha del estudio es obligatoria."), reglas.fecha(), reglas.fechaNoFutura()],
+        fechaSalida: [reglas.fecha(), reglas.fechaDesde<EndoscopiaData>("fechaEstudio", "la fecha del estudio")],
+        medicoSolicita: [reglas.requerido("Indica el médico que solicita."), reglas.maxLong(100)],
+        anestesiologo: [reglas.maxLong(100)],
+        indicacion: [reglas.requerido("La indicación es obligatoria.")],
+        idEquipo: [reglas.requerido("Selecciona el equipo.")],
+        idProcedimientoTerapeutico: [reglas.requerido("Selecciona el procedimiento terapéutico.")],
+        campo1: [reglas.requerido("El reporte del procedimiento es obligatorio.")],
+        diagnostico: [reglas.requerido("El diagnóstico es obligatorio.")],
+    });
     const [guardadoOk, setGuardadoOk] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [previewAnterior, setPreviewAnterior] = useState<EstudioAnterior | null>(null);
@@ -127,6 +140,7 @@ export default function EndoscopiasPage() {
     async function abrirOrden(orden: OrdenPendiente) {
         setOrdenActiva(orden);
         setFormError(null);
+        v.reiniciar();
         setGuardadoOk(false);
         setCie10Query("");
         setCie10Nombre("");
@@ -176,10 +190,7 @@ export default function EndoscopiasPage() {
         setFormError(null);
         setGuardadoOk(false);
 
-        if (!form.medicoSolicita || !form.indicacion || !form.idEquipo || !form.idProcedimientoTerapeutico || !form.campo1 || !form.diagnostico) {
-            setFormError("Médico que solicita, indicación, equipo, procedimiento terapéutico, reporte y diagnóstico son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
 
         setGuardando(true);
         try {
@@ -279,44 +290,36 @@ export default function EndoscopiasPage() {
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-sm font-bold">Datos del Procedimiento</p>
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Fecha de Estudio</label>
+                                <Campo label="Fecha de Estudio" nombre="fechaEstudio" error={v.error("fechaEstudio")} requerido>
                                     <Input type="date" value={form.fechaEstudio} onChange={(e) => setForm((f) => ({ ...f, fechaEstudio: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Fecha de Salida</label>
+                                </Campo>
+                                <Campo label="Fecha de Salida" nombre="fechaSalida" error={v.error("fechaSalida")}>
                                     <Input type="date" value={form.fechaSalida ?? ""} onChange={(e) => setForm((f) => ({ ...f, fechaSalida: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Médico que Solicita</label>
+                                </Campo>
+                                <Campo label="Médico que Solicita" nombre="medicoSolicita" error={v.error("medicoSolicita")} requerido>
                                     <Input value={form.medicoSolicita} onChange={(e) => setForm((f) => ({ ...f, medicoSolicita: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Anestesiólogo</label>
+                                </Campo>
+                                <Campo label="Anestesiólogo" nombre="anestesiologo" error={v.error("anestesiologo")}>
                                     <Input value={form.anestesiologo ?? ""} onChange={(e) => setForm((f) => ({ ...f, anestesiologo: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Indicación</label>
+                                </Campo>
+                                <Campo label="Indicación" nombre="indicacion" error={v.error("indicacion")} requerido className="col-span-2">
                                     <Input value={form.indicacion} onChange={(e) => setForm((f) => ({ ...f, indicacion: e.target.value }))} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Medicamentos</label>
+                                </Campo>
+                                <Campo label="Medicamentos" nombre="medicamentos" error={v.error("medicamentos")} className="col-span-2">
                                     <Input value={form.medicamentos ?? ""} onChange={(e) => setForm((f) => ({ ...f, medicamentos: e.target.value }))} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Equipo</label>
+                                </Campo>
+                                <Campo label="Equipo" nombre="idEquipo" error={v.error("idEquipo")} requerido>
                                     <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={form.idEquipo ?? ""} onChange={(e) => setForm((f) => ({ ...f, idEquipo: Number(e.target.value) || undefined }))}>
                                         <option value="">Seleccionar…</option>
                                         {equipos.map((eq) => <option key={eq.id} value={eq.id}>{eq.nombre}</option>)}
                                     </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Procedimiento Terapéutico</label>
+                                </Campo>
+                                <Campo label="Procedimiento Terapéutico" nombre="idProcedimientoTerapeutico" error={v.error("idProcedimientoTerapeutico")} requerido>
                                     <select className="h-9 w-full rounded-md border bg-transparent px-3 text-sm" value={form.idProcedimientoTerapeutico ?? ""} onChange={(e) => setForm((f) => ({ ...f, idProcedimientoTerapeutico: Number(e.target.value) || undefined }))}>
                                         <option value="">Seleccionar…</option>
                                         {procedimientos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                                     </select>
-                                </div>
+                                </Campo>
                             </div>
                         </div>
 
@@ -330,12 +333,16 @@ export default function EndoscopiasPage() {
                                     </Button>
                                 )}
                             </div>
-                            <RichTextEditor rows={8} value={form.campo1} onChange={(html) => setForm((f) => ({ ...f, campo1: html }))} />
+                            <Campo nombre="campo1" error={v.error("campo1")}>
+                                <RichTextEditor rows={8} value={form.campo1} onChange={(html) => setForm((f) => ({ ...f, campo1: html }))} />
+                            </Campo>
                         </div>
 
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <p className="mb-3 text-sm font-bold">Diagnóstico</p>
-                            <RichTextEditor rows={4} value={form.diagnostico} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
+                            <Campo nombre="diagnostico" error={v.error("diagnostico")}>
+                                <RichTextEditor rows={4} value={form.diagnostico} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
+                            </Campo>
 
                             <div className="relative mt-3 space-y-1.5">
                                 <label className="text-[12.5px] font-medium">Código CIE10</label>
@@ -353,6 +360,8 @@ export default function EndoscopiasPage() {
                                     </div>
                                 )}
                             </div>
+
+                            <ResumenErrores mensaje={v.resumen} />
 
                             {formError && (
                                 <p className="mt-3 rounded-md px-3 py-2 text-[12.5px]" style={{ background: "var(--status-danger-bg, #fef2f2)", color: "var(--status-danger, #dc2626)" }}>

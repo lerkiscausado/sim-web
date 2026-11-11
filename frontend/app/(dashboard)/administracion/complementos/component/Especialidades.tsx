@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface EspecialidadItem {
     id: number;
@@ -57,6 +59,9 @@ export default function Especialidades() {
     const [form, setForm] = useState({ nombreEspecialidad: "" });
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        nombreEspecialidad: [reglas.requerido("El nombre es obligatorio."), reglas.maxLong(50)],
+    });
 
     const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
@@ -95,6 +100,7 @@ export default function Especialidades() {
         setEditando(null);
         setForm({ nombreEspecialidad: "" });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -102,14 +108,12 @@ export default function Especialidades() {
         setEditando(item);
         setForm({ nombreEspecialidad: item.nombreEspecialidad });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.nombreEspecialidad) {
-            setFormError("El nombre es obligatorio.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -242,14 +246,14 @@ export default function Especialidades() {
                         <DialogDescription>{editando ? "Actualiza el nombre de la especialidad." : "Registra una nueva especialidad médica."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nombre</label>
+                        <Campo label="Nombre" nombre="nombreEspecialidad" error={v.error("nombreEspecialidad")} requerido>
                             <Input
                                 value={form.nombreEspecialidad}
                                 onChange={(e) => setForm({ nombreEspecialidad: e.target.value })}
                                 maxLength={50}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

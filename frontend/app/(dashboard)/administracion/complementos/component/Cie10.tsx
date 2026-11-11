@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface Cie10Item {
     codigoDiagnostico: string;
@@ -57,6 +59,10 @@ export default function Cie10() {
     const [form, setForm] = useState({ codigoDiagnostico: "", nombreDiagnostico: "" });
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        codigoDiagnostico: [reglas.requerido("El código es obligatorio."), reglas.maxLong(12), reglas.patron(/^[A-Z][0-9A-Z.]{2,}$/, "Formato CIE10 no válido (ej. K358).")],
+        nombreDiagnostico: [reglas.maxLong(900)],
+    });
 
     const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
@@ -95,6 +101,7 @@ export default function Cie10() {
         setEditando(null);
         setForm({ codigoDiagnostico: "", nombreDiagnostico: "" });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -102,14 +109,12 @@ export default function Cie10() {
         setEditando(item);
         setForm({ codigoDiagnostico: item.codigoDiagnostico, nombreDiagnostico: item.nombreDiagnostico ?? "" });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.codigoDiagnostico) {
-            setFormError("El código es obligatorio.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -248,23 +253,22 @@ export default function Cie10() {
                         <DialogDescription>{editando ? "Actualiza la descripción de este diagnóstico." : "Registra un nuevo código CIE10 en el catálogo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Código</label>
+                        <Campo label="Código" nombre="codigoDiagnostico" error={v.error("codigoDiagnostico")} requerido>
                             <Input
                                 value={form.codigoDiagnostico}
                                 disabled={!!editando}
                                 onChange={(e) => setForm((f) => ({ ...f, codigoDiagnostico: e.target.value.toUpperCase() }))}
                                 maxLength={12}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción</label>
+                        </Campo>
+                        <Campo label="Descripción" nombre="nombreDiagnostico" error={v.error("nombreDiagnostico")}>
                             <Input
                                 value={form.nombreDiagnostico}
                                 onChange={(e) => setForm((f) => ({ ...f, nombreDiagnostico: e.target.value }))}
                                 maxLength={900}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

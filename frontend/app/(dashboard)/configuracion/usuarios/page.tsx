@@ -22,6 +22,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { CATEGORIAS_PERMISOS } from "./permisos-config";
 
 interface Empleado {
@@ -65,6 +67,27 @@ export default function UsuariosSistemaPage() {
     const [editError, setEditError] = useState<string | null>(null);
     const [guardandoEdit, setGuardandoEdit] = useState(false);
 
+    const vNuevo = useValidacion(formNuevo, {
+        idEmpleado: [reglas.requerido("Selecciona el empleado.")],
+        usuario: [
+            reglas.requerido("El usuario es obligatorio."),
+            reglas.minLong(3), reglas.maxLong(50), reglas.patron(/^[A-Za-z0-9._-]+$/, "Sin espacios ni caracteres especiales (solo letras, números, . _ -)."),
+            (u) => (usuarios.some((x) => x.usuario.toLowerCase() === String(u).trim().toLowerCase()) ? "Ese usuario ya existe." : null),
+        ],
+        pass: [reglas.requerido("La clave es obligatoria."), reglas.minLong(4), reglas.maxLong(50)],
+    });
+    const vEdit = useValidacion(formEdit, {
+        usuario: [
+            reglas.requerido("El usuario es obligatorio."),
+            reglas.minLong(3), reglas.maxLong(50), reglas.patron(/^[A-Za-z0-9._-]+$/, "Sin espacios ni caracteres especiales (solo letras, números, . _ -)."),
+            (u) =>
+                usuarios.some((x) => x.id !== editando?.id && x.usuario.toLowerCase() === String(u).trim().toLowerCase())
+                    ? "Ese usuario ya existe."
+                    : null,
+        ],
+        pass: [reglas.minLong(4), reglas.maxLong(50)],
+    });
+
     const cargar = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -95,19 +118,13 @@ export default function UsuariosSistemaPage() {
     function abrirNuevo() {
         setFormNuevo(FORM_NUEVO_INICIAL);
         setNuevoError(null);
+        vNuevo.reiniciar();
         setMostrarPass(false);
         setDialogNuevoOpen(true);
     }
 
     async function guardarNuevo() {
-        if (!formNuevo.idEmpleado || !formNuevo.usuario) {
-            setNuevoError("Debe seleccionar el empleado y el campo Usuario es obligatorio.");
-            return;
-        }
-        if (!formNuevo.pass) {
-            setNuevoError("El campo Clave es obligatorio.");
-            return;
-        }
+        if (!vNuevo.comprobar()) return;
         setGuardandoNuevo(true);
         setNuevoError(null);
         try {
@@ -132,14 +149,11 @@ export default function UsuariosSistemaPage() {
         }
         setPermisosEdit(permisos);
         setEditError(null);
+        vEdit.reiniciar();
     }
 
     async function guardarEdicion() {
-        if (!editando) return;
-        if (!formEdit.usuario) {
-            setEditError("El campo Usuario es obligatorio.");
-            return;
-        }
+        if (!editando || !vEdit.comprobar()) return;
         setGuardandoEdit(true);
         setEditError(null);
         try {
@@ -244,8 +258,7 @@ export default function UsuariosSistemaPage() {
                         <DialogDescription>Cada empleado puede tener una única cuenta de usuario.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Empleado</label>
+                        <Campo label="Empleado" nombre="idEmpleado" error={vNuevo.error("idEmpleado")} requerido>
                             <select
                                 className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                                 value={formNuevo.idEmpleado ?? ""}
@@ -258,16 +271,14 @@ export default function UsuariosSistemaPage() {
                                     </option>
                                 ))}
                             </select>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Usuario</label>
+                        </Campo>
+                        <Campo label="Usuario" nombre="usuario" error={vNuevo.error("usuario")} requerido>
                             <Input
                                 value={formNuevo.usuario}
                                 onChange={(e) => setFormNuevo((f) => ({ ...f, usuario: e.target.value }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Clave</label>
+                        </Campo>
+                        <Campo label="Clave" nombre="pass" error={vNuevo.error("pass")} requerido>
                             <div className="relative">
                                 <Input
                                     type={mostrarPass ? "text" : "password"}
@@ -284,7 +295,7 @@ export default function UsuariosSistemaPage() {
                                     {mostrarPass ? <EyeOff size={16} /> : <Eye size={16} />}
                                 </button>
                             </div>
-                        </div>
+                        </Campo>
                         <label className="flex items-center gap-2 text-[12.5px] font-medium">
                             <input
                                 type="checkbox"
@@ -293,6 +304,7 @@ export default function UsuariosSistemaPage() {
                             />
                             Administrador (todos los permisos)
                         </label>
+                        <ResumenErrores mensaje={vNuevo.resumen} />
                         {nuevoError && <p className="text-sm text-red-600">{nuevoError}</p>}
                     </div>
                     <DialogFooter>
@@ -315,22 +327,20 @@ export default function UsuariosSistemaPage() {
                     </DialogHeader>
 
                     <div className="grid grid-cols-2 gap-3 border-b pb-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Usuario</label>
+                        <Campo label="Usuario" nombre="usuario" error={vEdit.error("usuario")} requerido>
                             <Input
                                 value={formEdit.usuario}
                                 onChange={(e) => setFormEdit((f) => ({ ...f, usuario: e.target.value }))}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nueva clave (opcional)</label>
+                        </Campo>
+                        <Campo label="Nueva clave (opcional)" nombre="pass" error={vEdit.error("pass")}>
                             <Input
                                 type="password"
                                 value={formEdit.pass}
                                 onChange={(e) => setFormEdit((f) => ({ ...f, pass: e.target.value }))}
                                 placeholder="Dejar en blanco para no cambiarla"
                             />
-                        </div>
+                        </Campo>
                         <label className="flex items-center gap-2 text-[12.5px] font-medium">
                             <input
                                 type="checkbox"
@@ -389,6 +399,7 @@ export default function UsuariosSistemaPage() {
                         </div>
                     </div>
 
+                    <ResumenErrores mensaje={vEdit.resumen} />
                     {editError && <p className="text-sm text-red-600">{editError}</p>}
                     <DialogFooter>
                         <Button onClick={guardarEdicion} disabled={guardandoEdit}>

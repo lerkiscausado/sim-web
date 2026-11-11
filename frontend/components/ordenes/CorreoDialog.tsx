@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Mail, Send } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface Props {
     open: boolean;
@@ -26,6 +28,13 @@ export function CorreoDialog({ open, onOpenChange, idOrden, correoPaciente, estu
     const [error, setError] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
     const [configurado, setConfigurado] = useState<boolean | null>(null);
+    const formCorreo = useMemo(() => ({ para, asunto, mensaje }), [para, asunto, mensaje]);
+    const v = useValidacion(formCorreo, {
+        para: [reglas.requerido("Escribe al menos un correo de destino."), reglas.emails("Hay un correo no válido. Separa varios con coma o punto y coma.")],
+        asunto: [reglas.requerido("El asunto es obligatorio."), reglas.maxLong(200)],
+        mensaje: [reglas.maxLong(5000)],
+    });
+    const reiniciarValidacion = v.reiniciar;
 
     useEffect(() => {
         if (!open) return;
@@ -36,13 +45,14 @@ export function CorreoDialog({ open, onOpenChange, idOrden, correoPaciente, estu
         );
         setError(null);
         setOk(null);
+        reiniciarValidacion();
         api.get<{ configurado: boolean }>("/admisiones/consulta/correo/estado")
             .then((r) => setConfigurado(r.configurado))
             .catch(() => setConfigurado(null));
-    }, [open, correoPaciente, estudio, consecutivo]);
+    }, [open, correoPaciente, estudio, consecutivo, reiniciarValidacion]);
 
     async function enviar() {
-        if (!idOrden) return;
+        if (!idOrden || !v.comprobar()) return;
         setEnviando(true);
         setError(null);
         setOk(null);
@@ -72,19 +82,17 @@ export function CorreoDialog({ open, onOpenChange, idOrden, correoPaciente, estu
                     </p>
                 )}
                 <div className="space-y-3">
-                    <div className="space-y-1">
-                        <label className="text-[12.5px] font-medium">Para</label>
+                    <Campo label="Para" nombre="para" error={v.error("para")} requerido>
                         <Input value={para} onChange={(e) => setPara(e.target.value)} placeholder="correo@ejemplo.com" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12.5px] font-medium">Asunto</label>
+                    </Campo>
+                    <Campo label="Asunto" nombre="asunto" error={v.error("asunto")} requerido>
                         <Input value={asunto} onChange={(e) => setAsunto(e.target.value)} />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[12.5px] font-medium">Mensaje</label>
+                    </Campo>
+                    <Campo label="Mensaje" nombre="mensaje" error={v.error("mensaje")}>
                         <Textarea rows={5} value={mensaje} onChange={(e) => setMensaje(e.target.value)} />
-                    </div>
+                    </Campo>
                 </div>
+                <ResumenErrores mensaje={v.resumen} />
                 {error && <p className="rounded-md bg-red-50 px-3 py-2 text-[12.5px] text-red-700">{error}</p>}
                 {ok && <p className="rounded-md bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{ok}</p>}
                 <DialogFooter>

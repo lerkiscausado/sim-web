@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface EntidadItem {
     codigoEntidad: string;
@@ -61,6 +63,13 @@ export default function Entidades() {
     const [editando, setEditando] = useState<EntidadItem | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
+    const v = useValidacion(form, {
+        codigoEntidad: [reglas.requerido("El código es obligatorio."), reglas.maxLong(50)],
+        nombreEntidad: [reglas.requerido("La razón social es obligatoria."), reglas.maxLong(100)],
+        nit: [reglas.maxLong(50), reglas.patron(/^[0-9]+(-[0-9])?$/, "NIT no válido (ej. 900123456-7).")],
+        direccion: [reglas.maxLong(250)],
+        telefono: [reglas.maxLong(50), reglas.telefono()],
+    });
     const [guardando, setGuardando] = useState(false);
 
     const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
@@ -100,6 +109,7 @@ export default function Entidades() {
         setEditando(null);
         setForm(FORM_INICIAL);
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -113,14 +123,12 @@ export default function Entidades() {
             telefono: item.telefono ?? "",
         });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.codigoEntidad || !form.nombreEntidad) {
-            setFormError("Código y razón social son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -258,47 +266,43 @@ export default function Entidades() {
                         <DialogDescription>{editando ? "Actualiza los datos de contacto de la entidad." : "Registra una nueva entidad (EPS, ARL o convenio)."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Código</label>
+                        <Campo label="Código" nombre="codigoEntidad" error={v.error("codigoEntidad")} requerido>
                             <Input
                                 value={form.codigoEntidad}
                                 disabled={!!editando}
                                 onChange={(e) => setForm((f) => ({ ...f, codigoEntidad: e.target.value }))}
                                 maxLength={50}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Razón social</label>
+                        </Campo>
+                        <Campo label="Razón social" nombre="nombreEntidad" error={v.error("nombreEntidad")} requerido>
                             <Input
                                 value={form.nombreEntidad}
                                 onChange={(e) => setForm((f) => ({ ...f, nombreEntidad: e.target.value }))}
                                 maxLength={100}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">NIT</label>
+                        </Campo>
+                        <Campo label="NIT" nombre="nit" error={v.error("nit")}>
                             <Input
                                 value={form.nit}
                                 onChange={(e) => setForm((f) => ({ ...f, nit: e.target.value }))}
                                 maxLength={50}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Dirección</label>
+                        </Campo>
+                        <Campo label="Dirección" nombre="direccion" error={v.error("direccion")}>
                             <Input
                                 value={form.direccion}
                                 onChange={(e) => setForm((f) => ({ ...f, direccion: e.target.value }))}
                                 maxLength={250}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Teléfono</label>
+                        </Campo>
+                        <Campo label="Teléfono" nombre="telefono" error={v.error("telefono")}>
                             <Input
                                 value={form.telefono}
                                 onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
                                 maxLength={50}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

@@ -20,6 +20,8 @@ import {
     Paperclip,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion, type Regla } from "@/lib/validacion";
 import { abrirPdf } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -171,6 +173,29 @@ export default function PatologiasPage() {
     const [plantillaAbierta, setPlantillaAbierta] = useState(false);
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [dialogo, setDialogo] = useState<"imagenes" | "adjuntos" | null>(null);
+
+    /**
+     * Validación del formulario. Para guardar basta el espécimen; para firmar se exigen además
+     * los campos que pedía el VB.NET (bbiGuardar con chkProcesado). `exigirFirma` se fija antes de validar.
+     */
+    const exigirFirma = useRef(false);
+    const paraFirmar = (regla: Regla<Form>): Regla<Form> => reglas.si<Form>(() => exigirFirma.current, regla);
+    const v = useValidacion(form, {
+        tipoMuestra: [reglas.requerido("Seleccione el espécimen (tipo de muestra)."), reglas.maxLong(100)],
+        fechaSalida: [
+            reglas.fecha(),
+            (fs) =>
+                fs && ordenActiva?.fechaIngreso && String(fs).slice(0, 10) < ordenActiva.fechaIngreso.slice(0, 10)
+                    ? "No puede ser anterior a la fecha de ingreso."
+                    : null,
+        ],
+        sitioLesion: [reglas.maxLong(50)],
+        solicitado: [reglas.maxLong(50)],
+        impresionDiagnostica: [paraFirmar(reglas.requerido("La impresión diagnóstica es obligatoria para firmar."))],
+        resultado: [paraFirmar(reglas.requerido("El resultado es obligatorio para firmar."))],
+        codigoDiagnostico: [paraFirmar(reglas.requerido("El diagnóstico CIE10 es obligatorio para firmar.")), reglas.maxLong(12)],
+        descripcion: [paraFirmar(reglas.requerido("La descripción del estudio es obligatoria para firmar."))],
+    });
     const editorKey = useRef(0);
 
     const cargarPendientes = useCallback(async (q?: string, sede?: string) => {
@@ -227,6 +252,7 @@ export default function PatologiasPage() {
         setOrdenActiva(orden);
         setInformeGuardado(null);
         setFirmar(false);
+        v.reiniciar();
         setAviso(null);
         setForm({ ...FORM_INICIAL, idEspecimen: orden.idEspecimen, tipoMuestra: orden.especimen?.nombre ?? "" });
         setCie10Query("");
@@ -305,23 +331,9 @@ export default function PatologiasPage() {
         };
     }
 
-    /** Validaciones de firma del VB.NET (bbiGuardar con chkProcesado). */
-    function faltantesFirma(): string[] {
-        const f: string[] = [];
-        if (!form.tipoMuestra.trim()) f.push("El Tipo de Muestra es obligatorio para poder firmar el estudio");
-        if (!form.impresionDiagnostica.trim()) f.push("La descripcion Impresion Diagnostica es obligatoria para poder firmar el estudio");
-        if (!form.resultado) f.push("El Resultado del Estudio es obligatorio para poder firmar el estudio");
-        if (!htmlToPlainText(form.descripcion)) f.push("La descripcion del Estudio es obligatorio para poder firmar el estudio");
-        if (!form.codigoDiagnostico.trim()) f.push("El Diagnostico CIE10 es Obligatorio");
-        return f;
-    }
-
     async function guardar(): Promise<boolean> {
         if (!ordenActiva) return false;
-        if (!form.tipoMuestra.trim()) {
-            setErrorDlg({ titulo: "No se pudo guardar", mensaje: "Seleccione el espécimen (tipo de muestra)." });
-            return false;
-        }
+        if (!v.comprobar()) return false;
         setGuardando(true);
         try {
             const g = await api.post<InformePatologia>("/atenciones/patologia", payload());
@@ -341,13 +353,7 @@ export default function PatologiasPage() {
     }
 
     async function onGuardar() {
-        if (firmar) {
-            const f = faltantesFirma();
-            if (f.length) {
-                setErrorDlg({ titulo: "No se puede firmar el estudio", detalles: f });
-                return;
-            }
-        }
+        exigirFirma.current = firmar;
         const ok = await guardar();
         if (!ok) return;
         if (firmar) setConfirmarFirma(true);
@@ -380,6 +386,7 @@ export default function PatologiasPage() {
     async function vistaPreliminar() {
         if (!ordenActiva) return;
         if (cambios || !informeGuardado) {
+            exigirFirma.current = false;
             const ok = await guardar();
             if (!ok) return;
         }
@@ -554,12 +561,10 @@ export default function PatologiasPage() {
                                     <label className="text-[12.5px] font-medium">Fecha ingreso</label>
                                     <Input value={ordenActiva.fechaIngreso} disabled />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Fecha salida</label>
+                                <Campo label="Fecha salida" nombre="fechaSalida" error={v.error("fechaSalida")}>
                                     <Input type="date" value={form.fechaSalida} onChange={(e) => set("fechaSalida", e.target.value)} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5 md:col-span-4">
-                                    <label className="text-[12.5px] font-medium">Material enviado o espécimen *</label>
+                                </Campo>
+                                <Campo label="Material enviado o espécimen" nombre="tipoMuestra" error={v.error("tipoMuestra")} requerido className="col-span-2 md:col-span-4">
                                     <EspecimenPicker
                                         valor={form.tipoMuestra}
                                         onElegir={(e) => {
@@ -567,21 +572,17 @@ export default function PatologiasPage() {
                                             setCambios(true);
                                         }}
                                     />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Sitio lesión</label>
+                                </Campo>
+                                <Campo label="Sitio lesión" nombre="sitioLesion" error={v.error("sitioLesion")} className="col-span-2">
                                     <Input value={form.sitioLesion} maxLength={50} onChange={(e) => set("sitioLesion", e.target.value)} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Solicitado por (Remitente)</label>
+                                </Campo>
+                                <Campo label="Solicitado por (Remitente)" nombre="solicitado" error={v.error("solicitado")} className="col-span-2">
                                     <Input value={form.solicitado} maxLength={50} placeholder="Dr: " onChange={(e) => set("solicitado", e.target.value)} />
-                                </div>
-                                <div className="col-span-2 space-y-1.5 md:col-span-3">
-                                    <label className="text-[12.5px] font-medium">Impresión diagnóstica</label>
+                                </Campo>
+                                <Campo label="Impresión diagnóstica" nombre="impresionDiagnostica" error={v.error("impresionDiagnostica")} requerido={firmar} className="col-span-2 md:col-span-3">
                                     <Input value={form.impresionDiagnostica} onChange={(e) => set("impresionDiagnostica", e.target.value.toUpperCase())} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[12.5px] font-medium">Resultado</label>
+                                </Campo>
+                                <Campo label="Resultado" nombre="resultado" error={v.error("resultado")} requerido={firmar}>
                                     <select
                                         className={`h-9 w-full rounded-md border bg-transparent px-3 text-sm font-semibold ${form.resultado === "POSITIVO" ? "text-red-700" : ""}`}
                                         value={form.resultado}
@@ -591,17 +592,17 @@ export default function PatologiasPage() {
                                         <option value="NEGATIVO">NEGATIVO</option>
                                         <option value="POSITIVO">POSITIVO</option>
                                     </select>
-                                </div>
+                                </Campo>
                             </div>
 
-                            <div className="relative mt-3 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Diagnóstico CIE10</label>
+                            <Campo label="Diagnóstico CIE10" nombre="codigoDiagnostico" error={v.error("codigoDiagnostico")} requerido={firmar} className="relative mt-3">
                                 <Input
                                     placeholder="Buscar por código o nombre…"
                                     value={cie10Query}
                                     onChange={(e) => {
                                         setCie10Query(e.target.value);
-                                        if (!e.target.value) {
+                                        // Al editar el texto, el diagnóstico elegido deja de estar seleccionado.
+                                        if (form.codigoDiagnostico) {
                                             set("codigoDiagnostico", "");
                                             setCie10Nombre("");
                                         }
@@ -626,23 +627,36 @@ export default function PatologiasPage() {
                                         ))}
                                     </div>
                                 )}
-                            </div>
+                            </Campo>
 
-                            <div className="mt-3 space-y-1.5">
-                                <label className="text-[12.5px] font-medium">Descripción del estudio patológico</label>
+                            <Campo label="Descripción del estudio patológico" nombre="descripcion" error={v.error("descripcion")} requerido={firmar} className="mt-3">
                                 <RichTextEditor key={editorKey.current} rows={16} value={form.descripcion} onChange={(html) => set("descripcion", html)} />
-                            </div>
+                            </Campo>
 
                             <div className="mt-3 space-y-1.5">
                                 <label className="text-[12.5px] font-medium">Observaciones</label>
                                 <Textarea rows={2} value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} />
                             </div>
 
+                            <div className="mt-3">
+                                <ResumenErrores mensaje={v.resumen} />
+                            </div>
                             {aviso && <p className="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-[12.5px] text-emerald-800">{aviso}</p>}
 
                             <div className="mt-4 flex flex-wrap items-center gap-2">
                                 <label className="mr-auto flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
-                                    <input type="checkbox" checked={firmar} onChange={(e) => setFirmar(e.target.checked)} />
+                                    <input
+                                        type="checkbox"
+                                        checked={firmar}
+                                        onChange={(e) => {
+                                            setFirmar(e.target.checked);
+                                            // Sin firma ya no aplican los campos obligatorios de firma.
+                                            if (!e.target.checked) {
+                                                exigirFirma.current = false;
+                                                v.reiniciar();
+                                            }
+                                        }}
+                                    />
                                     Firmar estudio (procesado)
                                 </label>
                                 {hasPermission("adjuntarImagenes") && (

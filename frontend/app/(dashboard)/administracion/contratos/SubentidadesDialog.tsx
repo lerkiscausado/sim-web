@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Ban, CheckCircle2, Loader2, Pencil, Plus, Save, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { api, ApiError } from "@/lib/api";
+import { Campo } from "@/components/ui/campo";
+import { reglas, useValidacion, type Regla } from "@/lib/validacion";
 
 interface Subentidad {
     id: number;
@@ -30,6 +32,23 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    /** Nombre obligatorio, de 3 a 60 caracteres y sin repetir otra subentidad del contrato. */
+    const reglasNombre = (idPropio?: number): Regla<{ nombre: string }>[] => [
+        reglas.requerido("Escribe el nombre de la subentidad."),
+        reglas.minLong(3),
+        reglas.maxLong(60),
+        (n) => {
+            const nombre = String(n ?? "").trim().toUpperCase();
+            return lista.some((s) => s.id !== idPropio && s.nombre.trim().toUpperCase() === nombre)
+                ? "Ya existe una subentidad con ese nombre en este contrato."
+                : null;
+        },
+    ];
+    const formNuevo = useMemo(() => ({ nombre: nuevo }), [nuevo]);
+    const vNuevo = useValidacion(formNuevo, { nombre: reglasNombre() });
+    const formEdicion = useMemo(() => ({ nombre: editando?.nombre ?? "" }), [editando]);
+    const vEdicion = useValidacion(formEdicion, { nombre: reglasNombre(editando?.id) });
+
     const cargar = useCallback(async () => {
         if (!contrato) return;
         setCargando(true);
@@ -52,12 +71,13 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
     }, [open, cargar]);
 
     async function crear() {
-        if (!contrato || !nuevo.trim()) return;
+        if (!contrato || !vNuevo.comprobar()) return;
         setGuardando(true);
         setError(null);
         try {
             await api.post("/entidades-contratos/subentidades", { idContrato: contrato.id, nombre: nuevo });
             setNuevo("");
+            vNuevo.reiniciar();
             await cargar();
         } catch (e) {
             setError(e instanceof ApiError ? e.message : "No se pudo crear");
@@ -67,12 +87,13 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
     }
 
     async function renombrar() {
-        if (!editando) return;
+        if (!editando || !vEdicion.comprobar()) return;
         setGuardando(true);
         setError(null);
         try {
             await api.patch(`/entidades-contratos/subentidades/${editando.id}`, { nombre: editando.nombre });
             setEditando(null);
+            vEdicion.reiniciar();
             await cargar();
         } catch (e) {
             setError(e instanceof ApiError ? e.message : "No se pudo actualizar");
@@ -102,15 +123,17 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex gap-2">
-                    <Input
-                        placeholder="Nombre de la nueva subentidad (ej. NUEVA EPS, PARTICULAR)"
-                        value={nuevo}
-                        maxLength={60}
-                        onChange={(e) => setNuevo(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && crear()}
-                    />
-                    <Button onClick={crear} disabled={guardando || !nuevo.trim()}>
+                <div className="flex items-start gap-2">
+                    <Campo nombre="nombre" error={vNuevo.error("nombre")} className="flex-1">
+                        <Input
+                            placeholder="Nombre de la nueva subentidad (ej. NUEVA EPS, PARTICULAR)"
+                            value={nuevo}
+                            maxLength={60}
+                            onChange={(e) => setNuevo(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && crear()}
+                        />
+                    </Campo>
+                    <Button onClick={crear} disabled={guardando}>
                         {guardando ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
                         Agregar
                     </Button>
@@ -132,17 +155,26 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
                                 <li key={s.id} className="flex items-center gap-2 px-3 py-2">
                                     {editando?.id === s.id ? (
                                         <>
-                                            <Input
-                                                autoFocus
-                                                value={editando.nombre}
-                                                maxLength={60}
-                                                onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
-                                                onKeyDown={(e) => e.key === "Enter" && renombrar()}
-                                            />
+                                            <Campo nombre="nombreEdicion" error={vEdicion.error("nombre")} className="flex-1">
+                                                <Input
+                                                    autoFocus
+                                                    value={editando.nombre}
+                                                    maxLength={60}
+                                                    onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+                                                    onKeyDown={(e) => e.key === "Enter" && renombrar()}
+                                                />
+                                            </Campo>
                                             <Button size="sm" onClick={renombrar} disabled={guardando}>
                                                 <Save size={14} />
                                             </Button>
-                                            <Button size="sm" variant="ghost" onClick={() => setEditando(null)}>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => {
+                                                    setEditando(null);
+                                                    vEdicion.reiniciar();
+                                                }}
+                                            >
                                                 <X size={14} />
                                             </Button>
                                         </>
@@ -152,7 +184,15 @@ export function SubentidadesDialog({ open, onOpenChange, contrato }: Props) {
                                             <Badge variant={s.estado === "A" ? "default" : "destructive"} className={s.estado === "A" ? "border-green-200 bg-green-100 text-green-700" : ""}>
                                                 {s.estado === "A" ? "Activa" : "Inactiva"}
                                             </Badge>
-                                            <Button variant="ghost" size="sm" title="Renombrar" onClick={() => setEditando({ id: s.id, nombre: s.nombre })}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                title="Renombrar"
+                                                onClick={() => {
+                                                    vEdicion.reiniciar();
+                                                    setEditando({ id: s.id, nombre: s.nombre });
+                                                }}
+                                            >
                                                 <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                             </Button>
                                             <Button variant="ghost" size="sm" title={s.estado === "A" ? "Desactivar" : "Activar"} onClick={() => toggle(s)}>

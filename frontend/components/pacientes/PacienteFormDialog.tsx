@@ -13,6 +13,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { apiFetchMultipart, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 
 export interface Paciente {
@@ -64,6 +66,9 @@ const FORM_INICIAL = {
     codigoTipoUsuario: 1,
 };
 
+/** Letras (con tildes y ñ), espacios, apóstrofo y guion. */
+const SOLO_LETRAS = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ' .-]+$/;
+
 export function PacienteFormDialog({
     open,
     onOpenChange,
@@ -77,10 +82,37 @@ export function PacienteFormDialog({
     const [fotoPreview, setFotoPreview] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        idTipoIdentificacion: [reglas.requerido("Selecciona el tipo de identificación.")],
+        identificacion: [
+            reglas.requerido("La identificación es obligatoria."),
+            reglas.maxLong(20),
+            (id, f) =>
+                ["CC", "TI", "RC", "NU", "CN", "MS", "AS"].includes(String(f.idTipoIdentificacion))
+                    ? reglas.patron(/^\d{3,15}$/, "Para este tipo de documento solo se permiten números (3 a 15 dígitos).")(id)
+                    : reglas.patron(/^[A-Za-z0-9-]{3,20}$/, "Solo letras, números y guion (3 a 20 caracteres).")(id),
+        ],
+        primerNombre: [reglas.requerido("El primer nombre es obligatorio."), reglas.maxLong(150), reglas.patron(SOLO_LETRAS, "Solo letras y espacios.")],
+        segundoNombre: [reglas.maxLong(150), reglas.patron(SOLO_LETRAS, "Solo letras y espacios.")],
+        primerApellido: [reglas.requerido("El primer apellido es obligatorio."), reglas.maxLong(150), reglas.patron(SOLO_LETRAS, "Solo letras y espacios.")],
+        segundoApellido: [reglas.maxLong(150), reglas.patron(SOLO_LETRAS, "Solo letras y espacios.")],
+        sexo: [reglas.requerido("Selecciona el sexo.")],
+        fechaNacimiento: [
+            reglas.requerido("La fecha de nacimiento es obligatoria."),
+            reglas.fecha(),
+            reglas.fechaNoFutura("La fecha de nacimiento no puede ser posterior a hoy."),
+            reglas.patron(/^(19|20)\d{2}-/, "Revisa el año de nacimiento."),
+        ],
+        direccion: [reglas.maxLong(300)],
+        telefono: [reglas.maxLong(150), reglas.telefono()],
+        correoElectronico: [reglas.maxLong(750), reglas.email()],
+        estadoCivil: [reglas.requerido("Selecciona el estado civil.")],
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!open) return;
+        v.reiniciar();
         setFormError(null);
         limpiarFoto();
         if (editando) {
@@ -124,10 +156,7 @@ export function PacienteFormDialog({
     }
 
     async function guardar() {
-        if (!form.identificacion || !form.primerNombre || !form.primerApellido || !form.fechaNacimiento) {
-            setFormError("Identificación, nombres, apellido y fecha de nacimiento son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -188,8 +217,7 @@ export function PacienteFormDialog({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 py-2">
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Tipo de identificación</label>
+                    <Campo label="Tipo de identificación" nombre="idTipoIdentificacion" error={v.error("idTipoIdentificacion")} requerido>
                         <select
                             className="h-9 w-full rounded-md border bg-transparent px-3 text-sm disabled:opacity-60"
                             value={form.idTipoIdentificacion}
@@ -203,45 +231,39 @@ export function PacienteFormDialog({
                                 </option>
                             ))}
                         </select>
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Identificación</label>
+                    </Campo>
+                    <Campo label="Identificación" nombre="identificacion" error={v.error("identificacion")} requerido>
                         <Input
                             value={form.identificacion}
                             onChange={(e) => setForm((f) => ({ ...f, identificacion: e.target.value }))}
                             disabled={!!editando}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Primer nombre</label>
+                    </Campo>
+                    <Campo label="Primer nombre" nombre="primerNombre" error={v.error("primerNombre")} requerido>
                         <Input
                             value={form.primerNombre}
                             onChange={(e) => setForm((f) => ({ ...f, primerNombre: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Segundo nombre</label>
+                    </Campo>
+                    <Campo label="Segundo nombre" nombre="segundoNombre" error={v.error("segundoNombre")}>
                         <Input
                             value={form.segundoNombre}
                             onChange={(e) => setForm((f) => ({ ...f, segundoNombre: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Primer apellido</label>
+                    </Campo>
+                    <Campo label="Primer apellido" nombre="primerApellido" error={v.error("primerApellido")} requerido>
                         <Input
                             value={form.primerApellido}
                             onChange={(e) => setForm((f) => ({ ...f, primerApellido: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Segundo apellido</label>
+                    </Campo>
+                    <Campo label="Segundo apellido" nombre="segundoApellido" error={v.error("segundoApellido")}>
                         <Input
                             value={form.segundoApellido}
                             onChange={(e) => setForm((f) => ({ ...f, segundoApellido: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Sexo</label>
+                    </Campo>
+                    <Campo label="Sexo" nombre="sexo" error={v.error("sexo")} requerido>
                         <select
                             className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                             value={form.sexo}
@@ -250,39 +272,34 @@ export function PacienteFormDialog({
                             <option value="F">Femenino</option>
                             <option value="M">Masculino</option>
                         </select>
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Fecha de nacimiento</label>
+                    </Campo>
+                    <Campo label="Fecha de nacimiento" nombre="fechaNacimiento" error={v.error("fechaNacimiento")} requerido>
                         <Input
                             type="date"
                             value={form.fechaNacimiento}
                             onChange={(e) => setForm((f) => ({ ...f, fechaNacimiento: e.target.value }))}
                         />
-                    </div>
-                    <div className="col-span-2 space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Dirección</label>
+                    </Campo>
+                    <Campo label="Dirección" nombre="direccion" error={v.error("direccion")} className="col-span-2">
                         <Input
                             value={form.direccion}
                             onChange={(e) => setForm((f) => ({ ...f, direccion: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Teléfono</label>
+                    </Campo>
+                    <Campo label="Teléfono" nombre="telefono" error={v.error("telefono")}>
                         <Input
                             value={form.telefono}
                             onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Correo electrónico</label>
+                    </Campo>
+                    <Campo label="Correo electrónico" nombre="correoElectronico" error={v.error("correoElectronico")}>
                         <Input
                             type="email"
                             value={form.correoElectronico}
                             onChange={(e) => setForm((f) => ({ ...f, correoElectronico: e.target.value }))}
                         />
-                    </div>
-                    <div className="space-y-1.5">
-                        <label className="text-[12.5px] font-medium">Estado civil</label>
+                    </Campo>
+                    <Campo label="Estado civil" nombre="estadoCivil" error={v.error("estadoCivil")} requerido>
                         <select
                             className="h-9 w-full rounded-md border bg-transparent px-3 text-sm"
                             value={form.estadoCivil}
@@ -294,8 +311,9 @@ export function PacienteFormDialog({
                             <option value="DIVORCIADO">Divorciado(a)</option>
                             <option value="VIUDO">Viudo(a)</option>
                         </select>
-                    </div>
+                    </Campo>
                 </div>
+                <ResumenErrores mensaje={v.resumen} />
                 {formError && <p className="text-sm text-red-600">{formError}</p>}
                 <DialogFooter>
                     <Button onClick={guardar} disabled={guardando}>

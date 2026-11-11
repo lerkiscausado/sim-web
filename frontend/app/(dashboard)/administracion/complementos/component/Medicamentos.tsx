@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface MedicamentoItem {
     id: number;
@@ -57,6 +59,9 @@ export default function Medicamentos() {
     const [form, setForm] = useState({ nombre: "" });
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        nombre: [reglas.requerido("El nombre es obligatorio."), reglas.maxLong(50)],
+    });
 
     const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
@@ -95,6 +100,7 @@ export default function Medicamentos() {
         setEditando(null);
         setForm({ nombre: "" });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -102,14 +108,12 @@ export default function Medicamentos() {
         setEditando(item);
         setForm({ nombre: item.nombre });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.nombre) {
-            setFormError("El nombre es obligatorio.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -242,14 +246,14 @@ export default function Medicamentos() {
                         <DialogDescription>{editando ? "Actualiza el nombre del medicamento." : "Registra un nuevo medicamento en el catálogo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Nombre</label>
+                        <Campo label="Nombre" nombre="nombre" error={v.error("nombre")} requerido>
                             <Input
                                 value={form.nombre}
                                 onChange={(e) => setForm({ nombre: e.target.value })}
                                 maxLength={50}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

@@ -30,6 +30,8 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { api, ApiError } from "@/lib/api";
+import { Campo, ResumenErrores } from "@/components/ui/campo";
+import { reglas, useValidacion } from "@/lib/validacion";
 
 interface CupsItem {
     codigoCups: string;
@@ -57,6 +59,10 @@ export default function Cups() {
     const [form, setForm] = useState({ codigoCups: "", nombreCups: "" });
     const [formError, setFormError] = useState<string | null>(null);
     const [guardando, setGuardando] = useState(false);
+    const v = useValidacion(form, {
+        codigoCups: [reglas.requerido("El código es obligatorio."), reglas.maxLong(12), reglas.patron(/^[A-Za-z0-9.-]+$/, "Solo letras, números, punto o guion.")],
+        nombreCups: [reglas.requerido("La descripción es obligatoria."), reglas.maxLong(300)],
+    });
 
     const cargar = useCallback(async (p: number, q?: string, estado?: string) => {
         setLoading(true);
@@ -95,6 +101,7 @@ export default function Cups() {
         setEditando(null);
         setForm({ codigoCups: "", nombreCups: "" });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
@@ -102,14 +109,12 @@ export default function Cups() {
         setEditando(item);
         setForm({ codigoCups: item.codigoCups, nombreCups: item.nombreCups });
         setFormError(null);
+        v.reiniciar();
         setDialogOpen(true);
     }
 
     async function guardar() {
-        if (!form.codigoCups || !form.nombreCups) {
-            setFormError("Código y nombre son obligatorios.");
-            return;
-        }
+        if (!v.comprobar()) return;
         setGuardando(true);
         setFormError(null);
         try {
@@ -246,23 +251,22 @@ export default function Cups() {
                         <DialogDescription>{editando ? "Actualiza la descripción de este código." : "Registra un nuevo código CUPS en el catálogo."}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Código</label>
+                        <Campo label="Código" nombre="codigoCups" error={v.error("codigoCups")} requerido>
                             <Input
                                 value={form.codigoCups}
                                 disabled={!!editando}
                                 onChange={(e) => setForm((f) => ({ ...f, codigoCups: e.target.value }))}
                                 maxLength={12}
                             />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[12.5px] font-medium">Descripción</label>
+                        </Campo>
+                        <Campo label="Descripción" nombre="nombreCups" error={v.error("nombreCups")} requerido>
                             <Input
                                 value={form.nombreCups}
                                 onChange={(e) => setForm((f) => ({ ...f, nombreCups: e.target.value }))}
                                 maxLength={300}
                             />
-                        </div>
+                        </Campo>
+                        <ResumenErrores mensaje={v.resumen} />
                         {formError && <p className="text-sm text-red-600">{formError}</p>}
                     </div>
                     <DialogFooter>

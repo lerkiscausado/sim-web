@@ -30,6 +30,7 @@ import { getPreferencias } from "@/lib/preferencias";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface Entidad {
     codigoEntidad: string;
@@ -90,6 +91,9 @@ export default function ContratosPage() {
     const [tarifas, setTarifas] = useState<Tarifa[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [filtroVigencia, setFiltroVigencia] = useState("");
+    const [filtroTipo, setFiltroTipo] = useState("");
+    const [pageSize, setPageSize] = useTamanoPagina("contratos", 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -119,8 +123,10 @@ export default function ContratosPage() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
+            if (filtroVigencia) qs.set("vigencia", filtroVigencia);
+            if (filtroTipo) qs.set("tipoContrato", filtroTipo);
             const [contratosData, entidadesData, tarifasData] = await Promise.all([
                 api.get<Paginado>(`/entidades-contratos/contratos?${qs.toString()}`),
                 api.get<Entidad[]>("/entidades-contratos/entidades/activas"),
@@ -134,7 +140,7 @@ export default function ContratosPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize, filtroVigencia, filtroTipo]);
 
     function cambiarPagina(p: number) {
         setPage(p);
@@ -299,6 +305,22 @@ export default function ContratosPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <Select aria-label="Vigencia" value={filtroVigencia} onChange={(e) => { setPage(1); setFiltroVigencia(e.target.value); }}>
+                    <option value="">Vigencia: todos</option>
+                    <option value="vigentes">Vigentes</option>
+                    <option value="vencidos">Vencidos</option>
+                </Select>
+                <Select aria-label="Tipo" value={filtroTipo} onChange={(e) => { setPage(1); setFiltroTipo(e.target.value); }}>
+                    <option value="">Tipo: todos</option>
+                    <option value="EVENTO">Evento</option>
+                    <option value="CAPITADO">Capitado</option>
+                    <option value="PAQUETE">Paquete</option>
+                </Select>
+                {(filtroVigencia || filtroTipo) && (
+                    <Button variant="ghost" size="sm" className="h-9" onClick={() => { setPage(1); setFiltroVigencia(""); setFiltroTipo(""); }}>
+                        Limpiar filtros
+                    </Button>
+                )}
                 {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 
@@ -379,7 +401,12 @@ export default function ContratosPage() {
             </div>
 
             {result && (
-                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
             )}
 
             <SubentidadesDialog

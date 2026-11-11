@@ -26,13 +26,14 @@ export class TarifasController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('estado') estado?: string,
   ) {
     // Compatibilidad: sin 'page' en la query devuelve el arreglo plano
     // (usado por el select del formulario de Contratos); con 'page' devuelve paginado.
     if (page === undefined) {
       return this.tarifasService.findAll();
     }
-    return this.tarifasService.findAllPaginado(Number(page), pageSize ? Number(pageSize) : 20, q);
+    return this.tarifasService.findAllPaginado(Number(page), pageSize ? Number(pageSize) : 20, q, estado);
   }
 
   @Get(':id')

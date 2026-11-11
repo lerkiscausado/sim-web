@@ -13,11 +13,12 @@ export class TarifasService {
     private readonly repo: Repository<Tarifas>,
   ) {}
 
-  findAllPaginado(page = 1, pageSize = 20, q?: string) {
+  findAllPaginado(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('t').orderBy('t.nombreTarifa', 'ASC');
     if (q && q.trim().length > 0) {
-      qb.where('t.nombreTarifa LIKE :term', { term: `%${q.trim()}%` });
+      qb.andWhere('t.nombreTarifa LIKE :term', { term: `%${q.trim()}%` });
     }
+    if (estado) qb.andWhere('t.estado = :estado', { estado });
     return paginate(qb, page, pageSize);
   }
 

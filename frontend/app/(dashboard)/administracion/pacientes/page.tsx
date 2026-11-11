@@ -5,8 +5,6 @@ import {
     Search,
     Plus,
     Loader2,
-    ChevronLeft,
-    ChevronRight,
     Calendar,
     CalendarDays,
     Mars,
@@ -32,6 +30,9 @@ import { api, ApiError } from "@/lib/api";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { PacienteFormDialog, type Paciente, type TipoIdentificacion } from "@/components/pacientes/PacienteFormDialog";
 import { calcularEdad } from "@/lib/fechas";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { useTamanoPagina } from "@/lib/useTabla";
+import { Select } from "@/components/ui/select";
 
 interface Paginated {
     data: Paciente[];
@@ -49,6 +50,8 @@ export default function PacientesPage() {
     const [tiposIdentificacion, setTiposIdentificacion] = useState<TipoIdentificacion[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [filtroSexo, setFiltroSexo] = useState("");
+    const [pageSize, setPageSize] = useTamanoPagina("pacientes", 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +62,9 @@ export default function PacientesPage() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
+            if (filtroSexo) qs.set("sexo", filtroSexo);
             const data = await api.get<Paginated>(`/pacientes?${qs.toString()}`);
             setResult(data);
         } catch (err) {
@@ -68,7 +72,7 @@ export default function PacientesPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize, filtroSexo]);
 
     useEffect(() => {
         cargar(1);
@@ -104,8 +108,6 @@ export default function PacientesPage() {
         cargar(page, searchTerm);
     }
 
-    const totalPaginas = result ? Math.max(1, Math.ceil(result.total / result.pageSize)) : 1;
-
     return (
         <div className="space-y-5">
             <div
@@ -140,6 +142,16 @@ export default function PacientesPage() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <Select aria-label="Sexo" value={filtroSexo} onChange={(e) => { setPage(1); setFiltroSexo(e.target.value); }}>
+                    <option value="">Sexo: todos</option>
+                    <option value="F">Femenino</option>
+                    <option value="M">Masculino</option>
+                </Select>
+                {(filtroSexo) && (
+                    <Button variant="ghost" size="sm" className="h-9" onClick={() => { setPage(1); setFiltroSexo(""); }}>
+                        Limpiar filtros
+                    </Button>
+                )}
                 {loading && <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
             </div>
 
@@ -234,32 +246,13 @@ export default function PacientesPage() {
                 </Table>
             </div>
 
-            {result && result.total > 0 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                        Página {page} de {totalPaginas}
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page <= 1}
-                            onClick={() => cambiarPagina(page - 1)}
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                            Anterior
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={page >= totalPaginas}
-                            onClick={() => cambiarPagina(page + 1)}
-                        >
-                            Siguiente
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+            {result && (
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
             )}
 
             <PacienteFormDialog

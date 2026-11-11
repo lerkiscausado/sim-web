@@ -31,6 +31,8 @@ import type {
 import { nombrePaciente, calcularEdad } from "./types";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 const FORM_INICIAL: HistoriaClinicaData = {
     idOrden: 0,
@@ -153,6 +155,7 @@ export default function HistoriaClinicaPage() {
     const [rxsList, setRxsList] = useState<ItemRxs[]>([]);
     const [rxsCatalogo, setRxsCatalogo] = useState<{ id: number; nombre: string }[]>([]);
     const [rxsForm, setRxsForm] = useState({ idRxs: "", descripcion: "" });
+    const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-historia-clinica");
 
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
@@ -911,7 +914,7 @@ export default function HistoriaClinicaPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {pendientes.map((orden) => (
+                        {tablaPendientes.visibles.map((orden) => (
                             <TableRow key={orden.idDetalleOrden} className="align-top hover:bg-muted/40">
                                 <TableCell className="py-3">
                                     <p className="font-bold">{orden.consecutivo || orden.idOrden}</p>
@@ -941,6 +944,7 @@ export default function HistoriaClinicaPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaPendientes.paginacion} />
         </div>
     );
 }

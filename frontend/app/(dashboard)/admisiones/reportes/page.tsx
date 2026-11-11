@@ -12,6 +12,8 @@ import { abrirPdf } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
 import { hoyISO } from "@/lib/fechas";
 import { Select } from "@/components/ui/select";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface Informe {
     id: number;
@@ -97,6 +99,7 @@ export default function ReportesPage() {
         if (!q) return resultado.filas;
         return resultado.filas.filter((f) => resultado.columnas.some((c) => String(f[c] ?? "").toLowerCase().includes(q)));
     }, [resultado, filtro]);
+    const tablaInforme = usePaginacionLocal(filasVisibles, "informe-resultado", { defecto: 50 });
 
     function exportarCsv() {
         if (!resultado) return;
@@ -233,7 +236,7 @@ export default function ReportesPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filasVisibles.slice(0, 1000).map((f, i) => (
+                                    {tablaInforme.visibles.map((f, i) => (
                                         <TableRow key={i}>
                                             {resultado.columnas.map((c) => (
                                                 <TableCell key={c} className="whitespace-nowrap py-1.5 text-xs">
@@ -245,7 +248,7 @@ export default function ReportesPage() {
                                 </TableBody>
                             </Table>
                         </div>
-                        {filasVisibles.length > 1000 && <p className="text-xs text-muted-foreground">En pantalla se muestran 1.000 filas; exporte a CSV para verlas todas.</p>}
+                        <PaginationControls {...tablaInforme.paginacion} opcionesTamano={[10, 20, 30, 50, 100, 200]} />
                     </div>
                 )}
             </div>

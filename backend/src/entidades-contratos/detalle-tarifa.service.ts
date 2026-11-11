@@ -22,7 +22,7 @@ export class DetalleTarifaService {
     return tarifa;
   }
 
-  async findAllPaginado(idTarifa: number, page = 1, pageSize = 20, q?: string) {
+  async findAllPaginado(idTarifa: number, page = 1, pageSize = 20, q?: string, idTipoEstudio?: number) {
     await this.verificarTarifa(idTarifa);
     const qb = this.repo
       .createQueryBuilder('d')
@@ -35,6 +35,7 @@ export class DetalleTarifaService {
       const term = `%${q.trim()}%`;
       qb.andWhere('(d.codigoCups LIKE :term OR cups.nombreCups LIKE :term)', { term });
     }
+    if (idTipoEstudio) qb.andWhere('d.idTipoEstudio = :idTipoEstudio', { idTipoEstudio });
     return paginate(qb, page, pageSize);
   }
 

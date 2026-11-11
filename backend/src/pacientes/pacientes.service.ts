@@ -22,7 +22,7 @@ export class PacientesService {
     private readonly repo: Repository<Usuarios>,
   ) {}
 
-  async findAll(page = 1, pageSize = 20, q?: string): Promise<PaginatedResult<Usuarios>> {
+  async findAll(page = 1, pageSize = 20, q?: string, sexo?: 'M' | 'F'): Promise<PaginatedResult<Usuarios>> {
     const take = Math.min(Math.max(pageSize, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
 
@@ -37,14 +37,15 @@ export class PacientesService {
 
     if (q && q.trim().length > 0) {
       const term = `%${q.trim()}%`;
-      qb.where(
+      qb.andWhere(
         '(u.identificacion LIKE :term OR u.primerNombre LIKE :term OR u.primerApellido LIKE :term OR u.segundoNombre LIKE :term OR u.segundoApellido LIKE :term)',
         { term },
       );
     }
+    if (sexo) qb.andWhere('u.sexo = :sexo', { sexo });
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, pageSize: take };
+    return { data, total, page: Math.max(page, 1), pageSize: take };
   }
 
   async findOne(id: number) {

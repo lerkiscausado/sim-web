@@ -20,6 +20,8 @@ import { useFeedback } from "@/components/ui/feedback";
 import { CALIDAD_MUESTRA, CATEGORIZACION_GENERAL, MICROORGANISMOS, OHNN, CELULAS_ESCAMOSAS, CELULAS_GLANDULARES_ATIPICAS, CELULAS_GLANDULARES_NEOPLASIA, CELULAS_GLANDULARES_OTROS, FLORA_BACILAR, INFLAMACION, TODOS_LOS_CHECKS, CUELLO, FLUJO, FORM_INICIAL, ANTECEDENTES_INICIAL } from "./constantes";
 import { PacienteCard, GrupoChecks } from "./componentes";
 import type { ChecksState } from "./constantes";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 // Etiquetas clínicas reales, extraídas de frmCitologiaGeneral.Designer.vb (Properties.Caption)
 
@@ -45,6 +47,7 @@ export default function CitologiasPage() {
     const [confirmarFirma, setConfirmarFirma] = useState(false);
     const [generandoPdf, setGenerandoPdf] = useState(false);
     const [imagenesAbierto, setImagenesAbierto] = useState(false);
+    const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-citologias");
 
     /**
      * Validación del informe. Para guardar se exige el diagnóstico; para firmar, además,
@@ -671,7 +674,7 @@ export default function CitologiasPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {pendientes.map((orden) => {
+                        {tablaPendientes.visibles.map((orden) => {
                             const p = orden.paciente;
                             return (
                                 <TableRow key={orden.id} className="align-top hover:bg-muted/40">
@@ -716,6 +719,7 @@ export default function CitologiasPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaPendientes.paginacion} />
         </div>
     );
 }

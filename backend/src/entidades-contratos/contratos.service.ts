@@ -16,7 +16,12 @@ export class ContratosService {
     private readonly repo: Repository<Contratos>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(
+    page = 1,
+    pageSize = 20,
+    q?: string,
+    filtros: { estado?: string; vigencia?: string; tipoContrato?: string } = {},
+  ) {
     // .createQueryBuilder() no filtra soft-delete automáticamente como sí
     // hacen find()/findOne(); se agrega el filtro explícito.
     const qb = this.repo
@@ -30,6 +35,11 @@ export class ContratosService {
       const term = `%${q.trim()}%`;
       qb.andWhere('(c.nombre LIKE :term OR c.numeroContrato LIKE :term OR c.codigoEntidad LIKE :term)', { term });
     }
+    if (filtros.estado) qb.andWhere('c.estado = :estado', { estado: filtros.estado });
+    if (filtros.tipoContrato) qb.andWhere('c.tipoContrato = :tipo', { tipo: filtros.tipoContrato });
+    // Vigencia según la fecha final del contrato (CURDATE del servidor de base de datos).
+    if (filtros.vigencia === 'vigentes') qb.andWhere('c.fechaFinal >= CURDATE()');
+    if (filtros.vigencia === 'vencidos') qb.andWhere('c.fechaFinal < CURDATE()');
     return paginate(qb, page, pageSize);
   }
 

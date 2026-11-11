@@ -12,7 +12,6 @@ export default function Cargos() {
             descripcion="Gestión de los cargos del personal."
             singular="Cargo"
             genero="o"
-            filtroEstado={false}
             textoNuevo="Registra un nuevo cargo del personal."
             textoEditar="Actualiza el nombre del cargo."
             icono={Briefcase}

@@ -13,11 +13,12 @@ export class CargosService {
     private readonly repo: Repository<Cargos>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, estado?: string) {
     const qb = this.repo.createQueryBuilder('c').orderBy('c.nombreCargo', 'ASC');
     if (q && q.trim().length > 0) {
-      qb.where('c.nombreCargo LIKE :term', { term: `%${q.trim()}%` });
+      qb.andWhere('c.nombreCargo LIKE :term', { term: `%${q.trim()}%` });
     }
+    if (estado) qb.andWhere('c.estado = :estado', { estado });
     return paginate(qb, page, pageSize);
   }
 

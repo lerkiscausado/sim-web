@@ -20,6 +20,7 @@ import { reglas, useValidacion } from "@/lib/validacion";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface CupsItem {
     codigoCups: string;
@@ -67,6 +68,8 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [filtroTipoEstudio, setFiltroTipoEstudio] = useState("");
+    const [pageSize, setPageSize] = useTamanoPagina("detalle-tarifa", 10);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -88,8 +91,9 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
             setLoading(true);
             setError(null);
             try {
-                const qs = new URLSearchParams({ page: String(p), pageSize: "10" });
+                const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
                 if (q) qs.set("q", q);
+            if (filtroTipoEstudio) qs.set("idTipoEstudio", filtroTipoEstudio);
                 const data = await api.get<Paginado>(`/entidades-contratos/tarifas/${idTarifa}/detalle?${qs.toString()}`);
                 setResult(data);
             } catch (err) {
@@ -98,7 +102,7 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                 setLoading(false);
             }
         },
-        [idTarifa],
+        [idTarifa, pageSize, filtroTipoEstudio],
     );
 
     useEffect(() => {
@@ -266,15 +270,30 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
                 </Button>
             </div>
 
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar en el detalle..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar en el detalle..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                </div>
+                <Select aria-label="Tipo de estudio" value={filtroTipoEstudio} onChange={(e) => { setPage(1); setFiltroTipoEstudio(e.target.value); }}>
+                    <option value="">Tipo de estudio: todos</option>
+                    {tiposEstudio.map((t) => (
+                        <option key={t.id} value={t.id}>
+                            {t.nombreTipoEstudio}
+                        </option>
+                    ))}
+                </Select>
+                {(filtroTipoEstudio) && (
+                    <Button variant="ghost" size="sm" className="h-9" onClick={() => { setPage(1); setFiltroTipoEstudio(""); }}>
+                        Limpiar filtros
+                    </Button>
+                )}
             </div>
 
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
@@ -320,7 +339,12 @@ export function DetalleTarifaView({ idTarifa, nombreTarifa, onVolver }: DetalleT
             </div>
 
             {result && (
-                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
             )}
         </div>
     );

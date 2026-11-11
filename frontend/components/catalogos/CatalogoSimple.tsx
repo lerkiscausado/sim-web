@@ -14,6 +14,7 @@ import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { useFeedback } from "@/components/ui/feedback";
 import { api, ApiError } from "@/lib/api";
 import { reglas, useValidacion } from "@/lib/validacion";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface Item {
     id: number;
@@ -66,6 +67,7 @@ export function CatalogoSimple({
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useTamanoPagina(`catalogo${endpoint}`, 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +85,7 @@ export function CatalogoSimple({
             setLoading(true);
             setError(null);
             try {
-                const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+                const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
                 if (q) qs.set("q", q);
                 if (estado) qs.set("estado", estado);
                 setResult(await api.get<Paginado>(`${endpoint}?${qs.toString()}`));
@@ -93,7 +95,7 @@ export function CatalogoSimple({
                 setLoading(false);
             }
         },
-        [endpoint, titulo],
+        [endpoint, titulo, pageSize],
     );
 
     useEffect(() => {
@@ -252,7 +254,12 @@ export function CatalogoSimple({
                 </div>
 
                 {result && (
-                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
                 )}
             </CardContent>
 

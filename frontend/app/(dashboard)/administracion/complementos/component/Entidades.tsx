@@ -34,6 +34,7 @@ import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface EntidadItem {
     codigoEntidad: string;
@@ -59,6 +60,7 @@ export default function Entidades() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filtroEstado, setFiltroEstado] = useState("");
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useTamanoPagina("entidades", 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +81,7 @@ export default function Entidades() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
             if (estado) qs.set("estado", estado);
             const data = await api.get<Paginado>(`/entidades-contratos/entidades?${qs.toString()}`);
@@ -89,7 +91,7 @@ export default function Entidades() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize]);
 
     useEffect(() => {
         cargar(1);
@@ -260,7 +262,12 @@ export default function Entidades() {
                 </div>
 
                 {result && (
-                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
                 )}
             </CardContent>
 

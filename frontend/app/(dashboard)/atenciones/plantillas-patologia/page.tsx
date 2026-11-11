@@ -27,6 +27,7 @@ import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { useFeedback } from "@/components/ui/feedback";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface PlantillaPatologia {
     id: number;
@@ -50,6 +51,7 @@ export default function PlantillasPatologiaPage() {
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useTamanoPagina("plantillas-patologia", 15);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -73,7 +75,7 @@ export default function PlantillasPatologiaPage() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "15" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
             const data = await api.get<Paginado>(`/atenciones/plantillas-patologia?${qs.toString()}`);
             setResult(data);
@@ -82,7 +84,7 @@ export default function PlantillasPatologiaPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize]);
 
     useEffect(() => {
         cargar(1);
@@ -221,7 +223,12 @@ export default function PlantillasPatologiaPage() {
             </div>
 
             {result && (
-                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
             )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Loader2, Trash2, FlaskConical, User, Eye, Pencil } from "lucide-react";
+import { Plus, Loader2, Trash2, FlaskConical, User, Eye, Pencil , Search } from "lucide-react";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
 import { HtmlPreviewDialog } from "@/components/ui/html-preview-dialog";
 import {
@@ -26,6 +26,9 @@ import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { Input } from "@/components/ui/input";
 
 interface TipoEstudio {
     id: number;
@@ -89,6 +92,7 @@ export default function PlantillasPage() {
     });
     const [guardando, setGuardando] = useState(false);
     const [previewItem, setPreviewItem] = useState<Plantilla | null>(null);
+    const tablaPlantillas = usePaginacionLocal(items, "plantillas-informes", { filtro: (p, t) => [p.tipoEstudio?.nombreTipoEstudio, p.especialista?.nombre].some((x) => String(x ?? "").toLowerCase().includes(t)) });
 
     const cargar = useCallback(async () => {
         setLoading(true);
@@ -188,7 +192,19 @@ export default function PlantillasPage() {
                 </Button>
             </div>
 
-            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        aria-label="Buscar por tipo de estudio o especialista..."
+                        placeholder="Buscar por tipo de estudio o especialista..."
+                        className="pl-9"
+                        value={tablaPlantillas.busqueda}
+                        onChange={(e) => tablaPlantillas.setBusqueda(e.target.value)}
+                    />
+                </div>
+                {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -202,14 +218,14 @@ export default function PlantillasPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {!loading && items.length === 0 && (
+                        {!loading && tablaPlantillas.total === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
                                     No hay plantillas registradas.
                                 </TableCell>
                             </TableRow>
                         )}
-                        {items.map((p) => (
+                        {tablaPlantillas.visibles.map((p) => (
                             <TableRow key={p.id}>
                                 <TableCell>{p.tipoEstudio?.nombreTipoEstudio ?? `#${p.idTipoEstudio}`}</TableCell>
                                 <TableCell>{p.especialista?.nombre ?? `#${p.idEspecialista}`}</TableCell>
@@ -232,6 +248,7 @@ export default function PlantillasPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaPlantillas.paginacion} />
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">

@@ -34,6 +34,7 @@ import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface Cargo {
     id: number;
@@ -77,6 +78,9 @@ export default function Empleados() {
     const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [filtroEstado, setFiltroEstado] = useState("");
+    const [filtroCargo, setFiltroCargo] = useState("");
+    const [pageSize, setPageSize] = useTamanoPagina("empleados", 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -96,8 +100,10 @@ export default function Empleados() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
+            if (filtroEstado) qs.set("estado", filtroEstado);
+            if (filtroCargo) qs.set("idCargo", filtroCargo);
             const [empleadosData, cargosData, especialidadesData] = await Promise.all([
                 api.get<Paginado>(`/seguridad/empleados?${qs.toString()}`),
                 api.get<Cargo[]>("/catalogos/cargos/activos"),
@@ -111,7 +117,7 @@ export default function Empleados() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize, filtroEstado, filtroCargo]);
 
     useEffect(() => {
         cargar(1);
@@ -206,6 +212,24 @@ export default function Empleados() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Select aria-label="Estado" value={filtroEstado} onChange={(e) => { setPage(1); setFiltroEstado(e.target.value); }}>
+                        <option value="">Estado: todos</option>
+                        <option value="A">Activos</option>
+                        <option value="I">Inactivos</option>
+                    </Select>
+                    <Select aria-label="Cargo" value={filtroCargo} onChange={(e) => { setPage(1); setFiltroCargo(e.target.value); }}>
+                        <option value="">Cargo: todos</option>
+                        {cargos.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.nombreCargo}
+                            </option>
+                        ))}
+                    </Select>
+                    {(filtroEstado || filtroCargo) && (
+                        <Button variant="ghost" size="sm" className="h-9" onClick={() => { setPage(1); setFiltroEstado(""); setFiltroCargo(""); }}>
+                            Limpiar filtros
+                        </Button>
+                    )}
                     {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                 </div>
 
@@ -272,7 +296,12 @@ export default function Empleados() {
                 </div>
 
                 {result && (
-                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                    <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
                 )}
             </CardContent>
 

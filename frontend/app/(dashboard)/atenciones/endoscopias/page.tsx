@@ -25,6 +25,8 @@ import { hoyISO } from "@/lib/fechas";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 function FORM_INICIAL(): EndoscopiaData {
     return {
@@ -106,6 +108,7 @@ export default function EndoscopiasPage() {
     const [cie10Query, setCie10Query] = useState("");
     const [cie10Resultados, setCie10Resultados] = useState<{ codigoDiagnostico: string; nombreDiagnostico: string | null }[]>([]);
     const [cie10Nombre, setCie10Nombre] = useState("");
+    const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-endoscopias");
 
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
@@ -469,7 +472,7 @@ export default function EndoscopiasPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {pendientes.map((orden) => (
+                        {tablaPendientes.visibles.map((orden) => (
                             <TableRow key={orden.idDetalleOrden} className="align-top hover:bg-muted/40">
                                 <TableCell className="py-3">
                                     <p className="font-bold">{orden.consecutivo || orden.idOrden}</p>
@@ -502,6 +505,7 @@ export default function EndoscopiasPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaPendientes.paginacion} />
         </div>
     );
 }

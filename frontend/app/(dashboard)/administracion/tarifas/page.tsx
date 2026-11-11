@@ -27,6 +27,8 @@ import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { DetalleTarifaView } from "./DetalleTarifaView";
 import { useFeedback } from "@/components/ui/feedback";
+import { useTamanoPagina } from "@/lib/useTabla";
+import { Select } from "@/components/ui/select";
 
 interface TarifaItem {
     id: number;
@@ -46,6 +48,8 @@ export default function TarifasPage() {
     const [result, setResult] = useState<Paginado | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [page, setPage] = useState(1);
+    const [filtroEstado, setFiltroEstado] = useState("");
+    const [pageSize, setPageSize] = useTamanoPagina("tarifas", 20);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -63,8 +67,9 @@ export default function TarifasPage() {
         setLoading(true);
         setError(null);
         try {
-            const qs = new URLSearchParams({ page: String(p), pageSize: "20" });
+            const qs = new URLSearchParams({ page: String(p), pageSize: String(pageSize) });
             if (q) qs.set("q", q);
+            if (filtroEstado) qs.set("estado", filtroEstado);
             const data = await api.get<Paginado>(`/entidades-contratos/tarifas?${qs.toString()}`);
             setResult(data);
         } catch (err) {
@@ -72,7 +77,7 @@ export default function TarifasPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [pageSize, filtroEstado]);
 
     useEffect(() => {
         cargar(1);
@@ -167,15 +172,27 @@ export default function TarifasPage() {
                 </Button>
             </div>
 
-            <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                    placeholder="Buscar por nombre..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por nombre..."
+                        className="pl-9"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                </div>
+                <Select aria-label="Estado" value={filtroEstado} onChange={(e) => { setPage(1); setFiltroEstado(e.target.value); }}>
+                    <option value="">Estado: todos</option>
+                    <option value="A">Activos</option>
+                    <option value="I">Inactivos</option>
+                </Select>
+                {(filtroEstado) && (
+                    <Button variant="ghost" size="sm" className="h-9" onClick={() => { setPage(1); setFiltroEstado(""); }}>
+                        Limpiar filtros
+                    </Button>
+                )}
             </div>
 
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
@@ -241,7 +258,12 @@ export default function TarifasPage() {
             </div>
 
             {result && (
-                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina} />
+                <PaginationControls page={result.page} pageSize={result.pageSize} total={result.total} onPageChange={cambiarPagina}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
             )}
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -41,6 +41,7 @@ import { abrirPdf, descargarArchivo } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
 import { useFeedback } from "@/components/ui/feedback";
 import { Select } from "@/components/ui/select";
+import { useTamanoPagina } from "@/lib/useTabla";
 
 interface FilaConsulta {
     orden: number;
@@ -126,6 +127,7 @@ export default function ConsultarOrdenesPage() {
     });
     const [qDebounced, setQDebounced] = useState("");
     const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useTamanoPagina("consulta-ordenes", 50);
     const [resultado, setResultado] = useState<Resultado>({ data: [], total: 0, page: 1, pageSize: 50 });
     const [cargando, setCargando] = useState(false);
     const [trabajando, setTrabajando] = useState<string | null>(null);
@@ -163,14 +165,14 @@ export default function ConsultarOrdenesPage() {
         try {
             const p = new URLSearchParams(query);
             p.set("page", String(page));
-            p.set("pageSize", "50");
+            p.set("pageSize", String(pageSize));
             setResultado(await api.get<Resultado>(`/admisiones/consulta?${p.toString()}`));
         } catch (e) {
             setError({ titulo: "No se pudieron consultar las órdenes", mensaje: e instanceof ApiError ? e.message : "Error de conexión" });
         } finally {
             setCargando(false);
         }
-    }, [query, page]);
+    }, [query, page, pageSize]);
 
     useEffect(() => {
         cargar();
@@ -531,7 +533,17 @@ export default function ConsultarOrdenesPage() {
                 </Table>
             </div>
 
-            <PaginationControls page={resultado.page} pageSize={resultado.pageSize} total={resultado.total} onPageChange={setPage} />
+            <PaginationControls
+                page={resultado.page}
+                pageSize={resultado.pageSize}
+                total={resultado.total}
+                onPageChange={setPage}
+                opcionesTamano={[10, 20, 30, 50, 100, 200]}
+                onPageSizeChange={(n) => {
+                    setPage(1);
+                    setPageSize(n);
+                }}
+            />
 
             <AdjuntosDialog
                 open={dialogo === "adjuntos"}

@@ -27,8 +27,15 @@ export class ContratosController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('estado') estado?: string,
+    @Query('vigencia') vigencia?: string,
+    @Query('tipoContrato') tipoContrato?: string,
   ) {
-    return this.contratosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+    return this.contratosService.findAll(page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q, {
+      estado,
+      vigencia,
+      tipoContrato,
+    });
   }
 
   /** Sin paginar, para selects (formulario de Órdenes). */

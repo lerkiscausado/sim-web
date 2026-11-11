@@ -13,15 +13,17 @@ export class EmpleadosService {
     private readonly repo: Repository<Empleados>,
   ) {}
 
-  findAll(page = 1, pageSize = 20, q?: string) {
+  findAll(page = 1, pageSize = 20, q?: string, filtros: { estado?: string; idCargo?: number } = {}) {
     const qb = this.repo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.cargo', 'cargo')
       .leftJoinAndSelect('e.especialidad', 'especialidad')
       .orderBy('e.nombreEmpleado', 'ASC');
     if (q && q.trim().length > 0) {
-      qb.where('e.nombreEmpleado LIKE :term', { term: `%${q.trim()}%` });
+      qb.andWhere('e.nombreEmpleado LIKE :term', { term: `%${q.trim()}%` });
     }
+    if (filtros.estado) qb.andWhere('e.estado = :estado', { estado: filtros.estado });
+    if (filtros.idCargo) qb.andWhere('e.idCargo = :idCargo', { idCargo: filtros.idCargo });
     return paginate(qb, page, pageSize);
   }
 

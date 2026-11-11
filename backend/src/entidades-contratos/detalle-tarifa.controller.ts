@@ -27,8 +27,15 @@ export class DetalleTarifaController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('idTipoEstudio') idTipoEstudio?: string,
   ) {
-    return this.service.findAllPaginado(idTarifa, page ? Number(page) : 1, pageSize ? Number(pageSize) : 20, q);
+    return this.service.findAllPaginado(
+      idTarifa,
+      page ? Number(page) : 1,
+      pageSize ? Number(pageSize) : 20,
+      q,
+      idTipoEstudio ? Number(idTipoEstudio) : undefined,
+    );
   }
 
   @RequirePermission('tarifas')

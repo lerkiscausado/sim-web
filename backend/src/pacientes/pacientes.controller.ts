@@ -31,11 +31,13 @@ export class PacientesController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('q') q?: string,
+    @Query('sexo') sexo?: string,
   ) {
     return this.pacientesService.findAll(
       page ? Number(page) : 1,
       pageSize ? Number(pageSize) : 20,
       q,
+      sexo === 'M' || sexo === 'F' ? sexo : undefined,
     );
   }
 

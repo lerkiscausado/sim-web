@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, ChevronLeft, ChevronRight, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2 } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
 import { CAMPOS_REQUERIDOS, EstadoBadge, HEADER_INICIAL, PacienteCard, Selector } from "./componentes";
 import { hoyISO } from "@/lib/fechas";
+import { useTamanoPagina } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 
 type Vista = "listado" | "buscar-paciente" | "orden";
@@ -64,6 +66,7 @@ export default function OrdenesPage() {
     const [cancelando, setCancelando] = useState(false);
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
+    const [listadoPageSize, setListadoPageSize] = useTamanoPagina("ordenes", 15);
     const [filtroAnio, setFiltroAnio] = useState<string>("");
     const [filtroFechaInicio, setFiltroFechaInicio] = useState("");
     const [filtroFechaFin, setFiltroFechaFin] = useState("");
@@ -118,7 +121,7 @@ export default function OrdenesPage() {
             setListadoLoading(true);
             setListadoError(null);
             try {
-                const qs = new URLSearchParams({ page: String(page), pageSize: "15" });
+                const qs = new URLSearchParams({ page: String(page), pageSize: String(listadoPageSize) });
                 if (q) qs.set("q", q);
                 if (filtros?.anio) qs.set("anio", filtros.anio);
                 if (filtros?.fechaInicio) qs.set("fechaInicio", filtros.fechaInicio);
@@ -133,7 +136,7 @@ export default function OrdenesPage() {
                 setListadoLoading(false);
             }
         },
-        [],
+        [listadoPageSize],
     );
 
     const filtrosActuales = useMemo(
@@ -485,7 +488,6 @@ export default function OrdenesPage() {
         if (!q) return especimenes;
         return especimenes.filter((e) => e.nombre.toLowerCase().includes(q));
     }, [especimenes, especimenQuery]);
-    const totalPaginas = listado ? Math.max(1, Math.ceil(listado.total / listado.pageSize)) : 1;
 
     return (
         <div className="space-y-5">
@@ -743,22 +745,17 @@ export default function OrdenesPage() {
                         </Table>
                     </div>
 
-                    {listado && listado.total > 0 && (
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">
-                                Página {listadoPage} de {totalPaginas}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" disabled={listadoPage <= 1} onClick={() => setListadoPage((p) => p - 1)}>
-                                    <ChevronLeft className="h-4 w-4" />
-                                    Anterior
-                                </Button>
-                                <Button variant="outline" size="sm" disabled={listadoPage >= totalPaginas} onClick={() => setListadoPage((p) => p + 1)}>
-                                    Siguiente
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </div>
+                    {listado && (
+                        <PaginationControls
+                            page={listadoPage}
+                            pageSize={listado.pageSize}
+                            total={listado.total}
+                            onPageChange={setListadoPage}
+                            onPageSizeChange={(n) => {
+                                setListadoPage(1);
+                                setListadoPageSize(n);
+                            }}
+                        />
                     )}
                 </div>
             )}

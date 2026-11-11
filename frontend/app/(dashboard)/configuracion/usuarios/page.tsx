@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Loader2, UserCog, Eye, EyeOff, User, Briefcase, ShieldCheck } from "lucide-react";
+import { Plus, Loader2, UserCog, Eye, EyeOff, User, Briefcase, ShieldCheck , Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,8 @@ import { reglas, useValidacion } from "@/lib/validacion";
 import { CATEGORIAS_PERMISOS } from "./permisos-config";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface Empleado {
     id: number;
@@ -69,6 +71,9 @@ export default function UsuariosSistemaPage() {
     const [permisosEdit, setPermisosEdit] = useState<Record<string, boolean>>({});
     const [editError, setEditError] = useState<string | null>(null);
     const [guardandoEdit, setGuardandoEdit] = useState(false);
+    const [filtroEstado, setFiltroEstado] = useState("");
+    const usuariosFiltrados = useMemo(() => (filtroEstado ? usuarios.filter((u) => u.estado === filtroEstado) : usuarios), [usuarios, filtroEstado]);
+    const tablaUsuarios = usePaginacionLocal(usuariosFiltrados, "usuarios", { filtro: (u, t) => [u.usuario, u.empleado?.nombreEmpleado, u.empleado?.cargo?.nombreCargo].some((x) => String(x ?? "").toLowerCase().includes(t)) });
 
     const vNuevo = useValidacion(formNuevo, {
         idEmpleado: [reglas.requerido("Selecciona el empleado.")],
@@ -208,7 +213,24 @@ export default function UsuariosSistemaPage() {
                 </Button>
             </div>
 
-            {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="relative max-w-sm flex-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        aria-label="Buscar por empleado, cargo o usuario..."
+                        placeholder="Buscar por empleado, cargo o usuario..."
+                        className="pl-9"
+                        value={tablaUsuarios.busqueda}
+                        onChange={(e) => tablaUsuarios.setBusqueda(e.target.value)}
+                    />
+                </div>
+                <Select aria-label="Estado" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+                    <option value="">Estado: todos</option>
+                    <option value="A">Activos</option>
+                    <option value="I">Inactivos</option>
+                </Select>
+                {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </div>
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -224,14 +246,14 @@ export default function UsuariosSistemaPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {!loading && usuarios.length === 0 && (
+                        {!loading && tablaUsuarios.total === 0 && (
                             <TableRow>
                                 <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
                                     No hay usuarios de sistema registrados.
                                 </TableCell>
                             </TableRow>
                         )}
-                        {usuarios.map((u) => (
+                        {tablaUsuarios.visibles.map((u) => (
                             <TableRow key={u.id}>
                                 <TableCell className="font-medium">{u.empleado?.nombreEmpleado ?? `#${u.idEmpleado}`}</TableCell>
                                 <TableCell>{u.empleado?.cargo?.nombreCargo ?? "—"}</TableCell>
@@ -254,6 +276,7 @@ export default function UsuariosSistemaPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaUsuarios.paginacion} />
 
             {/* Registro de Usuarios (frmUsers.vb) */}
             <Dialog open={dialogNuevoOpen} onOpenChange={setDialogNuevoOpen}>

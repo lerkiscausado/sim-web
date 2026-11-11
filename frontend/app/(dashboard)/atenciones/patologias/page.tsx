@@ -25,6 +25,8 @@ import { Select } from "@/components/ui/select";
 import { Buscador } from "@/components/ui/buscador";
 import { useAvisoSalida } from "@/lib/useAvisoSalida";
 import { PacienteCard, EspecimenPicker } from "./componentes";
+import { usePaginacionLocal } from "@/lib/useTabla";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 const hoy = hoyISO;
 
@@ -75,6 +77,7 @@ export default function PatologiasPage() {
     const [plantillaQuery, setPlantillaQuery] = useState("");
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [dialogo, setDialogo] = useState<"imagenes" | "adjuntos" | null>(null);
+    const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-patologias");
     const { confirmar, avisar } = useFeedback();
     useAvisoSalida(cambios);
 
@@ -686,7 +689,7 @@ export default function PatologiasPage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {pendientes.map((orden) => {
+                        {tablaPendientes.visibles.map((orden) => {
                             const p = orden.paciente;
                             return (
                                 <TableRow key={orden.id} className="cursor-pointer align-top hover:bg-muted/40" onDoubleClick={() => abrirOrden(orden)}>
@@ -731,6 +734,7 @@ export default function PatologiasPage() {
                     </TableBody>
                 </Table>
             </div>
+            <PaginationControls {...tablaPendientes.paginacion} />
             {dialogos}
         </div>
     );

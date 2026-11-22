@@ -23,6 +23,7 @@ export interface FiltrosConsulta {
   fechaInicio?: string;
   fechaFin?: string;
   q?: string;
+  /** Uno o varios estados separados por coma. */
   estado?: string;
   idSede?: number;
   idTipoEstudio?: number;
@@ -109,7 +110,10 @@ export class ConsultaOrdenesService {
     if (f.fechaInicio)
       qb.andWhere('o.fechaIngreso >= :fi', { fi: f.fechaInicio });
     if (f.fechaFin) qb.andWhere('o.fechaIngreso <= :ff', { ff: f.fechaFin });
-    if (f.estado) qb.andWhere('o.estado = :estado', { estado: f.estado });
+    if (f.estado)
+      qb.andWhere('o.estado IN (:...estados)', {
+        estados: f.estado.split(','),
+      });
     if (f.idSede) qb.andWhere('o.idSede = :idSede', { idSede: f.idSede });
     if (f.idTipoEstudio)
       qb.andWhere('o.idTipoEstudio = :tipo', { tipo: f.idTipoEstudio });
@@ -232,7 +236,14 @@ export class ConsultaOrdenesService {
       partes.push(
         `Del ${fechaCorta(f.fechaInicio) || '…'} al ${fechaCorta(f.fechaFin) || '…'}`,
       );
-    if (f.estado) partes.push(`Estado ${f.estado}`);
+    if (f.estado) {
+      const estados = f.estado.split(',');
+      partes.push(
+        estados.length > 1
+          ? `Estados ${estados.join(', ')}`
+          : `Estado ${estados[0]}`,
+      );
+    }
     if (f.q) partes.push(`Búsqueda "${f.q}"`);
     return partes.join(' · ') || 'Todas las órdenes';
   }

@@ -43,7 +43,9 @@ function filtros(q: Record<string, string | undefined>): FiltrosConsulta {
     fechaInicio: fecha(q.fechaInicio),
     fechaFin: fecha(q.fechaFin),
     q: q.q?.slice(0, 100),
-    estado: q.estado && /^[A-Z]+$/.test(q.estado) ? q.estado : undefined,
+    // Uno o varios estados separados por coma (p. ej. ATENDIDO,FACTURADO,CANCELADO).
+    estado:
+      q.estado && /^[A-Z]+(,[A-Z]+)*$/.test(q.estado) ? q.estado : undefined,
     idSede: num(q.idSede),
     idTipoEstudio: num(q.idTipoEstudio),
   };
@@ -105,11 +107,7 @@ export class ConsultaOrdenesController {
   @RequirePermission('consultar')
   async pdfGrilla(@Query() q: Record<string, string>, @Res() res: Response) {
     const buffer = await this.consulta.exportarPdf(filtros(q));
-    enviarPdf(
-      res,
-      buffer,
-      `Ordenes ${hoyISO()}.pdf`,
-    );
+    enviarPdf(res, buffer, `Ordenes ${hoyISO()}.pdf`);
   }
 
   /** Exportar Lote PDF: ids explícitos o, si no se envían, las órdenes filtradas (máx. 300). */
@@ -127,12 +125,7 @@ export class ConsultaOrdenesController {
       'X-Generados': String(r.generados),
       'X-Omitidos': String(r.omitidos.length),
     });
-    descarga(
-      res,
-      r.zip,
-      `Resultados ${hoyISO()}.zip`,
-      'application/zip',
-    );
+    descarga(res, r.zip, `Resultados ${hoyISO()}.zip`, 'application/zip');
   }
 
   @Get('relacion-patologias/pdf')

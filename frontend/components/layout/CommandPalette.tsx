@@ -38,13 +38,21 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     const opciones = useMemo(() => {
         const t = quitarTildes(texto.trim());
         const menu = t ? OPCIONES_MENU.filter((o) => quitarTildes(`${o.titulo} ${o.grupo}`).includes(t)) : OPCIONES_MENU;
+        const t2 = encodeURIComponent(texto.trim());
         const buscarOrden: Opcion[] = texto.trim()
             ? [
                   {
-                      clave: "buscar-orden",
-                      titulo: `Buscar “${texto.trim()}” en órdenes`,
+                      clave: "buscar-pendientes",
+                      titulo: `Buscar “${texto.trim()}” en órdenes por atender`,
                       grupo: "Órdenes y pacientes",
-                      href: `/admisiones?q=${encodeURIComponent(texto.trim())}`,
+                      href: `/admisiones/ordenes?q=${t2}`,
+                      icon: Search,
+                  },
+                  {
+                      clave: "buscar-historial",
+                      titulo: `Buscar “${texto.trim()}” en el historial`,
+                      grupo: "Órdenes y pacientes",
+                      href: `/admisiones?q=${t2}`,
                       icon: Search,
                   },
               ]

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, UserPlus, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2, History } from "lucide-react";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, UserPlus, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2, History, Paperclip } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ import { CAMPOS_REQUERIDOS, HEADER_INICIAL, PacienteCard, Selector } from "./com
 import { EstadoOrden, Etiqueta, Panel } from "@/components/ui/panel";
 import { diasHabilesDesde, hoyISO, PLAZO_DIAS_HABILES } from "@/lib/fechas";
 import { useTamanoPagina } from "@/lib/useTabla";
+import { useAuth } from "@/lib/auth";
+import { AdjuntosDialog } from "@/components/ordenes/AdjuntosDialog";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 
@@ -77,6 +79,15 @@ export default function OrdenesPage() {
     /** "" = pendientes y en proceso (todas las que faltan por atender). */
     const [filtroEstado, setFiltroEstado] = useState<string>("");
     const [filtroSede, setFiltroSede] = useState<string>("");
+    const { hasPermission } = useAuth();
+    /** Orden cuyos adjuntos (remisión, autorización…) se están viendo desde la bandeja. */
+    const [adjuntosDe, setAdjuntosDe] = useState<OrdenListado | null>(null);
+
+    // Búsqueda que llega desde Consultar Órdenes o el buscador global: /admisiones/ordenes?q=texto
+    useEffect(() => {
+        const q = new URLSearchParams(window.location.search).get("q");
+        if (q) setListadoQuery(q);
+    }, []);
 
     // --- búsqueda / selección de paciente ---
     const [searchTerm, setSearchTerm] = useState("");
@@ -708,6 +719,11 @@ export default function OrdenesPage() {
                                                 <Button variant="ghost" size="icon-sm" title="Ver orden" aria-label="Ver orden" onClick={() => setVerOrdenId(o.id)}>
                                                     <Eye className="h-3.5 w-3.5" />
                                                 </Button>
+                                                {hasPermission("adjuntos") && (
+                                                    <Button variant="ghost" size="icon-sm" title="Adjuntos de la orden" aria-label="Adjuntos de la orden" onClick={() => setAdjuntosDe(o)}>
+                                                        <Paperclip className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
                                                 {estado === "PENDIENTE" && (
                                                     <Button variant="ghost" size="icon-sm" title="Cancelar orden" aria-label="Cancelar orden" onClick={() => setOrdenACancelar(o)}>
                                                         <Ban className="h-3.5 w-3.5" style={{ color: "var(--status-danger)" }} />
@@ -745,6 +761,12 @@ export default function OrdenesPage() {
                             {listadoQuery ? `Buscar “${listadoQuery}” en Consultar Órdenes →` : "Ver el historial en Consultar Órdenes →"}
                         </Link>
                     </p>
+                    <AdjuntosDialog
+                        open={!!adjuntosDe}
+                        onOpenChange={(o) => !o && setAdjuntosDe(null)}
+                        idOrden={adjuntosDe?.id ?? null}
+                        titulo={adjuntosDe ? `${adjuntosDe.consecutivo || adjuntosDe.id} · ${adjuntosDe.paciente ? nombrePaciente(adjuntosDe.paciente) : ""}` : undefined}
+                    />
                 </Panel>
             )}
 

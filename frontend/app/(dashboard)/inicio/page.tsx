@@ -136,7 +136,7 @@ export default function InicioPage() {
                         detalle={`${r.ordenesMes.toLocaleString()} en el mes`}
                         proporcion={pct(r.ordenesHoy, r.ordenesMes)}
                         color="var(--status-info)"
-                        href="/admisiones"
+                        href="/admisiones/ordenes"
                     />
                     <Indicador
                         titulo="Estudios firmados en el mes"

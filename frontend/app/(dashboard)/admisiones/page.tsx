@@ -86,11 +86,14 @@ interface TipoEstudio {
     nombreTipoEstudio: string;
 }
 
-const ESTADOS = ["PENDIENTE", "PROCESO", "ATENDIDO", "FACTURADO", "CANCELADO"];
+/**
+ * Consultar Órdenes es el historial: órdenes ya atendidas, facturadas o canceladas.
+ * Las pendientes y en proceso se trabajan en Órdenes (/admisiones/ordenes).
+ */
+const ESTADOS = ["ATENDIDO", "FACTURADO", "CANCELADO"];
+const HISTORIAL = ESTADOS.join(",");
 const ESTADO_TEXTO: Record<string, string> = {
-    "": "Todas",
-    PENDIENTE: "Pendientes",
-    PROCESO: "En proceso",
+    "": "Todo el historial",
     ATENDIDO: "Atendidas",
     FACTURADO: "Facturadas",
     CANCELADO: "Canceladas",
@@ -158,7 +161,7 @@ export default function ConsultarOrdenesPage() {
         if (filtros.anio) p.set("anio", filtros.anio);
         if (filtros.fechaInicio) p.set("fechaInicio", filtros.fechaInicio);
         if (filtros.fechaFin) p.set("fechaFin", filtros.fechaFin);
-        if (filtros.estado) p.set("estado", filtros.estado);
+        p.set("estado", filtros.estado || HISTORIAL);
         if (filtros.idSede) p.set("idSede", filtros.idSede);
         if (filtros.idTipoEstudio) p.set("idTipoEstudio", filtros.idTipoEstudio);
         return p;
@@ -194,7 +197,7 @@ export default function ConsultarOrdenesPage() {
         Promise.all(
             ["", ...ESTADOS].map(async (e) => {
                 const p = new URLSearchParams(queryBase);
-                if (e) p.set("estado", e);
+                p.set("estado", e || HISTORIAL);
                 p.set("page", "1");
                 p.set("pageSize", "1");
                 const r = await api.get<Resultado>(`/admisiones/consulta?${p.toString()}`);
@@ -300,8 +303,9 @@ export default function ConsultarOrdenesPage() {
                     </span>
                     <h1 style={{ color: "var(--ink-primary)" }}>Consultar Órdenes</h1>
                     <p className="mt-1 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                        {resultado.total.toLocaleString()} órdenes {filtros.anio ? `en ${filtros.anio}` : "en total"}
-                        {filtros.estado ? ` · ${ESTADO_TEXTO[filtros.estado].toLowerCase()}` : ""}. Marque varias para exportarlas en lote.
+                        Historial de órdenes atendidas, facturadas y canceladas · {resultado.total.toLocaleString()}{" "}
+                        {filtros.estado ? ESTADO_TEXTO[filtros.estado].toLowerCase() : "órdenes"}
+                        {filtros.anio ? ` en ${filtros.anio}` : ""}. Marque varias para exportarlas en lote.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -323,9 +327,9 @@ export default function ConsultarOrdenesPage() {
                             Lote PDF
                         </Button>
                     )}
-                    <Button size="sm" asChild>
+                    <Button variant="outline" size="sm" asChild>
                         <Link href="/admisiones/ordenes">
-                            <ClipboardPlus size={14} /> Nueva orden
+                            <ClipboardPlus size={14} /> Órdenes por atender
                         </Link>
                     </Button>
                 </div>
@@ -498,7 +502,11 @@ export default function ConsultarOrdenesPage() {
                             {!cargando && resultado.data.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
-                                        No hay órdenes con estos filtros.
+                                        No hay órdenes en el historial con estos filtros. Las pendientes y en proceso están en{" "}
+                                        <Link href={filtros.q ? `/admisiones/ordenes?q=${encodeURIComponent(filtros.q)}` : "/admisiones/ordenes"} className="font-medium hover:underline" style={{ color: "var(--ink-brand)" }}>
+                                            Órdenes por atender
+                                        </Link>
+                                        .
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -636,6 +644,17 @@ export default function ConsultarOrdenesPage() {
                         setPageSize(n);
                     }}
                 />
+
+                <p className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2.5 text-[12px]" style={{ borderColor: "var(--border-subtle)", color: "var(--ink-tertiary)" }}>
+                    Aquí solo aparecen órdenes atendidas, facturadas o canceladas.
+                    <Link
+                        href={filtros.q ? `/admisiones/ordenes?q=${encodeURIComponent(filtros.q)}` : "/admisiones/ordenes"}
+                        className="font-medium hover:underline"
+                        style={{ color: "var(--ink-brand)" }}
+                    >
+                        {filtros.q ? `Buscar “${filtros.q}” en Órdenes por atender →` : "Ver órdenes pendientes y en proceso →"}
+                    </Link>
+                </p>
             </Panel>
 
             <AdjuntosDialog

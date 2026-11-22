@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, UserPlus, Printer, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import { Search, Plus, Loader2, Trash2, ClipboardPlus, ArrowLeft, UserPlus, Eye, X, Hash, User, TestTube2, Building2, MessageSquare, CalendarDays, Ban, CheckCircle2, History } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { api, apiFetchBlobUrl, ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { ErrorDialog } from "@/components/ui/error-dialog";
@@ -19,8 +20,9 @@ import { nombrePaciente, calcularEdad, sumarDiasHabiles, estadoTexto } from "./t
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
-import { CAMPOS_REQUERIDOS, EstadoBadge, HEADER_INICIAL, PacienteCard, Selector } from "./componentes";
-import { hoyISO } from "@/lib/fechas";
+import { CAMPOS_REQUERIDOS, HEADER_INICIAL, PacienteCard, Selector } from "./componentes";
+import { EstadoOrden, Etiqueta, Panel } from "@/components/ui/panel";
+import { diasHabilesDesde, hoyISO, PLAZO_DIAS_HABILES } from "@/lib/fechas";
 import { useTamanoPagina } from "@/lib/useTabla";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
@@ -51,6 +53,9 @@ function buscarPorNombre(opciones: LookupItem[], contiene: string) {
     return opciones.find((o) => o.nombre?.toUpperCase().includes(contiene));
 }
 
+/** Estados que siguen en la bandeja de Órdenes (lo que falta por atender). */
+const ESTADOS_POR_ATENDER = "PENDIENTE,PROCESO";
+
 export default function OrdenesPage() {
     const { avisar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
@@ -59,7 +64,6 @@ export default function OrdenesPage() {
     const [listado, setListado] = useState<OrdenListadoResult | null>(null);
     const [listadoLoading, setListadoLoading] = useState(true);
     const [listadoError, setListadoError] = useState<string | null>(null);
-    const [imprimiendoId, setImprimiendoId] = useState<number | null>(null);
     const [verOrdenId, setVerOrdenId] = useState<number | null>(null);
     const [ordenGuardada, setOrdenGuardada] = useState<Orden | null>(null);
     const [ordenACancelar, setOrdenACancelar] = useState<OrdenListado | null>(null);
@@ -67,12 +71,12 @@ export default function OrdenesPage() {
     const [listadoQuery, setListadoQuery] = useState("");
     const [listadoPage, setListadoPage] = useState(1);
     const [listadoPageSize, setListadoPageSize] = useTamanoPagina("ordenes");
-    const [filtroAnio, setFiltroAnio] = useState<string>("");
     const [filtroFechaInicio, setFiltroFechaInicio] = useState("");
     const [filtroFechaFin, setFiltroFechaFin] = useState("");
     const [filtroTipoEstudio, setFiltroTipoEstudio] = useState<string>("");
+    /** "" = pendientes y en proceso (todas las que faltan por atender). */
     const [filtroEstado, setFiltroEstado] = useState<string>("");
-    const [aniosDisponibles, setAniosDisponibles] = useState<number[]>([]);
+    const [filtroSede, setFiltroSede] = useState<string>("");
 
     // --- búsqueda / selección de paciente ---
     const [searchTerm, setSearchTerm] = useState("");
@@ -117,17 +121,20 @@ export default function OrdenesPage() {
     const [cupsResultados, setCupsResultados] = useState<CupsItem[]>([]);
 
     const cargarListado = useCallback(
-        async (page: number, q?: string, filtros?: { anio?: string; fechaInicio?: string; fechaFin?: string; idTipoEstudio?: string; estado?: string }) => {
+        async (page: number, q?: string, filtros?: { fechaInicio?: string; fechaFin?: string; idTipoEstudio?: string; estado?: string; idSede?: string }) => {
             setListadoLoading(true);
             setListadoError(null);
             try {
                 const qs = new URLSearchParams({ page: String(page), pageSize: String(listadoPageSize) });
                 if (q) qs.set("q", q);
-                if (filtros?.anio) qs.set("anio", filtros.anio);
                 if (filtros?.fechaInicio) qs.set("fechaInicio", filtros.fechaInicio);
                 if (filtros?.fechaFin) qs.set("fechaFin", filtros.fechaFin);
                 if (filtros?.idTipoEstudio) qs.set("idTipoEstudio", filtros.idTipoEstudio);
-                if (filtros?.estado) qs.set("estado", filtros.estado);
+                // Bandeja de trabajo: solo órdenes por atender, las más antiguas primero.
+                // El historial completo está en Consultar Órdenes.
+                qs.set("estado", filtros?.estado || ESTADOS_POR_ATENDER);
+                if (filtros?.idSede) qs.set("idSede", filtros.idSede);
+                qs.set("orden", "asc");
                 const res = await api.get<OrdenListadoResult>(`/admisiones/ordenes?${qs.toString()}`);
                 setListado(res);
             } catch (err) {
@@ -141,13 +148,13 @@ export default function OrdenesPage() {
 
     const filtrosActuales = useMemo(
         () => ({
-            anio: filtroAnio,
             fechaInicio: filtroFechaInicio,
             fechaFin: filtroFechaFin,
             idTipoEstudio: filtroTipoEstudio,
             estado: filtroEstado,
+            idSede: filtroSede,
         }),
-        [filtroAnio, filtroFechaInicio, filtroFechaFin, filtroTipoEstudio, filtroEstado],
+        [filtroFechaInicio, filtroFechaFin, filtroTipoEstudio, filtroEstado, filtroSede],
     );
 
     // Recarga al cambiar de página o de vista. Los cambios de búsqueda y filtros los atiende
@@ -165,10 +172,6 @@ export default function OrdenesPage() {
         }, 350);
         return () => clearTimeout(t);
     }, [listadoQuery, filtrosActuales, vista, cargarListado]);
-
-    useEffect(() => {
-        api.get<number[]>("/admisiones/ordenes/anios").then(setAniosDisponibles).catch(() => setAniosDisponibles([]));
-    }, []);
 
     // Cargar catálogos de apoyo una vez
     useEffect(() => {
@@ -304,24 +307,6 @@ export default function OrdenesPage() {
     function volverAlListado() {
         setVista("listado");
         cargarListado(listadoPage, listadoQuery, filtrosActuales);
-    }
-
-    async function imprimirEstudio(o: OrdenListado, e: React.MouseEvent) {
-        e.stopPropagation();
-        setImprimiendoId(o.id);
-        setListadoError(null);
-        try {
-            const url = await apiFetchBlobUrl(`/atenciones/patologia/orden/${o.id}/pdf`);
-            window.open(url, "_blank");
-        } catch (err) {
-            setListadoError(
-                err instanceof ApiError
-                    ? `No se pudo generar el reporte: ${err.message}`
-                    : "No se pudo generar el reporte de este estudio",
-            );
-        } finally {
-            setImprimiendoId(null);
-        }
     }
 
     async function crearOrden() {
@@ -491,86 +476,99 @@ export default function OrdenesPage() {
 
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-between encabezado-modulo">
+            <div className="encabezado-modulo flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
+                    <span className="label-clinical inline-block" style={{ color: "var(--ink-brand)" }}>
                         Admisiones
                     </span>
-                    <h1 style={{ color: "var(--ink-primary)" }}>Órdenes o Admisiones de Pacientes</h1>
-                    <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                    <h1 style={{ color: "var(--ink-primary)" }}>{vista === "listado" ? "Órdenes por atender" : "Nueva admisión"}</h1>
+                    <p className="mt-1 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                         {vista === "listado"
                             ? listado
-                                ? `${listado.total.toLocaleString()} órdenes registradas`
-                                : "Listado de órdenes registradas"
+                                ? `${listado.total.toLocaleString()} ${listado.total === 1 ? "orden pendiente" : "órdenes pendientes"} o en proceso · las más antiguas primero`
+                                : "Órdenes pendientes o en proceso"
                             : "Admisión del paciente y solicitud de procedimientos"}
                     </p>
                 </div>
                 {vista === "listado" ? (
-                    <Button size="sm" onClick={iniciarNuevaAdmision}>
-                        <ClipboardPlus className="mr-2 h-4 w-4" />
-                        Nueva Admisión
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" asChild>
+                            <Link href="/admisiones">
+                                <History size={14} /> Ver historial
+                            </Link>
+                        </Button>
+                        <Button size="sm" onClick={iniciarNuevaAdmision}>
+                            <ClipboardPlus size={14} />
+                            Nueva Admisión
+                        </Button>
+                    </div>
                 ) : (
                     <Button variant="outline" size="sm" onClick={volverAlListado}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        <ArrowLeft size={14} />
                         Volver al listado
                     </Button>
                 )}
             </div>
 
             {vista === "listado" && (
-                <div className="space-y-4">
-                    <div className="relative max-w-sm">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar por No. de orden, consecutivo o paciente..."
-                            className="pl-9"
-                            value={listadoQuery}
-                            onChange={(e) => setListadoQuery(e.target.value)}
-                        />
+                <Panel>
+                    <div className="flex flex-wrap items-center gap-2 border-b p-3" style={{ borderColor: "var(--border-subtle)" }}>
+                        <div className="relative min-w-[240px] flex-1">
+                            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "var(--ink-tertiary)" }} />
+                            <Input
+                                placeholder="Buscar por No. de orden, consecutivo o paciente..."
+                                aria-label="Buscar órdenes por atender"
+                                className="h-8 pl-8 text-[13px]"
+                                style={{ background: "var(--surface-inset)" }}
+                                value={listadoQuery}
+                                onChange={(e) => setListadoQuery(e.target.value)}
+                            />
+                            {listadoLoading && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                        </div>
+                        <div role="tablist" aria-label="Estado" className="flex h-8 overflow-hidden rounded-[5px] border" style={{ borderColor: "var(--border-default)" }}>
+                            {[
+                                { valor: "", texto: "Todas por atender" },
+                                { valor: "PENDIENTE", texto: "Pendientes" },
+                                { valor: "PROCESO", texto: "En proceso" },
+                            ].map((e) => {
+                                const activo = filtroEstado === e.valor;
+                                return (
+                                    <button
+                                        key={e.valor || "todas"}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={activo}
+                                        onClick={() => setFiltroEstado(e.valor)}
+                                        className={`border-r px-2.5 text-[12px] last:border-r-0 ${activo ? "bg-[var(--ink-primary)] text-white" : "hover:bg-[var(--surface-inset)]"}`}
+                                        style={{ borderColor: "var(--border-default)", color: activo ? undefined : "var(--ink-secondary)" }}
+                                    >
+                                        {e.texto}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-
-                    <div className="flex flex-wrap items-end gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-medium text-muted-foreground">Año</label>
-                            <Select
-                                className="w-28"
-                                value={filtroAnio}
-                                onChange={(e) => setFiltroAnio(e.target.value)}
-                            >
-                                <option value="">Todos</option>
-                                {aniosDisponibles.map((a) => (
-                                    <option key={a} value={a}>
-                                        {a}
+                    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-[12px]" style={{ borderColor: "var(--border-subtle)", color: "var(--ink-secondary)" }}>
+                        <label className="flex items-center gap-1.5">
+                            <CalendarDays size={13} />
+                            <Input type="date" aria-label="Ingreso desde" className="h-8 w-auto text-[12.5px]" value={filtroFechaInicio} onChange={(e) => setFiltroFechaInicio(e.target.value)} />
+                            <span style={{ color: "var(--ink-tertiary)" }}>–</span>
+                            <Input type="date" aria-label="Ingreso hasta" className="h-8 w-auto text-[12.5px]" value={filtroFechaFin} onChange={(e) => setFiltroFechaFin(e.target.value)} />
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                            Sede
+                            <Select selectClassName="h-8 text-[12.5px]" value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)} aria-label="Sede">
+                                <option value="">Todas</option>
+                                {sedes.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.nombre}
                                     </option>
                                 ))}
                             </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-medium text-muted-foreground">Fecha inicio</label>
-                            <Input
-                                type="date"
-                                className="w-40"
-                                value={filtroFechaInicio}
-                                onChange={(e) => setFiltroFechaInicio(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-medium text-muted-foreground">Fecha final</label>
-                            <Input
-                                type="date"
-                                className="w-40"
-                                value={filtroFechaFin}
-                                onChange={(e) => setFiltroFechaFin(e.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-medium text-muted-foreground">Estudio</label>
-                            <Select
-                                className="w-48"
-                                value={filtroTipoEstudio}
-                                onChange={(e) => setFiltroTipoEstudio(e.target.value)}
-                            >
+                        </label>
+                        <label className="flex items-center gap-1.5">
+                            Estudio
+                            <Select selectClassName="h-8 text-[12.5px]" value={filtroTipoEstudio} onChange={(e) => setFiltroTipoEstudio(e.target.value)} aria-label="Estudio">
                                 <option value="">Todos</option>
                                 {tiposEstudio.map((t) => (
                                     <option key={t.id} value={t.id}>
@@ -578,172 +576,154 @@ export default function OrdenesPage() {
                                     </option>
                                 ))}
                             </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-medium text-muted-foreground">Estado</label>
-                            <Select
-                                className="w-40"
-                                value={filtroEstado}
-                                onChange={(e) => setFiltroEstado(e.target.value)}
+                        </label>
+                        {(filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroSede) && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setFiltroFechaInicio("");
+                                    setFiltroFechaFin("");
+                                    setFiltroTipoEstudio("");
+                                    setFiltroSede("");
+                                }}
                             >
-                                <option value="">Todos</option>
-                                <option value="PENDIENTE">Pendiente</option>
-                                <option value="PROCESO">Proceso</option>
-                                <option value="ATENDIDO">Atendido</option>
-                                <option value="CANCELADO">Cancelado</option>
-                                <option value="FACTURADO">Facturado</option>
-                            </Select>
-                        </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!(filtroAnio || filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroEstado)}
-                            onClick={() => {
-                                setFiltroAnio("");
-                                setFiltroFechaInicio("");
-                                setFiltroFechaFin("");
-                                setFiltroTipoEstudio("");
-                                setFiltroEstado("");
-                            }}
-                        >
-                            <X className="mr-1.5 h-3.5 w-3.5" />
-                            Limpiar Filtros
-                        </Button>
+                                <X size={14} /> Limpiar
+                            </Button>
+                        )}
                     </div>
 
-                    {listadoError && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}
+                    {listadoError && <p className="mx-3 mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{listadoError}</p>}
 
-                    <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-muted/50">
-                                    <TableHead>
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <Hash className="h-3.5 w-3.5" />
-                                            Orden
-                                        </span>
-                                    </TableHead>
-                                    <TableHead>
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <User className="h-3.5 w-3.5" />
-                                            Paciente
-                                        </span>
-                                    </TableHead>
-                                    <TableHead>
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <TestTube2 className="h-3.5 w-3.5" />
-                                            Estudio / Espécimen
-                                        </span>
-                                    </TableHead>
-                                    <TableHead>
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <Building2 className="h-3.5 w-3.5" />
-                                            Contrato / Sede
-                                        </span>
-                                    </TableHead>
-                                    <TableHead>
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <MessageSquare className="h-3.5 w-3.5" />
-                                            Comentarios
-                                        </span>
-                                    </TableHead>
-                                    <TableHead className="text-center">Estado</TableHead>
-                                    <TableHead className="text-center">Acciones</TableHead>
-
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Hash className="h-3 w-3" />
+                                        Orden
+                                    </span>
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <User className="h-3 w-3" />
+                                        Paciente
+                                    </span>
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <TestTube2 className="h-3 w-3" />
+                                        Estudio / Espécimen
+                                    </span>
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Building2 className="h-3 w-3" />
+                                        Contrato / Sede
+                                    </span>
+                                </TableHead>
+                                <TableHead className="hidden 2xl:table-cell">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <MessageSquare className="h-3 w-3" />
+                                        Comentarios
+                                    </span>
+                                </TableHead>
+                                <TableHead className="text-right" title="Días hábiles desde el ingreso">
+                                    Espera
+                                </TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">
+                                    <span className="sr-only">Acciones</span>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {!listadoLoading && (!listado || listado.data.length === 0) && (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="py-10 text-center text-[13px] text-muted-foreground">
+                                        {listadoQuery || filtroFechaInicio || filtroFechaFin || filtroTipoEstudio || filtroSede || filtroEstado
+                                            ? "No hay órdenes por atender con estos filtros."
+                                            : "No hay órdenes pendientes por atender. ¡Todo al día!"}
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {!listadoLoading && (!listado || listado.data.length === 0) && (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
-                                            No hay órdenes registradas todavía.
+                            )}
+                            {listado?.data.map((o) => {
+                                const p = o.paciente;
+                                const estado = estadoTexto(o.estado);
+                                const dias = diasHabilesDesde(o.fechaIngreso);
+                                const vencido = dias > PLAZO_DIAS_HABILES;
+                                return (
+                                    <TableRow key={o.id} className="group">
+                                        <TableCell>
+                                            <p className="dato-mono text-[12.5px] font-semibold">{o.consecutivo || o.id}</p>
+                                            <p className="dato-mono text-[11px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                {o.fechaIngreso}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <p className="font-medium" style={{ color: "var(--ink-primary)" }}>
+                                                {p ? nombrePaciente(p).toUpperCase() : "—"}
+                                            </p>
+                                            {p && (
+                                                <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                    <span className="dato-mono">
+                                                        {p.idTipoIdentificacion}
+                                                        {p.identificacion}
+                                                    </span>{" "}
+                                                    · {p.sexo === "M" ? "M" : "F"} · {calcularEdad(p.fechaNacimiento)} años
+                                                    {p.telefono ? ` · ${p.telefono}` : ""}
+                                                </p>
+                                            )}
+                                            {o.comentarios && (
+                                                <p className="max-w-[260px] truncate text-[11.5px] italic 2xl:hidden" style={{ color: "var(--ink-secondary)" }} title={o.comentarios}>
+                                                    {o.comentarios}
+                                                </p>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="max-w-[260px]">
+                                            <p>{o.tipoEstudio?.nombreTipoEstudio ?? "—"}</p>
+                                            <p className="truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }} title={o.especimen?.nombre}>
+                                                {o.especimen?.nombre ?? ""}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <p>{o.contrato?.nombre ?? "—"}</p>
+                                            {o.sede?.nombre && <Etiqueta className="mt-0.5">{o.sede.nombre}</Etiqueta>}
+                                        </TableCell>
+                                        <TableCell className="hidden max-w-[220px] text-[12px] 2xl:table-cell" style={{ color: "var(--ink-secondary)" }}>
+                                            <p className="line-clamp-2 whitespace-normal">{o.comentarios || "—"}</p>
+                                        </TableCell>
+                                        <TableCell
+                                            className={`dato-mono text-right text-[12px] ${vencido ? "font-semibold" : ""}`}
+                                            style={{ color: vencido ? "var(--clinical-600)" : "var(--ink-secondary)" }}
+                                            title={vencido ? `Supera ${PLAZO_DIAS_HABILES} días hábiles` : undefined}
+                                        >
+                                            {dias} {dias === 1 ? "día" : "días"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <EstadoOrden estado={estado} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center justify-end gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
+                                                <Button variant="ghost" size="icon-sm" title="Ver orden" aria-label="Ver orden" onClick={() => setVerOrdenId(o.id)}>
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
+                                                {estado === "PENDIENTE" && (
+                                                    <Button variant="ghost" size="icon-sm" title="Cancelar orden" aria-label="Cancelar orden" onClick={() => setOrdenACancelar(o)}>
+                                                        <Ban className="h-3.5 w-3.5" style={{ color: "var(--status-danger)" }} />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                )}
-                                {listado?.data.map((o) => {
-                                    const p = o.paciente;
-                                    return (
-                                        <TableRow key={o.id} className="align-top hover:bg-muted/40">
-                                            <TableCell className="py-3">
-                                                <p className="font-bold">{o.consecutivo || o.id}</p>
-                                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                    <CalendarDays className="h-3 w-3" />
-                                                    {o.fechaIngreso}
-                                                </p>
-                                            </TableCell>
-                                            <TableCell className="py-3">
-                                                <p className="font-bold">{p ? nombrePaciente(p).toUpperCase() : "—"}</p>
-                                                {p && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {p.idTipoIdentificacion}
-                                                        {p.identificacion} · {p.sexo === "M" ? "M" : "F"} ·{" "}
-                                                        {calcularEdad(p.fechaNacimiento)} años
-                                                        {p.telefono ? ` · ${p.telefono}` : ""}
-                                                    </p>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="py-3 text-sm">
-                                                {o.tipoEstudio?.nombreTipoEstudio ?? "—"}
-                                                {o.especimen?.nombre ? ` - ${o.especimen.nombre}` : ""}
-                                            </TableCell>
-                                            <TableCell className="py-3">
-                                                <p className="text-sm">{o.contrato?.nombre ?? "—"}</p>
-                                                <p className="text-xs text-muted-foreground">{o.sede?.nombre ?? "—"}</p>
-                                            </TableCell>
-                                            <TableCell className="max-w-[220px] py-3 text-xs text-muted-foreground">
-                                                <p className="line-clamp-2">{o.comentarios || "—"}</p>
-                                            </TableCell>
-                                            <TableCell className="py-3 text-center">
-                                                <EstadoBadge estado={o.estado} />
-                                            </TableCell>
-                                            <TableCell
-                                                className="sticky right-0 py-3 text-center"
-                                            >
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        title="Ver orden"
-                                                        onClick={() => setVerOrdenId(o.id)}
-                                                    >
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                    {estadoTexto(o.estado) === "PENDIENTE" && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            title="Cancelar orden"
-                                                            onClick={() => setOrdenACancelar(o)}
-                                                        >
-                                                            <Ban className="h-4 w-4" style={{ color: "#DC2626" }} />
-                                                        </Button>
-                                                    )}
-                                                    {estadoTexto(o.estado) === "ATENDIDO" && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            title="Imprimir reporte del estudio"
-                                                            disabled={imprimiendoId === o.id}
-                                                            onClick={(e) => imprimirEstudio(o, e)}
-                                                        >
-                                                            {imprimiendoId === o.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <Printer className="h-4 w-4" />
-                                                            )}
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
 
                     {listado && (
                         <PaginationControls
+                            className="border-t px-3 py-2.5"
                             page={listadoPage}
                             pageSize={listado.pageSize}
                             total={listado.total}
@@ -754,7 +734,18 @@ export default function OrdenesPage() {
                             }}
                         />
                     )}
-                </div>
+
+                    <p className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2.5 text-[12px]" style={{ borderColor: "var(--border-subtle)", color: "var(--ink-tertiary)" }}>
+                        ¿No encuentra una orden? Puede estar atendida, facturada o cancelada.
+                        <Link
+                            href={listadoQuery ? `/admisiones?q=${encodeURIComponent(listadoQuery)}` : "/admisiones"}
+                            className="font-medium hover:underline"
+                            style={{ color: "var(--ink-brand)" }}
+                        >
+                            {listadoQuery ? `Buscar “${listadoQuery}” en Consultar Órdenes →` : "Ver el historial en Consultar Órdenes →"}
+                        </Link>
+                    </p>
+                </Panel>
             )}
 
             {vista === "buscar-paciente" && (

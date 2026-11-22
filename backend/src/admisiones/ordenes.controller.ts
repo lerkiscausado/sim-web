@@ -32,6 +32,8 @@ export class OrdenesController {
     @Query('fechaFin') fechaFin?: string,
     @Query('idTipoEstudio') idTipoEstudio?: string,
     @Query('estado') estado?: string,
+    @Query('idSede') idSede?: string,
+    @Query('orden') orden?: string,
   ) {
     return this.ordenesService.findAll(
       page ? Number(page) : 1,
@@ -43,6 +45,8 @@ export class OrdenesController {
         fechaFin,
         idTipoEstudio: idTipoEstudio ? Number(idTipoEstudio) : undefined,
         estado,
+        idSede: idSede ? Number(idSede) : undefined,
+        orden: orden === 'asc' ? 'asc' : 'desc',
       },
     );
   }

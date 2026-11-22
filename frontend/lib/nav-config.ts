@@ -49,8 +49,8 @@ export const navConfig: NavItem[] = [
         label: "Admisiones",
         icon: ClipboardList,
         children: [
-            { label: "Órdenes", href: "/admisiones/ordenes", icon: ClipboardPlus, description: "Registro de órdenes médicas y procedimientos por paciente." },
-            { label: "Consultar Órdenes", href: "/admisiones", icon: Search, description: "Consulta de todas las órdenes: informes, adjuntos, imágenes, correo y exportación a Excel/PDF." },
+            { label: "Órdenes", href: "/admisiones/ordenes", icon: ClipboardPlus, description: "Órdenes pendientes o en proceso y registro de nuevas admisiones." },
+            { label: "Consultar Órdenes", href: "/admisiones", icon: Search, description: "Historial completo de órdenes: informes, adjuntos, imágenes, correo y exportación a Excel/PDF." },
             { label: "Consentimiento Informado", href: "/admisiones/consentimiento", icon: FileSignature, description: "Gestión y firma de consentimientos informados de pacientes." },
             { label: "Agenda", href: "/admisiones/agenda", icon: CalendarDays, description: "Programación y seguimiento de citas médicas." },
             { label: "Informes y Reportes", href: "/admisiones/reportes", icon: BarChart2, description: "Relación de patologías por fecha e informes de consulta guardados." },

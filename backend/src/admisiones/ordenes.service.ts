@@ -166,7 +166,17 @@ export class OrdenesService {
     page = 1,
     pageSize = 20,
     q?: string,
-    filtros?: { anio?: number; fechaInicio?: string; fechaFin?: string; idTipoEstudio?: number; estado?: string },
+    filtros?: {
+      anio?: number;
+      fechaInicio?: string;
+      fechaFin?: string;
+      idTipoEstudio?: number;
+      /** Uno o varios estados separados por coma (p. ej. "PENDIENTE,PROCESO"). */
+      estado?: string;
+      idSede?: number;
+      /** 'asc' = las más antiguas primero (bandeja de pendientes). Por defecto, las más recientes. */
+      orden?: 'asc' | 'desc';
+    },
   ) {
     const take = Math.min(Math.max(pageSize, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
@@ -178,8 +188,8 @@ export class OrdenesService {
       .leftJoinAndSelect('o.tipoEstudio', 'tipoEstudio')
       .leftJoinAndSelect('o.especimen', 'especimen')
       .leftJoinAndSelect('o.sede', 'sede')
-      .orderBy('o.fechaIngreso', 'DESC')
-      .addOrderBy('o.id', 'DESC')
+      .orderBy('o.fechaIngreso', filtros?.orden === 'asc' ? 'ASC' : 'DESC')
+      .addOrderBy('o.id', filtros?.orden === 'asc' ? 'ASC' : 'DESC')
       .take(take)
       .skip(skip);
 
@@ -204,7 +214,18 @@ export class OrdenesService {
       qb.andWhere('o.idTipoEstudio = :idTipoEstudio', { idTipoEstudio: filtros.idTipoEstudio });
     }
     if (filtros?.estado) {
-      qb.andWhere('o.estado = :estado', { estado: filtros.estado });
+      const validos = Object.values(EstadoOrden) as string[];
+      const estados = filtros.estado
+        .split(',')
+        .map((e) => e.trim().toUpperCase())
+        .filter((e) => validos.includes(e));
+      if (estados.length === 0) {
+        throw new BadRequestException(`Estado no válido. Use uno o varios de: ${validos.join(', ')}.`);
+      }
+      qb.andWhere('o.estado IN (:...estados)', { estados });
+    }
+    if (filtros?.idSede) {
+      qb.andWhere('o.idSede = :idSede', { idSede: filtros.idSede });
     }
 
     const [data, total] = await qb.getManyAndCount();

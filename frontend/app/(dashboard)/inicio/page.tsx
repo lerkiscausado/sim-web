@@ -1,225 +1,280 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Microscope, FileText, ClipboardList, PenLine, CheckCircle2, Clock, ArrowRight, Activity, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { CheckCircle2, ChevronRight, ClipboardPlus, Loader2, PenLine } from "lucide-react";
 import { api } from "@/lib/api";
-
-interface Resumen {
-    empleado: string | null;
-    patologiasPendientes: number;
-    patologiasConInforme: number;
-    citologiasPendientes: number;
-    ordenesHoy: number;
-    ordenesMes: number;
-    firmadosMes: number;
-    entregasHoy: number;
-    actividad: { id: number; fecha: string; hora: string; estudio: string; idOrden: number; consecutivo: string; paciente: string; empleado: string | null }[];
-}
-
-const quickAccess = [
-    { label: "Nueva Orden", href: "/admisiones/ordenes" },
-    { label: "Consultar Órdenes", href: "/admisiones" },
-    { label: "Patologías por atender", href: "/atenciones/patologias" },
-    { label: "Citologías por atender", href: "/atenciones/citologias" },
-    { label: "Relación de Patologías", href: "/admisiones/reportes" },
-];
+import { nombrePropio } from "@/lib/utils";
+import { useResumen } from "@/lib/resumen";
+import { diasHabilesDesde, PLAZO_DIAS_HABILES } from "@/lib/fechas";
+import { Button } from "@/components/ui/button";
+import { Etiqueta, Indicador, Panel, PanelHeader, Pildora } from "@/components/ui/panel";
+import type { OrdenPendiente } from "../atenciones/patologias/types";
+import { nombrePaciente } from "../atenciones/patologias/types";
 
 function hace(fecha: string, hora: string): string {
     const t = new Date(`${fecha}T${hora || "00:00:00"}`);
     const min = Math.round((Date.now() - t.getTime()) / 60000);
     if (Number.isNaN(min)) return "";
     if (min < 1) return "Ahora";
-    if (min < 60) return `Hace ${min} min`;
-    if (min < 60 * 24) return `Hace ${Math.round(min / 60)} h`;
+    if (min < 60) return `${min} min`;
+    if (min < 60 * 24) return `${Math.round(min / 60)} h`;
     const d = Math.round(min / (60 * 24));
-    return d === 1 ? "Ayer" : `Hace ${d} días`;
+    return d === 1 ? "Ayer" : `${d} días`;
 }
 
+const pct = (a: number, b: number) => (b > 0 ? a / b : 0);
+
 export default function InicioPage() {
-    const [r, setR] = useState<Resumen | null>(null);
+    const { resumen: r } = useResumen();
+    const [pendientes, setPendientes] = useState<OrdenPendiente[] | null>(null);
     const now = new Date();
     const hour = now.getHours();
     const greeting = hour < 12 ? "Buenos días" : hour < 18 ? "Buenas tardes" : "Buenas noches";
 
     useEffect(() => {
-        api.get<Resumen>("/inicio/resumen").then(setR).catch(() => setR(null));
+        api.get<OrdenPendiente[]>("/atenciones/patologia/pendientes")
+            .then(setPendientes)
+            .catch(() => setPendientes([]));
     }, []);
 
-    const pct = (a: number, b: number) => `${b > 0 ? Math.min(100, Math.round((a / b) * 100)) : 0}%`;
-    const stats = r
-        ? [
-              {
-                  label: "Patologías por atender",
-                  value: r.patologiasPendientes,
-                  delta: `${r.patologiasConInforme} con informe sin firmar`,
-                  icon: Microscope,
-                  iconColor: "var(--clinical-500)",
-                  iconBg: "var(--clinical-50)",
-                  barColor: "var(--clinical-400)",
-                  barWidth: pct(r.patologiasConInforme, r.patologiasPendientes),
-                  href: "/atenciones/patologias",
-              },
-              {
-                  label: "Citologías por atender",
-                  value: r.citologiasPendientes,
-                  delta: "Sin resultado",
-                  icon: FileText,
-                  iconColor: "var(--status-warning)",
-                  iconBg: "var(--status-warning-bg)",
-                  barColor: "var(--status-warning)",
-                  barWidth: r.citologiasPendientes ? "100%" : "0%",
-                  href: "/atenciones/citologias",
-              },
-              {
-                  label: "Órdenes ingresadas hoy",
-                  value: r.ordenesHoy,
-                  delta: `${r.ordenesMes} en el mes`,
-                  icon: ClipboardList,
-                  iconColor: "var(--clinical-500)",
-                  iconBg: "var(--clinical-50)",
-                  barColor: "var(--clinical-400)",
-                  barWidth: pct(r.ordenesHoy, r.ordenesMes),
-                  href: "/admisiones",
-              },
-              {
-                  label: "Estudios firmados en el mes",
-                  value: r.firmadosMes,
-                  delta: `${r.entregasHoy} entregas programadas hoy`,
-                  icon: PenLine,
-                  iconColor: "var(--status-success)",
-                  iconBg: "var(--status-success-bg)",
-                  barColor: "var(--status-success)",
-                  barWidth: pct(r.firmadosMes, r.ordenesMes),
-                  href: "/admisiones",
-              },
-          ]
-        : [];
+    /** Cola de firma: los más antiguos primero. */
+    const cola = useMemo(
+        () =>
+            (pendientes ?? [])
+                .map((o) => ({ ...o, dias: diasHabilesDesde(o.fechaIngreso) }))
+                .sort((a, b) => b.dias - a.dias || a.fechaIngreso.localeCompare(b.fechaIngreso)),
+        [pendientes],
+    );
+    const vencidos = cola.filter((o) => o.dias > PLAZO_DIAS_HABILES).length;
+
+    /** Pendientes de patología por sede, separando los que ya tienen informe sin firmar. */
+    const porSede = useMemo(() => {
+        const m = new Map<string, { sede: string; conInforme: number; sinInforme: number }>();
+        for (const o of pendientes ?? []) {
+            const sede = o.sede?.nombre ?? "Sin sede";
+            const fila = m.get(sede) ?? { sede, conInforme: 0, sinInforme: 0 };
+            if (o.tieneInforme) fila.conInforme++;
+            else fila.sinInforme++;
+            m.set(sede, fila);
+        }
+        return [...m.values()].sort((a, b) => b.conInforme + b.sinInforme - (a.conInforme + a.sinInforme));
+    }, [pendientes]);
+    const maxSede = Math.max(1, ...porSede.map((s) => s.conInforme + s.sinInforme));
 
     return (
-        <div className="space-y-6">
-            <div className="relative overflow-hidden rounded-lg px-7 py-6" style={{ background: "var(--nav-ink-accent)", borderRadius: "var(--radius-lg)" }}>
-                <div className="relative z-10">
-                    <p className="label-clinical mb-2" style={{ color: "var(--clinical-300)" }}>
-                        {now.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+        <div className="space-y-5">
+            <div className="encabezado-modulo flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <p className="label-clinical first-letter:uppercase" style={{ color: "var(--ink-brand)" }}>
+                        {now.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                     </p>
-                    <h1 className="mb-1.5 text-[1.5rem] font-bold leading-tight" style={{ color: "#ffffff", letterSpacing: "-0.025em" }}>
+                    <h1 style={{ color: "var(--ink-primary)" }}>
                         {greeting}
-                        {r?.empleado ? `, ${r.empleado}` : ""}
+                        {r?.empleado ? `, ${nombrePropio(r.empleado)}` : ""}
                     </h1>
-                    <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.70)" }}>
+                    <p className="mt-1 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                         {r ? (
                             <>
-                                Hay <strong style={{ color: "#fff" }}>{r.patologiasPendientes} patologías</strong> y{" "}
-                                <strong style={{ color: "#fff" }}>{r.citologiasPendientes} citologías</strong> pendientes de informe.
+                                Hay <strong style={{ color: "var(--ink-primary)" }}>{r.patologiasPendientes} patologías</strong> y{" "}
+                                <strong style={{ color: "var(--ink-primary)" }}>{r.citologiasPendientes} citologías</strong> pendientes de informe
+                                {vencidos > 0 && (
+                                    <>
+                                        ;{" "}
+                                        <strong style={{ color: "var(--clinical-600)" }}>
+                                            {vencidos} {vencidos === 1 ? "supera" : "superan"} los {PLAZO_DIAS_HABILES} días hábiles
+                                        </strong>
+                                    </>
+                                )}
+                                .
                             </>
                         ) : (
                             "Cargando resumen…"
                         )}
                     </p>
                 </div>
-                <div
-                    className="absolute bottom-0 right-0 top-0 w-48 opacity-10"
-                    style={{ background: "repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255,255,255,0.6) 19px, rgba(255,255,255,0.6) 20px)" }}
-                />
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <Link href="/admisiones/ordenes">
+                            <ClipboardPlus size={14} /> Nueva orden
+                        </Link>
+                    </Button>
+                    <Button size="sm" asChild>
+                        <Link href={cola[0] ? `/atenciones/patologias?orden=${cola[0].id}` : "/atenciones/patologias"}>
+                            <PenLine size={14} /> Continuar informando
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
-            {!r && (
+            {!r ? (
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" /> Cargando indicadores…
                 </p>
+            ) : (
+                <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                    <Indicador
+                        titulo="Patologías por firmar"
+                        valor={r.patologiasPendientes.toLocaleString()}
+                        marca={vencidos > 0 ? <Pildora tono="marca">{vencidos} {vencidos === 1 ? "vencida" : "vencidas"}</Pildora> : undefined}
+                        detalle={`${r.patologiasConInforme} con informe, falta la firma`}
+                        proporcion={pct(r.patologiasConInforme, r.patologiasPendientes)}
+                        color="var(--clinical-500)"
+                        href="/atenciones/patologias"
+                    />
+                    <Indicador
+                        titulo="Citologías por atender"
+                        valor={r.citologiasPendientes.toLocaleString()}
+                        detalle="Sin resultado"
+                        proporcion={r.citologiasPendientes ? 1 : 0}
+                        color="var(--status-warning)"
+                        href="/atenciones/citologias"
+                    />
+                    <Indicador
+                        titulo="Órdenes ingresadas hoy"
+                        valor={r.ordenesHoy.toLocaleString()}
+                        detalle={`${r.ordenesMes.toLocaleString()} en el mes`}
+                        proporcion={pct(r.ordenesHoy, r.ordenesMes)}
+                        color="var(--status-info)"
+                        href="/admisiones"
+                    />
+                    <Indicador
+                        titulo="Estudios firmados en el mes"
+                        valor={r.firmadosMes.toLocaleString()}
+                        detalle={`${r.entregasHoy} entregas programadas hoy`}
+                        proporcion={pct(r.firmadosMes, r.ordenesMes)}
+                        color="var(--status-success)"
+                        href="/admisiones"
+                    />
+                </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-                {stats.map((stat) => {
-                    const Icon = stat.icon;
-                    return (
-                        <Link
-                            key={stat.label}
-                            href={stat.href}
-                            className="overflow-hidden rounded-lg border transition-shadow hover:shadow-sm"
-                            style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-                        >
-                            <div className="px-5 pb-3 pt-4">
-                                <div className="mb-3 flex items-start justify-between">
-                                    <div className="flex h-8 w-8 items-center justify-center" style={{ background: stat.iconBg, borderRadius: "var(--radius-sm)" }}>
-                                        <Icon size={16} color={stat.iconColor} strokeWidth={1.75} />
-                                    </div>
-                                    <span className="text-right text-[11px]" style={{ color: "var(--ink-tertiary)" }}>
-                                        {stat.delta}
-                                    </span>
-                                </div>
-                                <div className="data-value mb-0.5" style={{ color: "var(--ink-primary)" }}>
-                                    {stat.value.toLocaleString()}
-                                </div>
-                                <p className="text-[12px] font-medium" style={{ color: "var(--ink-secondary)" }}>
-                                    {stat.label}
-                                </p>
-                            </div>
-                            <div className="h-1" style={{ background: "var(--surface-inset)" }}>
-                                <div className="h-full" style={{ width: stat.barWidth, background: stat.barColor, opacity: 0.7 }} />
-                            </div>
+            <div className="grid gap-4 xl:grid-cols-[1.55fr_1fr]">
+                <Panel>
+                    <PanelHeader titulo="Cola de patologías por firmar" etiqueta={<Etiqueta>Más antiguas primero</Etiqueta>}>
+                        <Link href="/atenciones/patologias" className="font-medium hover:underline" style={{ color: "var(--ink-brand)" }}>
+                            Ver todas →
                         </Link>
-                    );
-                })}
-            </div>
+                    </PanelHeader>
+                    {pendientes === null && (
+                        <p className="flex items-center justify-center gap-2 px-4 py-8 text-[12.5px] text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Cargando…
+                        </p>
+                    )}
+                    {pendientes && cola.length === 0 && (
+                        <p className="px-4 py-8 text-center text-[12.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                            No hay patologías pendientes. ¡Todo al día!
+                        </p>
+                    )}
+                    <ul>
+                        {cola.slice(0, 7).map((o) => {
+                            const vencido = o.dias > PLAZO_DIAS_HABILES;
+                            return (
+                                <li key={o.id} className="border-b last:border-b-0" style={{ borderColor: "var(--border-subtle)" }}>
+                                    <Link
+                                        href={`/atenciones/patologias?orden=${o.id}`}
+                                        className="grid grid-cols-[96px_1fr_auto] items-center gap-3 px-4 py-2.5 hover:bg-[var(--surface-inset)] sm:grid-cols-[96px_1fr_120px_84px_16px]"
+                                    >
+                                        <span className="dato-mono text-[12.5px] font-semibold">{o.consecutivo || o.id}</span>
+                                        <span className="min-w-0">
+                                            <span className="block truncate font-medium" style={{ color: "var(--ink-primary)" }}>
+                                                {nombrePaciente(o.paciente)}
+                                            </span>
+                                            <span className="block truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                {[o.tipoEstudio?.nombreTipoEstudio, o.especimen?.nombre].filter(Boolean).join(" · ")}
+                                                {o.tieneInforme ? " · con informe" : ""}
+                                            </span>
+                                        </span>
+                                        <span className="hidden sm:block">{o.sede && <Etiqueta>{o.sede.nombre}</Etiqueta>}</span>
+                                        <span
+                                            className="dato-mono text-right text-[11.5px]"
+                                            style={{ color: vencido ? "var(--clinical-600)" : "var(--ink-secondary)", fontWeight: vencido ? 600 : 400 }}
+                                            title="Días hábiles desde el ingreso"
+                                        >
+                                            {o.dias} {o.dias === 1 ? "día" : "días"}
+                                        </span>
+                                        <ChevronRight size={14} className="hidden sm:block" style={{ color: "var(--ink-muted)" }} />
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </Panel>
 
-            <div className="grid gap-4 xl:grid-cols-3">
-                <div className="overflow-hidden rounded-lg border xl:col-span-2" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                    <div className="flex items-center justify-between border-b px-5 py-3.5" style={{ borderColor: "var(--border-subtle)" }}>
-                        <div className="flex items-center gap-2">
-                            <Clock size={14} style={{ color: "var(--accent)" }} />
-                            <h2 className="text-[13px] font-semibold" style={{ color: "var(--ink-primary)" }}>
-                                Últimos estudios firmados
-                            </h2>
+                <div className="flex flex-col gap-4">
+                    <Panel>
+                        <PanelHeader titulo="Patologías pendientes por sede" />
+                        {porSede.length === 0 ? (
+                            <p className="px-4 py-6 text-center text-[12.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                Sin pendientes.
+                            </p>
+                        ) : (
+                            <div className="flex flex-col gap-3.5 px-4 py-3.5">
+                                {porSede.map((s) => {
+                                    const total = s.conInforme + s.sinInforme;
+                                    return (
+                                        <div key={s.sede}>
+                                            <div className="mb-1.5 flex justify-between text-[12.5px]">
+                                                <span>{s.sede}</span>
+                                                <span className="dato-mono" style={{ color: "var(--ink-secondary)" }}>
+                                                    {total}
+                                                </span>
+                                            </div>
+                                            <div
+                                                className="flex h-2 overflow-hidden rounded"
+                                                style={{ background: "var(--border-subtle)" }}
+                                                role="img"
+                                                aria-label={`${s.sede}: ${s.sinInforme} sin informe, ${s.conInforme} con informe sin firmar`}
+                                            >
+                                                <span style={{ width: `${(s.sinInforme / maxSede) * 100}%`, background: "var(--clinical-500)" }} />
+                                                <span style={{ width: `${(s.conInforme / maxSede) * 100}%`, background: "var(--status-warning)" }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                        <div className="flex gap-4 px-4 pb-3.5 text-[11.5px]" style={{ color: "var(--ink-secondary)" }}>
+                            <span className="flex items-center gap-1.5">
+                                <i className="h-2 w-2 rounded-sm" style={{ background: "var(--clinical-500)" }} /> Sin informe
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                                <i className="h-2 w-2 rounded-sm" style={{ background: "var(--status-warning)" }} /> Con informe, sin firma
+                            </span>
                         </div>
-                    </div>
-                    <div>
+                    </Panel>
+
+                    <Panel>
+                        <PanelHeader titulo="Últimos estudios firmados" />
                         {r && r.actividad.length === 0 && (
-                            <p className="px-5 py-6 text-center text-[12.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                            <p className="px-4 py-6 text-center text-[12.5px]" style={{ color: "var(--ink-tertiary)" }}>
                                 Aún no hay estudios firmados.
                             </p>
                         )}
-                        {r?.actividad.map((a) => (
-                            <div key={a.id} className="flex items-center gap-3.5 border-b px-5 py-3 last:border-b-0" style={{ borderColor: "var(--border-subtle)" }}>
-                                <CheckCircle2 size={14} color="var(--status-success)" className="shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-[12.5px] font-medium" style={{ color: "var(--ink-primary)" }}>
-                                        {a.paciente || "—"} · {a.consecutivo}
-                                    </p>
-                                    <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
-                                        {a.estudio}
-                                        {a.empleado ? ` · ${a.empleado}` : ""}
-                                    </p>
-                                </div>
-                                <span className="shrink-0 text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
-                                    {hace(a.fecha, a.hora)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="overflow-hidden rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                    <div className="flex items-center gap-2 border-b px-5 py-3.5" style={{ borderColor: "var(--border-subtle)" }}>
-                        <Activity size={14} style={{ color: "var(--accent)" }} />
-                        <h2 className="text-[13px] font-semibold" style={{ color: "var(--ink-primary)" }}>
-                            Acceso Rápido
-                        </h2>
-                    </div>
-                    <div className="space-y-1.5 p-3">
-                        {quickAccess.map((item) => (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                className="group flex items-center justify-between rounded px-3.5 py-2.5 text-[12.5px] font-medium transition-colors hover:border-[var(--border-default)] hover:bg-[var(--surface-base)]"
-                                style={{ color: "var(--ink-primary)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-sm)" }}
-                            >
-                                {item.label}
-                                <ArrowRight size={12} style={{ color: "var(--ink-tertiary)" }} />
-                            </Link>
-                        ))}
-                    </div>
+                        <ul className="py-1">
+                            {r?.actividad.slice(0, 6).map((a) => (
+                                <li key={a.id} className="flex items-start gap-2.5 px-4 py-2">
+                                    <span
+                                        className="mt-px flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full"
+                                        style={{ background: "var(--status-success-bg)", color: "var(--status-success)" }}
+                                    >
+                                        <CheckCircle2 size={12} />
+                                    </span>
+                                    <span className="min-w-0 flex-1 text-[12.5px] leading-snug">
+                                        <span className="dato-mono font-semibold">{a.consecutivo}</span>{" "}
+                                        <span style={{ color: "var(--ink-secondary)" }}>· {a.paciente || "—"}</span>
+                                        <span className="block truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                            {a.estudio}
+                                            {a.empleado ? ` · ${a.empleado}` : ""}
+                                        </span>
+                                    </span>
+                                    <span className="shrink-0 text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                        {hace(a.fecha, a.hora)}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </Panel>
                 </div>
             </div>
         </div>

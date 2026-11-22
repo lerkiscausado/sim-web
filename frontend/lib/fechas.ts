@@ -52,3 +52,24 @@ export function calcularEdad(fechaNacimientoISO: string, hoy: Date = new Date())
     if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
     return Math.max(0, edad);
 }
+
+/**
+ * Días hábiles (lunes a viernes) transcurridos desde `fechaISO` hasta `hoy`, sin contar
+ * el día de ingreso. Ingreso el viernes y hoy lunes = 1. Fechas futuras o inválidas = 0.
+ */
+export function diasHabilesDesde(fechaISO: string, hoy: Date = new Date()): number {
+    const desde = deISOLocal(fechaISO);
+    if (!desde) return 0;
+    const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+    let dias = 0;
+    const d = new Date(desde);
+    while (d < hasta) {
+        d.setDate(d.getDate() + 1);
+        const dia = d.getDay();
+        if (dia !== 0 && dia !== 6) dias++;
+    }
+    return dias;
+}
+
+/** Plazo de respuesta, en días hábiles, a partir del cual un estudio sin firmar se marca como vencido. */
+export const PLAZO_DIAS_HABILES = 5;

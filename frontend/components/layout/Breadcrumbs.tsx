@@ -2,56 +2,47 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Home } from "lucide-react";
-import { breadcrumbLabels } from "@/lib/nav-config";
+import { ChevronRight } from "lucide-react";
+import { breadcrumbLabels, navConfig } from "@/lib/nav-config";
 
+/** Nombre de cada página del menú por su ruta (p. ej. /admisiones → "Consultar Órdenes"). */
+const PAGINAS: Record<string, string> = Object.fromEntries(
+    navConfig.flatMap((g) => [...(g.href ? [[g.href, g.label]] : []), ...(g.children ?? []).filter((c) => c.href).map((c) => [c.href!, c.label])]),
+);
+
+/** Ruta de navegación en la barra superior: SIM › Grupo › Página. */
 export function Breadcrumbs() {
     const pathname = usePathname();
     const segments = pathname.split("/").filter(Boolean);
 
     const crumbs = [
-        { label: "Inicio", href: "/" },
-        ...segments.map((segment, index) => ({
-            label: breadcrumbLabels[segment] ?? capitalize(segment),
-            href: "/" + segments.slice(0, index + 1).join("/"),
-        })),
+        { label: "SIM", href: "/inicio" },
+        ...segments.map((segment, index) => {
+            const href = "/" + segments.slice(0, index + 1).join("/");
+            const esUltimo = index === segments.length - 1;
+            return {
+                label: (esUltimo && PAGINAS[href]) || breadcrumbLabels[segment] || capitalize(segment),
+                href,
+            };
+        }),
     ];
 
     return (
-        <nav
-            aria-label="Ruta de navegación"
-            className="flex items-center gap-1 px-6 py-2"
-            style={{
-                background: "var(--surface-raised)",
-                borderBottom: "1px solid var(--border-subtle)",
-                minHeight: "36px",
-            }}
-        >
-            <Link
-                href="/"
-                className="flex items-center transition-colors"
-                style={{ color: "var(--ink-tertiary)" }}
-            >
-                <Home size={12} />
-            </Link>
-
-            {crumbs.slice(1).map((crumb, index) => {
-                const isLast = index === crumbs.length - 2;
+        <nav aria-label="Ruta de navegación" className="flex min-w-0 items-center gap-1.5 text-[12.5px]">
+            {crumbs.map((crumb, index) => {
+                const isLast = index === crumbs.length - 1;
                 return (
-                    <span key={crumb.href} className="flex items-center gap-1">
-                        <ChevronRight size={11} style={{ color: "var(--border-strong)" }} />
+                    <span key={crumb.href + index} className="flex min-w-0 items-center gap-1.5">
+                        {index > 0 && <ChevronRight size={12} className="shrink-0" style={{ color: "var(--ink-muted)" }} />}
                         {isLast ? (
-                            <span
-                                className="text-[12px] font-semibold"
-                                style={{ color: "var(--ink-primary)" }}
-                            >
+                            <span className="truncate font-semibold" style={{ color: "var(--ink-primary)" }} aria-current="page">
                                 {crumb.label}
                             </span>
                         ) : (
                             <Link
                                 href={crumb.href}
-                                className="text-[12px] transition-colors hover:underline underline-offset-2"
-                                style={{ color: "var(--ink-secondary)" }}
+                                className="truncate transition-colors hover:underline underline-offset-2"
+                                style={{ color: "var(--ink-tertiary)" }}
                             >
                                 {crumb.label}
                             </Link>

@@ -136,7 +136,7 @@ export default function ReportesPage() {
 
     return (
         <div className="space-y-5">
-            <div className="rounded-lg border px-6 py-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+            <div className="encabezado-modulo">
                 <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                     Admisiones
                 </span>

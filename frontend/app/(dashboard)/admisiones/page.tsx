@@ -20,6 +20,8 @@ import {
     Building2,
     TestTube2,
     X,
+    ClipboardPlus,
+    CalendarDays,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +44,9 @@ import { useAuth } from "@/lib/auth";
 import { useFeedback } from "@/components/ui/feedback";
 import { Select } from "@/components/ui/select";
 import { TAMANO_PAGINA_DEFECTO, useTamanoPagina } from "@/lib/useTabla";
+import { EstadoOrden, Etiqueta, Panel } from "@/components/ui/panel";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface FilaConsulta {
     orden: number;
@@ -82,24 +87,14 @@ interface TipoEstudio {
 }
 
 const ESTADOS = ["PENDIENTE", "PROCESO", "ATENDIDO", "FACTURADO", "CANCELADO"];
-const ESTADO_ESTILOS: Record<string, { bg: string; text: string; dot: string }> = {
-    PENDIENTE: { bg: "#FEF3C7", text: "#92400E", dot: "#D97706" },
-    PROCESO: { bg: "#DBEAFE", text: "#1E40AF", dot: "#2563EB" },
-    ATENDIDO: { bg: "#D1FAE5", text: "#065F46", dot: "#059669" },
-    CANCELADO: { bg: "#FEE2E2", text: "#991B1B", dot: "#DC2626" },
-    FACTURADO: { bg: "#EDE9FE", text: "#5B21B6", dot: "#7C3AED" },
+const ESTADO_TEXTO: Record<string, string> = {
+    "": "Todas",
+    PENDIENTE: "Pendientes",
+    PROCESO: "En proceso",
+    ATENDIDO: "Atendidas",
+    FACTURADO: "Facturadas",
+    CANCELADO: "Canceladas",
 };
-
-function EstadoBadge({ estado }: { estado: string }) {
-    const e = ESTADO_ESTILOS[estado] ?? { bg: "#F3F4F6", text: "#374151", dot: "#6B7280" };
-    return (
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: e.bg, color: e.text }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: e.dot }} />
-            {estado}
-        </span>
-    );
-}
-
 const fechaCorta = (iso: string) => (iso ? iso.split("-").reverse().join("/") : "");
 const firmado = (f: FilaConsulta) => f.estado === "ATENDIDO" || f.estado === "FACTURADO";
 
@@ -136,6 +131,15 @@ export default function ConsultarOrdenesPage() {
     const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
     const [activa, setActiva] = useState<FilaConsulta | null>(null);
     const [dialogo, setDialogo] = useState<"adjuntos" | "imagenes" | "correo" | null>(null);
+
+    // Búsqueda que llega desde el buscador global (Ctrl K): /admisiones?q=texto
+    useEffect(() => {
+        const q = new URLSearchParams(window.location.search).get("q");
+        if (q) {
+            setFiltros((f) => ({ ...f, q, anio: "" }));
+            setQDebounced(q);
+        }
+    }, []);
 
     useEffect(() => {
         api.get<number[]>("/admisiones/consulta/anios").then(setAnios).catch(() => setAnios([anioActual]));
@@ -177,6 +181,32 @@ export default function ConsultarOrdenesPage() {
     useEffect(() => {
         cargar();
     }, [cargar]);
+
+    /** Cantidad de órdenes por estado con los demás filtros aplicados (pestañas de estado). */
+    const [conteos, setConteos] = useState<Record<string, number>>({});
+    const queryBase = useMemo(() => {
+        const p = new URLSearchParams(query);
+        p.delete("estado");
+        return p.toString();
+    }, [query]);
+    useEffect(() => {
+        let vigente = true;
+        Promise.all(
+            ["", ...ESTADOS].map(async (e) => {
+                const p = new URLSearchParams(queryBase);
+                if (e) p.set("estado", e);
+                p.set("page", "1");
+                p.set("pageSize", "1");
+                const r = await api.get<Resultado>(`/admisiones/consulta?${p.toString()}`);
+                return [e, r.total] as const;
+            }),
+        )
+            .then((pares) => vigente && setConteos(Object.fromEntries(pares)))
+            .catch(() => vigente && setConteos({}));
+        return () => {
+            vigente = false;
+        };
+    }, [queryBase]);
 
     useEffect(() => {
         setPage(1);
@@ -259,291 +289,354 @@ export default function ConsultarOrdenesPage() {
         setDialogo(d);
     }
 
-    const hayFiltrosExtra = filtros.fechaInicio || filtros.fechaFin || filtros.estado || filtros.idSede || filtros.idTipoEstudio;
+    const hayFiltrosExtra = filtros.fechaInicio || filtros.fechaFin || filtros.idSede || filtros.idTipoEstudio;
 
     return (
         <div className="space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-6 py-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+            <div className="encabezado-modulo flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
+                    <span className="label-clinical inline-block" style={{ color: "var(--ink-brand)" }}>
                         Admisiones
                     </span>
                     <h1 style={{ color: "var(--ink-primary)" }}>Consultar Órdenes</h1>
-                    <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                    <p className="mt-1 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                         {resultado.total.toLocaleString()} órdenes {filtros.anio ? `en ${filtros.anio}` : "en total"}
+                        {filtros.estado ? ` · ${ESTADO_TEXTO[filtros.estado].toLowerCase()}` : ""}. Marque varias para exportarlas en lote.
                     </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={exportarExcel} disabled={!!trabajando}>
                         {trabajando === "excel" ? <Loader2 className="animate-spin" size={14} /> : <FileSpreadsheet size={14} />}
-                        Exportar Excel
+                        Excel
                     </Button>
                     <Button variant="outline" size="sm" onClick={exportarPdf} disabled={!!trabajando}>
                         {trabajando === "pdf" ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
-                        Exportar PDF
+                        PDF
                     </Button>
                     <Button variant="outline" size="sm" onClick={exportarPdf} disabled={!!trabajando} title="Abre la grilla en PDF para imprimirla">
                         <Printer size={14} />
                         Imprimir
                     </Button>
                     {hasPermission("imprimir") && (
-                        <Button size="sm" onClick={exportarLote} disabled={!!trabajando || resultado.total === 0}>
+                        <Button variant="outline" size="sm" onClick={exportarLote} disabled={!!trabajando || resultado.total === 0} title="Exporta los resultados del filtro actual (o los marcados) en un ZIP de PDF">
                             {trabajando === "lote" ? <Loader2 className="animate-spin" size={14} /> : <FileArchive size={14} />}
-                            Exportar lote PDF{seleccion.size ? ` (${seleccion.size})` : ""}
+                            Lote PDF
                         </Button>
                     )}
-                </div>
-            </div>
-
-            <div className="flex flex-wrap items-end gap-2">
-                <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        placeholder="Consecutivo, paciente, identificación, espécimen…"
-                        className="pl-9"
-                        value={filtros.q}
-                        onChange={(e) => cambiar("q", e.target.value)}
-                    />
-                </div>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Año</span>
-                    <Select value={filtros.anio} onChange={(e) => cambiar("anio", e.target.value)}>
-                        <option value="">Todos</option>
-                        {(anios.length ? anios : [anioActual]).map((a) => (
-                            <option key={a} value={a}>
-                                {a}
-                            </option>
-                        ))}
-                    </Select>
-                </label>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Desde</span>
-                    <Input type="date" className="h-9 w-auto" value={filtros.fechaInicio} onChange={(e) => cambiar("fechaInicio", e.target.value)} />
-                </label>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Hasta</span>
-                    <Input type="date" className="h-9 w-auto" value={filtros.fechaFin} onChange={(e) => cambiar("fechaFin", e.target.value)} />
-                </label>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Estado</span>
-                    <Select value={filtros.estado} onChange={(e) => cambiar("estado", e.target.value)}>
-                        <option value="">Todos</option>
-                        {ESTADOS.map((e) => (
-                            <option key={e} value={e}>
-                                {e}
-                            </option>
-                        ))}
-                    </Select>
-                </label>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Sede</span>
-                    <Select value={filtros.idSede} onChange={(e) => cambiar("idSede", e.target.value)}>
-                        <option value="">Todas</option>
-                        {sedes.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.nombre}
-                            </option>
-                        ))}
-                    </Select>
-                </label>
-                <label className="space-y-1 text-[11.5px] font-medium">
-                    <span className="block">Estudio</span>
-                    <Select value={filtros.idTipoEstudio} onChange={(e) => cambiar("idTipoEstudio", e.target.value)}>
-                        <option value="">Todos</option>
-                        {tipos.map((t) => (
-                            <option key={t.id} value={t.id}>
-                                {t.nombreTipoEstudio}
-                            </option>
-                        ))}
-                    </Select>
-                </label>
-                {hayFiltrosExtra && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setFiltros((f) => ({ ...f, fechaInicio: "", fechaFin: "", estado: "", idSede: "", idTipoEstudio: "" }))}
-                    >
-                        <X size={14} /> Limpiar
+                    <Button size="sm" asChild>
+                        <Link href="/admisiones/ordenes">
+                            <ClipboardPlus size={14} /> Nueva orden
+                        </Link>
                     </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={cargar} disabled={cargando} className="ml-auto">
-                    <RefreshCw size={14} className={cargando ? "animate-spin" : ""} />
-                    Actualizar Vista
-                </Button>
+                </div>
             </div>
 
             {aviso && (
-                <p className="flex items-center justify-between rounded-md bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800">
+                <p className="flex items-center justify-between rounded-md px-4 py-2.5 text-[13px]" style={{ background: "var(--status-success-bg)", color: "var(--status-success)" }}>
                     {aviso}
-                    <button type="button" onClick={() => setAviso(null)}>
+                    <button type="button" onClick={() => setAviso(null)} aria-label="Cerrar aviso">
                         <X size={14} />
                     </button>
                 </p>
             )}
 
-            <div className="overflow-x-auto rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/50">
-                            <TableHead className="w-8">
-                                <input type="checkbox" checked={todasMarcadas} onChange={toggleTodas} aria-label="Marcar todas" />
-                            </TableHead>
-                            <TableHead>
-                                <span className="inline-flex items-center gap-1.5">
-                                    <Hash className="h-3.5 w-3.5" />
-                                    Consecutivo
-                                </span>
-                            </TableHead>
-                            <TableHead>
-                                <span className="inline-flex items-center gap-1.5">
-                                    <User className="h-3.5 w-3.5" />
-                                    Paciente
-                                </span>
-                            </TableHead>
-                            <TableHead>
-                                <span className="inline-flex items-center gap-1.5">
-                                    <Building2 className="h-3.5 w-3.5" />
-                                    Entidad / Sub entidad
-                                </span>
-                            </TableHead>
-                            <TableHead>
-                                <span className="inline-flex items-center gap-1.5">
-                                    <TestTube2 className="h-3.5 w-3.5" />
-                                    Estudio / Espécimen
-                                </span>
-                            </TableHead>
-                            <TableHead>Sede</TableHead>
-                            <TableHead>Comentarios</TableHead>
-                            <TableHead className="text-center">Estado</TableHead>
-                            <TableHead className="text-center">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {cargando && resultado.data.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
-                                    <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
-                                    Consultando…
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {!cargando && resultado.data.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
-                                    No hay órdenes con estos filtros.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {resultado.data.map((f) => (
-                            <TableRow
-                                key={f.orden}
-                                className={`cursor-pointer align-top ${activa?.orden === f.orden ? "bg-blue-50/70" : "hover:bg-muted/40"}`}
-                                onClick={() => setActiva(f)}
-                                onDoubleClick={() => verInforme(f)}
-                            >
-                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                    <input type="checkbox" checked={seleccion.has(f.orden)} onChange={() => toggle(f.orden)} aria-label={`Marcar ${f.consecutivo}`} />
-                                </TableCell>
-                                <TableCell className="py-2.5">
-                                    <p className="font-bold">{f.consecutivo || f.orden}</p>
-                                    <p className="text-xs text-muted-foreground">{fechaCorta(f.fechaIngreso)}</p>
-                                </TableCell>
-                                <TableCell className="py-2.5">
-                                    <p className="font-semibold">{f.nombre}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {f.identificacion} · {f.sexo}
-                                        {f.edad !== null ? ` · ${f.edad} años` : ""}
-                                        {f.telefono ? ` · ${f.telefono}` : ""}
-                                    </p>
-                                    {f.correo && <p className="max-w-[220px] truncate text-xs text-muted-foreground">{f.correo}</p>}
-                                </TableCell>
-                                <TableCell className="py-2.5 text-xs">
-                                    <p className="font-medium">{f.entidad}</p>
-                                    <p className="text-muted-foreground">{f.subentidad}</p>
-                                </TableCell>
-                                <TableCell className="max-w-[260px] py-2.5 text-xs">
-                                    <p className="font-medium">{f.estudio}</p>
-                                    <p className="line-clamp-2 text-muted-foreground">{f.especimen}</p>
-                                </TableCell>
-                                <TableCell className="py-2.5 text-xs">{f.sede}</TableCell>
-                                <TableCell className="max-w-[200px] py-2.5 text-xs text-muted-foreground">
-                                    <span className="line-clamp-2">{f.comentarios}</span>
-                                </TableCell>
-                                <TableCell className="py-2.5 text-center">
-                                    <EstadoBadge estado={f.estado} />
-                                </TableCell>
-                                <TableCell className="py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                                    <div className="inline-flex items-center gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            title={firmado(f) ? "Ver informe" : "Ver informe preliminar"}
-                                            onClick={() => verInforme(f)}
-                                            disabled={trabajando === `inf-${f.orden}`}
-                                        >
-                                            {trabajando === `inf-${f.orden}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                                        </Button>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm" title="Más acciones">
-                                                    <MoreHorizontal className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => verInforme(f)}>
-                                                    <FileText size={14} /> {firmado(f) ? "Ver informe" : "Ver informe preliminar"}
-                                                </DropdownMenuItem>
-                                                {!["CV", "CB", "CR"].includes(f.prefijo) && firmado(f) && (
-                                                    <DropdownMenuItem onClick={() => verInforme(f, "PRELIMINAR")}>
-                                                        <FileText size={14} /> Formato preliminar
-                                                    </DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuItem onClick={() => reciboEntrega(f)}>
-                                                    <Receipt size={14} /> Recibo de entrega
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                {hasPermission("adjuntos") && (
-                                                    <DropdownMenuItem onClick={() => abrirDialogo(f, "adjuntos")}>
-                                                        <Paperclip size={14} /> Adjuntos
-                                                    </DropdownMenuItem>
-                                                )}
-                                                {hasPermission("adjuntarImagenes") && (
-                                                    <DropdownMenuItem onClick={() => abrirDialogo(f, "imagenes")}>
-                                                        <Camera size={14} /> Imágenes del estudio
-                                                    </DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuItem
-                                                    onClick={() => {
-                                                        if (!firmado(f)) {
-                                                            setError({ titulo: "Enviar Reporte", mensaje: "Debe Seleccionar una Orden Atendida" });
-                                                            return;
-                                                        }
-                                                        abrirDialogo(f, "correo");
-                                                    }}
-                                                >
-                                                    <Mail size={14} /> Enviar por correo
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
+            <Panel>
+                <div className="flex flex-wrap items-center gap-2 border-b p-3" style={{ borderColor: "var(--border-subtle)" }}>
+                    <div className="relative min-w-[240px] flex-1">
+                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "var(--ink-tertiary)" }} />
+                        <Input
+                            placeholder="Consecutivo, paciente, identificación, espécimen…"
+                            className="h-8 pl-8 text-[13px]"
+                            style={{ background: "var(--surface-inset)" }}
+                            value={filtros.q}
+                            onChange={(e) => cambiar("q", e.target.value)}
+                            aria-label="Buscar órdenes"
+                        />
+                        {cargando && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    </div>
+                    <div role="tablist" aria-label="Estado de la orden" className="flex h-8 overflow-hidden rounded-[5px] border" style={{ borderColor: "var(--border-default)" }}>
+                        {["", ...ESTADOS].map((e) => {
+                            const activo = filtros.estado === e;
+                            return (
+                                <button
+                                    key={e || "todas"}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={activo}
+                                    onClick={() => cambiar("estado", e)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 border-r px-2.5 text-[12px] last:border-r-0",
+                                        activo ? "bg-[var(--ink-primary)] text-white" : "hover:bg-[var(--surface-inset)]",
+                                    )}
+                                    style={{ borderColor: "var(--border-default)", color: activo ? undefined : "var(--ink-secondary)" }}
+                                >
+                                    {ESTADO_TEXTO[e]}
+                                    {conteos[e] !== undefined && <span className="dato-mono text-[10.5px] opacity-70">{conteos[e].toLocaleString()}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2" style={{ borderColor: "var(--border-subtle)" }}>
+                    <FiltroCompacto etiqueta="Año">
+                        <Select selectClassName="h-8 text-[12.5px]" value={filtros.anio} onChange={(e) => cambiar("anio", e.target.value)} aria-label="Año">
+                            <option value="">Todos</option>
+                            {(anios.length ? anios : [anioActual]).map((a) => (
+                                <option key={a} value={a}>
+                                    {a}
+                                </option>
+                            ))}
+                        </Select>
+                    </FiltroCompacto>
+                    <FiltroCompacto etiqueta={<CalendarDays size={13} />}>
+                        <Input type="date" aria-label="Desde" className="h-8 w-auto text-[12.5px]" value={filtros.fechaInicio} onChange={(e) => cambiar("fechaInicio", e.target.value)} />
+                        <span style={{ color: "var(--ink-tertiary)" }}>–</span>
+                        <Input type="date" aria-label="Hasta" className="h-8 w-auto text-[12.5px]" value={filtros.fechaFin} onChange={(e) => cambiar("fechaFin", e.target.value)} />
+                    </FiltroCompacto>
+                    <FiltroCompacto etiqueta="Sede">
+                        <Select selectClassName="h-8 text-[12.5px]" value={filtros.idSede} onChange={(e) => cambiar("idSede", e.target.value)} aria-label="Sede">
+                            <option value="">Todas</option>
+                            {sedes.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.nombre}
+                                </option>
+                            ))}
+                        </Select>
+                    </FiltroCompacto>
+                    <FiltroCompacto etiqueta="Estudio">
+                        <Select selectClassName="h-8 text-[12.5px]" value={filtros.idTipoEstudio} onChange={(e) => cambiar("idTipoEstudio", e.target.value)} aria-label="Estudio">
+                            <option value="">Todos</option>
+                            {tipos.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.nombreTipoEstudio}
+                                </option>
+                            ))}
+                        </Select>
+                    </FiltroCompacto>
+                    {hayFiltrosExtra && (
+                        <Button variant="ghost" size="sm" onClick={() => setFiltros((f) => ({ ...f, fechaInicio: "", fechaFin: "", idSede: "", idTipoEstudio: "" }))}>
+                            <X size={14} /> Limpiar
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={cargar} disabled={cargando} className="ml-auto" title="Actualizar vista">
+                        <RefreshCw size={14} className={cargando ? "animate-spin" : ""} />
+                        Actualizar
+                    </Button>
+                </div>
 
-            <PaginationControls
-                page={resultado.page}
-                pageSize={resultado.pageSize}
-                total={resultado.total}
-                onPageChange={setPage}
-                opcionesTamano={[10, 20, 30, 50, 100, 200]}
-                onPageSizeChange={(n) => {
-                    setPage(1);
-                    setPageSize(n);
-                }}
-            />
+                {seleccion.size > 0 && (
+                    <div className="flex flex-wrap items-center gap-2.5 px-3 py-2 text-[12.5px] text-white" style={{ background: "var(--ink-primary)" }}>
+                        <strong>
+                            {seleccion.size} {seleccion.size === 1 ? "orden marcada" : "órdenes marcadas"}
+                        </strong>
+                        {hasPermission("imprimir") && (
+                            <button
+                                type="button"
+                                onClick={exportarLote}
+                                disabled={!!trabajando}
+                                className="flex h-7 items-center gap-1.5 rounded-[5px] border px-2.5 disabled:opacity-50"
+                                style={{ background: "#262b33", borderColor: "#363c46" }}
+                            >
+                                {trabajando === "lote" ? <Loader2 className="animate-spin" size={13} /> : <FileArchive size={13} />}
+                                Exportar lote PDF (.zip)
+                            </button>
+                        )}
+                        <button type="button" onClick={() => setSeleccion(new Set())} className="ml-auto h-7 px-2" style={{ color: "#9aa3af" }}>
+                            Quitar selección
+                        </button>
+                    </div>
+                )}
+
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-9">
+                                    <input type="checkbox" className="accent-[var(--clinical-500)]" checked={todasMarcadas} onChange={toggleTodas} aria-label="Marcar todas" />
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Hash className="h-3 w-3" />
+                                        Caso
+                                    </span>
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <User className="h-3 w-3" />
+                                        Paciente
+                                    </span>
+                                </TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <TestTube2 className="h-3 w-3" />
+                                        Estudio / Espécimen
+                                    </span>
+                                </TableHead>
+                                <TableHead>Sede</TableHead>
+                                <TableHead>
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Building2 className="h-3 w-3" />
+                                        Entidad · Subentidad
+                                    </span>
+                                </TableHead>
+                                <TableHead className="hidden 2xl:table-cell">Comentarios</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="w-[84px]">
+                                    <span className="sr-only">Acciones</span>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {cargando && resultado.data.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                                        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                                        Consultando…
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {!cargando && resultado.data.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                                        No hay órdenes con estos filtros.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {resultado.data.map((f) => {
+                                const marcada = seleccion.has(f.orden);
+                                return (
+                                    <TableRow
+                                        key={f.orden}
+                                        data-state={marcada ? "selected" : undefined}
+                                        className={cn("group cursor-pointer", activa?.orden === f.orden && !marcada && "bg-[var(--surface-inset)]")}
+                                        onClick={() => setActiva(f)}
+                                        onDoubleClick={() => verInforme(f)}
+                                    >
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                className="accent-[var(--clinical-500)]"
+                                                checked={marcada}
+                                                onChange={() => toggle(f.orden)}
+                                                aria-label={`Marcar ${f.consecutivo}`}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <p className="dato-mono text-[12.5px] font-semibold">{f.consecutivo || f.orden}</p>
+                                            <p className="dato-mono text-[11px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                {fechaCorta(f.fechaIngreso)}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell>
+                                            <p className="font-medium" style={{ color: "var(--ink-primary)" }}>
+                                                {f.nombre}
+                                            </p>
+                                            <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                <span className="dato-mono">{f.identificacion}</span> · {f.sexo}
+                                                {f.edad !== null ? ` · ${f.edad} a` : ""}
+                                                {f.telefono ? ` · ${f.telefono}` : ""}
+                                            </p>
+                                            {f.comentarios && (
+                                                <p className="max-w-[260px] truncate text-[11.5px] italic 2xl:hidden" style={{ color: "var(--ink-secondary)" }} title={f.comentarios}>
+                                                    {f.comentarios}
+                                                </p>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="max-w-[240px]">
+                                            <p>{f.estudio}</p>
+                                            <p className="truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }} title={f.especimen}>
+                                                {f.especimen}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell>{f.sede && <Etiqueta>{f.sede}</Etiqueta>}</TableCell>
+                                        <TableCell>
+                                            <p>{f.entidad}</p>
+                                            <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                {f.subentidad || "—"}
+                                            </p>
+                                        </TableCell>
+                                        <TableCell className="hidden max-w-[180px] text-[12px] 2xl:table-cell" style={{ color: "var(--ink-secondary)" }}>
+                                            <span className="line-clamp-2 whitespace-normal">{f.comentarios}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <EstadoOrden estado={f.estado} />
+                                        </TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-0.5 opacity-60 transition-opacity group-hover:opacity-100 group-data-[state=selected]:opacity-100">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon-sm"
+                                                    title={firmado(f) ? "Ver informe" : "Ver informe preliminar"}
+                                                    aria-label={firmado(f) ? "Ver informe" : "Ver informe preliminar"}
+                                                    onClick={() => verInforme(f)}
+                                                    disabled={trabajando === `inf-${f.orden}`}
+                                                >
+                                                    {trabajando === `inf-${f.orden}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon-sm" title="Más acciones" aria-label="Más acciones">
+                                                            <MoreHorizontal className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => verInforme(f)}>
+                                                            <FileText size={14} /> {firmado(f) ? "Ver informe" : "Ver informe preliminar"}
+                                                        </DropdownMenuItem>
+                                                        {!["CV", "CB", "CR"].includes(f.prefijo) && firmado(f) && (
+                                                            <DropdownMenuItem onClick={() => verInforme(f, "PRELIMINAR")}>
+                                                                <FileText size={14} /> Formato preliminar
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuItem onClick={() => reciboEntrega(f)}>
+                                                            <Receipt size={14} /> Recibo de entrega
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        {hasPermission("adjuntos") && (
+                                                            <DropdownMenuItem onClick={() => abrirDialogo(f, "adjuntos")}>
+                                                                <Paperclip size={14} /> Adjuntos
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {hasPermission("adjuntarImagenes") && (
+                                                            <DropdownMenuItem onClick={() => abrirDialogo(f, "imagenes")}>
+                                                                <Camera size={14} /> Imágenes del estudio
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                if (!firmado(f)) {
+                                                                    setError({ titulo: "Enviar Reporte", mensaje: "Debe Seleccionar una Orden Atendida" });
+                                                                    return;
+                                                                }
+                                                                abrirDialogo(f, "correo");
+                                                            }}
+                                                        >
+                                                            <Mail size={14} /> Enviar por correo
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+
+                <PaginationControls
+                    className="border-t px-3 py-2.5"
+                    page={resultado.page}
+                    pageSize={resultado.pageSize}
+                    total={resultado.total}
+                    onPageChange={setPage}
+                    opcionesTamano={[10, 20, 30, 50, 100, 200]}
+                    onPageSizeChange={(n) => {
+                        setPage(1);
+                        setPageSize(n);
+                    }}
+                />
+            </Panel>
 
             <AdjuntosDialog
                 open={dialogo === "adjuntos"}
@@ -567,5 +660,15 @@ export default function ConsultarOrdenesPage() {
             />
             <ErrorDialog open={!!error} onOpenChange={(o) => !o && setError(null)} titulo={error?.titulo} mensaje={error?.mensaje} detalles={error?.detalles} />
         </div>
+    );
+}
+
+/** Filtro con etiqueta corta a la izquierda, en una sola línea. */
+function FiltroCompacto({ etiqueta, children }: { etiqueta: React.ReactNode; children: React.ReactNode }) {
+    return (
+        <label className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--ink-secondary)" }}>
+            <span className="shrink-0">{etiqueta}</span>
+            {children}
+        </label>
     );
 }

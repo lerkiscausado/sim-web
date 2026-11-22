@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-manrope), var(--font-geist-sans), ui-sans-serif, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --color-portal-primary: #e5322b;
   --color-portal-bg-light: #f6f7f8;
 
@@ -61,18 +61,18 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  /* Portal-primary red */
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  /* Rojo de marca SIM (#e5322b) para la acción principal */
+  --primary: #e5322b;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f2f4;
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7380;
+  --accent: #f1f2f4;
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
+  --border: #e0e3e8;
+  --input: #e0e3e8;
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -114,24 +114,24 @@
   --slate-50: #f8fafc;
 
   /* Ink (text hierarchy) */
-  --ink-primary: #111827;
-  --ink-secondary: #475569;
-  --ink-tertiary: #94a3b8;
-  --ink-muted: #cbd5e1;
+  --ink-primary: #111418;
+  --ink-secondary: #4a5260;
+  --ink-tertiary: #8a93a1;
+  --ink-muted: #c3c9d2;
   --ink-inverse: #ffffff;
-  --ink-brand: #e5322b;
+  --ink-brand: #c4241e;
 
   /* Surfaces */
-  --surface-canvas: #eef2f7;
-  --surface-base: #f8fafc;
+  --surface-canvas: #f3f4f6;
+  --surface-base: #f8f9fa;
   --surface-raised: #ffffff;
   --surface-overlay: #ffffff;
-  --surface-inset: #e8ecf2;
+  --surface-inset: #f6f7f9;
 
   /* Borders */
-  --border-subtle: #e8ecf2;
-  --border-default: #dde3ec;
-  --border-strong: #c4cdd9;
+  --border-subtle: #eceef1;
+  --border-default: #e0e3e8;
+  --border-strong: #c9ced6;
   --border-focus: #e5322b;
 
   /* Navigation (light) */
@@ -144,15 +144,27 @@
   --nav-indicator: #e5322b;
   --nav-dropdown: #ffffff;
   --nav-border: #e8ecf2;
-  --nav-height: 56px;
+  --nav-height: 52px;
+
+  /* Menú lateral (grafito clínico) */
+  --rail-width: 240px;
+  --rail-surface: #15191f;
+  --rail-surface-2: #1d232b;
+  --rail-ink: #8b95a3;
+  --rail-ink-active: #f1f3f6;
+  --rail-ink-group: #5f6976;
+  --rail-line: #262d36;
+  --rail-count: #2a323c;
 
   /* Status */
-  --status-success: #15803d;
-  --status-warning: #b45309;
+  --status-success: #157f3d;
+  --status-warning: #a15c07;
   --status-danger: #b91c1c;
-  --status-success-bg: #f0fdf4;
-  --status-warning-bg: #fffbeb;
+  --status-success-bg: #e7f5ec;
+  --status-warning-bg: #fdf3e1;
   --status-danger-bg: #fef2f2;
+  --status-info: #1e5fb4;
+  --status-info-bg: #e8f0fb;
 
   /* Shadows */
   --shadow-overlay: 0 4px 20px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
@@ -160,8 +172,8 @@
   --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
 
   /* Control tokens */
-  --control-bg: #eef2f7;
-  --control-border: #dde3ec;
+  --control-bg: #f6f7f9;
+  --control-border: #e0e3e8;
   --radius-xs: calc(var(--radius) - 8px);
   --radius-full: 9999px;
   --radius: 0.625rem;
@@ -175,7 +187,8 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-size: 13.5px;
   }
 
   .material-symbols-outlined {
@@ -227,6 +240,39 @@ h4 {
   letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+/* Números de caso, documentos y cifras: monoespaciado con cifras tabulares. */
+.dato-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Encabezado de módulo: etiqueta, título y descripción. */
+.eyebrow {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-brand);
+}
+
+/*
+ * Encabezado de módulo (sin caja): etiqueta del grupo, título y descripción,
+ * con las acciones a la derecha. Se usa en la parte superior de cada página.
+ */
+.encabezado-modulo {
+  padding: 0 0 4px;
+}
+.encabezado-modulo .label-clinical {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.encabezado-modulo h1 {
+  font-size: 22px;
+  letter-spacing: -0.02em;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────────── */
@@ -297,4 +343,7 @@ h4 {
 .campo-invalido input[type="checkbox"] {
   outline: 2px solid var(--destructive);
   outline-offset: 1px;
+}
+.campo-invalido .resultado-seg button {
+  border-color: var(--destructive) !important;
 }

@@ -405,10 +405,7 @@ export default function HistoriaClinicaPage() {
     if (vista === "informe" && ordenActiva) {
         return (
             <div className="space-y-5">
-                <div
-                    className="flex items-center justify-between rounded-lg border px-6 py-5"
-                    style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-                >
+                <div className="flex items-center justify-between encabezado-modulo">
                     <div>
                         <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                             Atenciones · Historia Clínica
@@ -860,10 +857,7 @@ export default function HistoriaClinicaPage() {
 
     return (
         <div className="space-y-5">
-            <div
-                className="flex items-center justify-between rounded-lg border px-6 py-5"
-                style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-            >
+            <div className="flex items-center justify-between encabezado-modulo">
                 <div>
                     <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                         Atenciones

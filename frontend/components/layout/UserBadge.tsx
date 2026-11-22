@@ -1,17 +1,28 @@
 "use client";
 
-import { User, ChevronDown, LogOut, Settings } from "lucide-react";
+import { User, ChevronsUpDown, LogOut, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useResumen } from "@/lib/resumen";
+import { nombrePropio } from "@/lib/utils";
 
+/** Usuario en el pie del menú lateral; el menú (perfil, preferencias, salir) se abre hacia arriba. */
 export function UserBadge() {
     const { user, logout } = useAuth();
+    const { resumen } = useResumen();
     const router = useRouter();
     const [open, setOpen] = useState(false);
 
-    const initials = (user?.usuario ?? "??").slice(0, 2).toUpperCase();
+    const nombre = nombrePropio(resumen?.empleado) || user?.usuario || "";
+    const initials =
+        nombre
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((p) => p[0])
+            .join("")
+            .toUpperCase() || "??";
     const roleLabel = user?.admin ? "Administrador" : "Usuario del sistema";
 
     useEffect(() => {
@@ -27,64 +38,38 @@ export function UserBadge() {
         <div className="relative">
             <button
                 onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full"
-                style={{
-                    padding: "4px 10px 4px 4px",
-                    background: open ? "var(--nav-hover)" : "transparent",
-                    border: "0px solid var(--border-default)",
-                    borderRadius: "var(--radius-full)",
-                }}
+                className="flex w-full items-center gap-2.5 rounded-[5px] px-2 py-1.5 text-left hover:bg-[var(--rail-surface-2)]"
+                style={{ background: open ? "var(--rail-surface-2)" : undefined }}
                 aria-expanded={open}
                 aria-haspopup="true"
                 type="button"
             >
-                {/* Avatar — round with initials */}
                 <span
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
-                    style={{
-                        background: "var(--clinical-100)",
-                        color: "var(--clinical-700)",
-                    }}
+                    className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-[11.5px] font-semibold"
+                    style={{ background: "#3a2523", color: "#f6c6c3" }}
                 >
                     {initials}
                 </span>
-
-                {/* Name + role — desktop only */}
-                <span className="hidden lg:flex flex-col items-start leading-tight">
-                    <span className="font-semibold text-[12.5px]" style={{ color: "var(--ink-primary)" }}>
-                        {user?.usuario}
+                <span className="flex min-w-0 flex-1 flex-col leading-tight">
+                    <span className="truncate text-[12.5px] font-medium" style={{ color: "var(--rail-ink-active)" }}>
+                        {nombre}
                     </span>
-                    <span className="text-[11px]" style={{ color: "var(--ink-secondary)" }}>
-                        {roleLabel}
-                    </span>
+                    <span className="truncate text-[11px]">{resumen?.empleado && user?.usuario ? `${user.usuario} · ${roleLabel}` : roleLabel}</span>
                 </span>
-
-                <ChevronDown
-                    size={12}
-                    className={cn("ml-0.5", open ? "rotate-180" : "")}
-                    style={{ color: "var(--ink-tertiary)" }}
-                />
+                <ChevronsUpDown size={13} className="shrink-0 opacity-60" />
             </button>
 
             {open && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                     <div
-                        className="absolute right-0 top-full z-50 mt-1.5 w-56 overflow-hidden rounded-lg border py-1"
+                        className="absolute bottom-full left-0 right-0 z-50 mb-1.5 overflow-hidden rounded-lg border py-1"
                         style={{
-                            background: "var(--nav-dropdown)",
+                            background: "var(--surface-overlay)",
                             borderColor: "var(--border-default)",
                             boxShadow: "var(--shadow-overlay)",
                         }}
                     >
-                        <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
-                            <p className="text-[12.5px] font-semibold" style={{ color: "var(--ink-primary)" }}>
-                                {user?.usuario}
-                            </p>
-                            <p className="text-[11.5px] mt-0.5" style={{ color: "var(--ink-secondary)" }}>
-                                {roleLabel}
-                            </p>
-                        </div>
                         <div className="py-1">
                             {[
                                 { label: "Mi Perfil", icon: User, href: "/perfil" },

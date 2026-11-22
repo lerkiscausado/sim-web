@@ -1,17 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Save, PenLine, Camera, BookOpenText, Paperclip } from "lucide-react";
+import { FileDown, Loader2, Microscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Save, PenLine, Camera, BookOpenText, Paperclip, Check, CircleAlert, ExternalLink, CloudCheck } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion, type Regla } from "@/lib/validacion";
-import { abrirPdf } from "@/lib/descargas";
+import { abrirPdf, pedirArchivo } from "@/lib/descargas";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor, htmlToPlainText } from "@/components/ui/rich-text-editor";
-import { Badge } from "@/components/ui/badge";
 import { ErrorDialog } from "@/components/ui/error-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -19,7 +18,10 @@ import { ImagenesDialog } from "@/components/ordenes/ImagenesDialog";
 import { AdjuntosDialog } from "@/components/ordenes/AdjuntosDialog";
 import type { OrdenPendiente, PlantillaPatologia, DiagnosticoCie10, InformePatologia, UpsertPatologiaPayload, EstudioAnterior } from "./types";
 import { nombrePaciente, calcularEdad } from "./types";
-import { hoyISO } from "@/lib/fechas";
+import { hoyISO, diasHabilesDesde, PLAZO_DIAS_HABILES } from "@/lib/fechas";
+import { useResumen } from "@/lib/resumen";
+import { Etiqueta, Panel, PanelHeader, Pildora } from "@/components/ui/panel";
+import { cn } from "@/lib/utils";
 import { useFeedback } from "@/components/ui/feedback";
 import { Select } from "@/components/ui/select";
 import { Buscador } from "@/components/ui/buscador";
@@ -69,7 +71,6 @@ export default function PatologiasPage() {
     const [cie10Resultados, setCie10Resultados] = useState<DiagnosticoCie10[]>([]);
     const [cie10Nombre, setCie10Nombre] = useState("");
     const [guardando, setGuardando] = useState(false);
-    const [firmar, setFirmar] = useState(false);
     const [confirmarFirma, setConfirmarFirma] = useState(false);
     const [generandoPdf, setGenerandoPdf] = useState(false);
     const [errorDlg, setErrorDlg] = useState<{ titulo: string; mensaje?: string; detalles?: string[] } | null>(null);
@@ -78,6 +79,11 @@ export default function PatologiasPage() {
     const [estudiosAnteriores, setEstudiosAnteriores] = useState<EstudioAnterior[]>([]);
     const [dialogo, setDialogo] = useState<"imagenes" | "adjuntos" | null>(null);
     const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-patologias");
+    const { refrescar: refrescarResumen } = useResumen();
+    /** Vista previa del informe (PDF real del servidor) dentro de la página. */
+    const [previa, setPrevia] = useState<{ url: string } | null>(null);
+    const [generandoPrevia, setGenerandoPrevia] = useState(false);
+    const ordenDeUrl = useRef<number | null>(null);
     const { confirmar, avisar } = useFeedback();
     useAvisoSalida(cambios);
 
@@ -168,7 +174,7 @@ export default function PatologiasPage() {
             return;
         setOrdenActiva(orden);
         setInformeGuardado(null);
-        setFirmar(false);
+        setPrevia(null);
         v.reiniciar();
         setForm({ ...FORM_INICIAL, idEspecimen: orden.idEspecimen, tipoMuestra: orden.especimen?.nombre ?? "" });
         setCie10Query("");
@@ -285,12 +291,16 @@ export default function PatologiasPage() {
         }
     }
 
-    async function onGuardar() {
-        exigirFirma.current = firmar;
-        const ok = await guardar();
-        if (!ok) return;
-        if (firmar) setConfirmarFirma(true);
-        else avisar.exito("Estudio guardado.");
+    /** Guarda sin firmar: solo exige el espécimen. */
+    async function guardarBorrador() {
+        exigirFirma.current = false;
+        if (await guardar()) avisar.exito("Estudio guardado.");
+    }
+
+    /** Guarda exigiendo los campos de firma (como bbiGuardar con chkProcesado) y pide confirmar la firma. */
+    async function guardarYFirmar() {
+        exigirFirma.current = true;
+        if (await guardar()) setConfirmarFirma(true);
     }
 
     async function firmarEstudio() {
@@ -304,6 +314,7 @@ export default function PatologiasPage() {
             setOrdenActiva(null);
             setError(null);
             avisar.exito("Estudio firmado. La orden pasó a ATENDIDO.");
+            refrescarResumen();
             await cargarPendientes(searchTerm, idSede);
         } catch (err) {
             setErrorDlg({
@@ -333,6 +344,46 @@ export default function PatologiasPage() {
             setGenerandoPdf(false);
         }
     }
+
+    /** Genera el PDF con el formato de la sede y lo muestra en el panel de vista previa. */
+    async function generarPrevia() {
+        if (!ordenActiva) return;
+        if (cambios || !informeGuardado) {
+            exigirFirma.current = false;
+            const ok = await guardar();
+            if (!ok) return;
+        }
+        setGenerandoPrevia(true);
+        try {
+            const { blob } = await pedirArchivo(`/atenciones/patologia/orden/${ordenActiva.id}/pdf?variante=final`);
+            const url = URL.createObjectURL(blob);
+            setPrevia((ant) => {
+                if (ant) URL.revokeObjectURL(ant.url);
+                return { url };
+            });
+        } catch (err) {
+            setErrorDlg({ titulo: "No se pudo generar la vista previa", mensaje: err instanceof ApiError ? err.message : "Error" });
+        } finally {
+            setGenerandoPrevia(false);
+        }
+    }
+
+    useEffect(() => () => {
+        if (previa) URL.revokeObjectURL(previa.url);
+    }, [previa]);
+
+    // Abre directamente la orden indicada en la URL (/atenciones/patologias?orden=123), p. ej. desde el Inicio.
+    useEffect(() => {
+        if (ordenDeUrl.current === null) {
+            ordenDeUrl.current = Number(new URLSearchParams(window.location.search).get("orden")) || 0;
+        }
+        if (!ordenDeUrl.current || loading || vista !== "listado") return;
+        const o = pendientes.find((x) => x.id === ordenDeUrl.current);
+        ordenDeUrl.current = 0;
+        window.history.replaceState(null, "", window.location.pathname);
+        if (o) abrirOrden(o);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al terminar la primera carga
+    }, [loading, pendientes]);
 
     async function verAnterior(e: EstudioAnterior) {
         try {
@@ -379,114 +430,101 @@ export default function PatologiasPage() {
 
     if (vista === "informe" && ordenActiva) {
         const p = ordenActiva.paciente;
+        const requisitos: { texto: string; ok: boolean; valor?: string }[] = [
+            { texto: "Espécimen", ok: !!form.tipoMuestra.trim(), valor: form.tipoMuestra.trim() || undefined },
+            { texto: "Impresión diagnóstica", ok: !!form.impresionDiagnostica.trim() },
+            { texto: "Resultado", ok: !!form.resultado, valor: form.resultado || undefined },
+            { texto: "Diagnóstico CIE10", ok: !!form.codigoDiagnostico.trim(), valor: form.codigoDiagnostico.trim() || undefined },
+            { texto: "Descripción del estudio", ok: !!htmlToPlainText(form.descripcion).trim() },
+        ];
+        const completos = requisitos.filter((r) => r.ok).length;
+        const dias = diasHabilesDesde(ordenActiva.fechaIngreso);
         return (
-            <div className="space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-6 py-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+            <div className="space-y-4">
+                <Panel className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">
                     <div>
-                        <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
-                            Atenciones · Patologías
-                        </span>
-                        <h1 style={{ color: "var(--ink-primary)" }}>
-                            {ordenActiva.consecutivo || ordenActiva.id} | {nombrePaciente(p).toUpperCase()}
-                            {p ? ` | ${calcularEdad(p.fechaNacimiento)} años` : ""}
-                        </h1>
-                        <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                            {ordenActiva.tipoEstudio?.nombreTipoEstudio ?? "Estudio"} · Ingreso {ordenActiva.fechaIngreso}
-                            {ordenActiva.sede ? ` · Sede ${ordenActiva.sede.nombre}` : ""}
-                            {cambios && <span className="ml-2 font-medium text-amber-700">· cambios sin guardar</span>}
+                        <p className="eyebrow">Informe de patología</p>
+                        <p className="dato-mono mt-0.5 text-[20px] font-semibold leading-tight" style={{ color: "var(--ink-primary)" }}>
+                            {ordenActiva.consecutivo || ordenActiva.id}
                         </p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={volverAlListado}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Pacientes por atender
-                    </Button>
-                </div>
-
-                <div className="grid grid-cols-10 gap-4">
-                    <div className="col-span-10 space-y-4 lg:col-span-3">
-                        <PacienteCard p={p} />
-
-                        {plantillas.length > 0 && (
-                            <div className="rounded-lg border p-4" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                                <label className="flex items-center gap-1.5 text-[13px] font-medium">
-                                    <BookOpenText size={14} /> Aplicar plantilla al estudio
-                                </label>
-                                <div className="relative mt-1.5">
-                                    <Buscador
-                                        conIcono
-                                        aria-label="Buscar plantilla"
-                                        placeholder="Buscar plantilla…"
-                                        texto={plantillaQuery}
-                                        onTexto={setPlantillaQuery}
-                                        resultados={plantillasFiltradas}
-                                        claveDe={(pl) => pl.id}
-                                        textoDe={(pl) => pl.nombre}
-                                        onElegir={(pl) => {
-                                            aplicarPlantilla(pl);
-                                            setPlantillaQuery(pl.nombre);
-                                        }}
-                                        sinResultados="Ninguna plantilla coincide."
-                                        minCaracteres={1}
-                                        claseLista="max-h-72"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
-                            <p className="border-b px-4 py-3 text-[12.5px] font-medium" style={{ borderColor: "var(--border-default)" }}>
-                                Estudios Anteriores
-                            </p>
-                            {estudiosAnteriores.length === 0 ? (
-                                <p className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">Este paciente no tiene estudios anteriores firmados.</p>
-                            ) : (
-                                <Table>
-                                    <TableBody>
-                                        {estudiosAnteriores.map((e) => (
-                                            <TableRow key={e.id}>
-                                                <TableCell className="py-2.5">
-                                                    <p className="text-sm font-bold">{e.orden.consecutivo || e.orden.id}</p>
-                                                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                        <CalendarDays className="h-3 w-3" />
-                                                        {e.orden.fechaIngreso}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell className="text-xs">
-                                                    {e.orden.tipoEstudio?.nombreTipoEstudio ?? ""}
-                                                    {e.descripcionMacroscopica ? <span className="block text-muted-foreground">{e.descripcionMacroscopica}</span> : null}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="sm" title="Vista previa del informe" onClick={() => verAnterior(e)}>
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </div>
+                    <span className="hidden h-10 w-px md:block" style={{ background: "var(--border-default)" }} />
+                    <DatoCaso etiqueta="Paciente" valor={nombrePaciente(p)} />
+                    {p && <DatoCaso etiqueta="Identificación" valor={`${p.idTipoIdentificacion} ${p.identificacion}`} mono />}
+                    {p && <DatoCaso etiqueta="Edad · sexo" valor={`${calcularEdad(p.fechaNacimiento)} años · ${p.sexo}`} />}
+                    <DatoCaso etiqueta="Estudio" valor={ordenActiva.tipoEstudio?.nombreTipoEstudio ?? "—"} />
+                    {ordenActiva.sede && <DatoCaso etiqueta="Sede" valor={ordenActiva.sede.nombre} />}
+                    <DatoCaso
+                        etiqueta="Ingreso"
+                        valor={
+                            <>
+                                <span className="dato-mono">{ordenActiva.fechaIngreso}</span>{" "}
+                                <span style={{ color: dias > PLAZO_DIAS_HABILES ? "var(--clinical-600)" : "var(--ink-tertiary)", fontWeight: dias > PLAZO_DIAS_HABILES ? 600 : 400 }}>
+                                    ({dias} {dias === 1 ? "día hábil" : "días hábiles"})
+                                </span>
+                            </>
+                        }
+                    />
+                    <div className="ml-auto flex items-center gap-3">
+                        <span className="flex items-center gap-1.5 text-[12px]" style={{ color: cambios ? "var(--status-warning)" : "var(--ink-tertiary)" }} aria-live="polite">
+                            {cambios ? <CircleAlert size={14} /> : <CloudCheck size={14} />}
+                            {cambios ? "Cambios sin guardar" : informeGuardado ? "Guardado" : "Sin informe aún"}
+                        </span>
+                        <Button variant="outline" size="sm" onClick={volverAlListado}>
+                            <ArrowLeft size={14} />
+                            Pacientes por atender
+                        </Button>
                     </div>
+                </Panel>
 
-                    <div className="col-span-10 space-y-4 lg:col-span-7">
-                        <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+                    <Panel>
+                        <PanelHeader titulo="Informe" icono={<Microscope size={15} style={{ color: "var(--ink-tertiary)" }} />}>
+                            {hasPermission("adjuntarImagenes") && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setDialogo("imagenes")}>
+                                    <Camera size={14} /> Imágenes
+                                </Button>
+                            )}
+                            {hasPermission("adjuntos") && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setDialogo("adjuntos")}>
+                                    <Paperclip size={14} /> Adjuntos
+                                </Button>
+                            )}
+                        </PanelHeader>
+                        <div className="space-y-4 p-5">
+                            {plantillas.length > 0 && (
+                                <div className="flex flex-wrap items-center gap-3 rounded-[7px] border border-dashed px-3.5 py-3" style={{ borderColor: "var(--border-strong)", background: "#fbfaf7" }}>
+                                    <BookOpenText size={17} style={{ color: "var(--ink-brand)" }} />
+                                    <div className="min-w-[160px] flex-1">
+                                        <p className="text-[13px] font-medium">Plantilla de patología</p>
+                                        <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                            Reemplaza la descripción del estudio. Después puede editarla libremente.
+                                        </p>
+                                    </div>
+                                    <div className="relative w-full sm:w-72">
+                                        <Buscador
+                                            conIcono
+                                            aria-label="Buscar plantilla"
+                                            placeholder="Buscar plantilla…"
+                                            texto={plantillaQuery}
+                                            onTexto={setPlantillaQuery}
+                                            resultados={plantillasFiltradas}
+                                            claveDe={(pl) => pl.id}
+                                            textoDe={(pl) => pl.nombre}
+                                            onElegir={(pl) => {
+                                                aplicarPlantilla(pl);
+                                                setPlantillaQuery(pl.nombre);
+                                            }}
+                                            sinResultados="Ninguna plantilla coincide."
+                                            minCaracteres={1}
+                                            claseLista="max-h-72"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium">Consecutivo</label>
-                                    <Input value={ordenActiva.consecutivo} disabled />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium">Estudio</label>
-                                    <Input value={ordenActiva.tipoEstudio?.nombreTipoEstudio ?? ""} disabled />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[13px] font-medium">Fecha ingreso</label>
-                                    <Input value={ordenActiva.fechaIngreso} disabled />
-                                </div>
-                                <Campo label="Fecha salida" nombre="fechaSalida" error={v.error("fechaSalida")}>
-                                    <Input type="date" value={form.fechaSalida} onChange={(e) => set("fechaSalida", e.target.value)} />
-                                </Campo>
-                                <Campo label="Material enviado o espécimen" nombre="tipoMuestra" error={v.error("tipoMuestra")} requerido className="col-span-2 md:col-span-4">
+                                <Campo label="Material enviado o espécimen" nombre="tipoMuestra" error={v.error("tipoMuestra")} requerido className="col-span-2 md:col-span-3">
                                     <EspecimenPicker
                                         valor={form.tipoMuestra}
                                         onElegir={(e) => {
@@ -495,30 +533,53 @@ export default function PatologiasPage() {
                                         }}
                                     />
                                 </Campo>
+                                <Campo label="Fecha salida" nombre="fechaSalida" error={v.error("fechaSalida")} className="col-span-2 md:col-span-1">
+                                    <Input type="date" value={form.fechaSalida} onChange={(e) => set("fechaSalida", e.target.value)} />
+                                </Campo>
                                 <Campo label="Sitio lesión" nombre="sitioLesion" error={v.error("sitioLesion")} className="col-span-2">
                                     <Input value={form.sitioLesion} maxLength={50} onChange={(e) => set("sitioLesion", e.target.value)} />
                                 </Campo>
                                 <Campo label="Solicitado por (Remitente)" nombre="solicitado" error={v.error("solicitado")} className="col-span-2">
                                     <Input value={form.solicitado} maxLength={50} placeholder="Dr: " onChange={(e) => set("solicitado", e.target.value)} />
                                 </Campo>
-                                <Campo label="Impresión diagnóstica" nombre="impresionDiagnostica" error={v.error("impresionDiagnostica")} requerido={firmar} className="col-span-2 md:col-span-3">
-                                    <Input value={form.impresionDiagnostica} onChange={(e) => set("impresionDiagnostica", e.target.value.toUpperCase())} />
-                                </Campo>
-                                <Campo label="Resultado" nombre="resultado" error={v.error("resultado")} requerido={firmar}>
-                                    <Select
-                                        className="w-full"
-                                        selectClassName={`font-semibold ${form.resultado === "POSITIVO" ? "text-red-700" : ""}`}
-                                        value={form.resultado}
-                                        onChange={(e) => set("resultado", e.target.value)}
-                                    >
-                                        <option value="">—</option>
-                                        <option value="NEGATIVO">NEGATIVO</option>
-                                        <option value="POSITIVO">POSITIVO</option>
-                                    </Select>
-                                </Campo>
                             </div>
 
-                            <Campo label="Diagnóstico CIE10" nombre="codigoDiagnostico" error={v.error("codigoDiagnostico")} requerido={firmar} className="relative mt-3">
+                            <Campo label="Impresión diagnóstica" nombre="impresionDiagnostica" error={v.error("impresionDiagnostica")} requerido>
+                                <Input value={form.impresionDiagnostica} onChange={(e) => set("impresionDiagnostica", e.target.value.toUpperCase())} />
+                            </Campo>
+
+                            <Campo label="Resultado" nombre="resultado" error={v.error("resultado")} requerido>
+                                <div role="radiogroup" aria-label="Resultado" className="resultado-seg grid grid-cols-2 gap-2">
+                                    {(
+                                        [
+                                            { valor: "NEGATIVO", texto: "NEGATIVO", color: "var(--status-success)", fondo: "var(--status-success-bg)" },
+                                            { valor: "POSITIVO", texto: "POSITIVO", color: "var(--clinical-600)", fondo: "var(--clinical-50)" },
+                                        ] as const
+                                    ).map((o) => {
+                                        const activo = form.resultado === o.valor;
+                                        return (
+                                            <button
+                                                key={o.valor}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={activo}
+                                                onClick={() => set("resultado", activo ? "" : o.valor)}
+                                                className="flex h-10 items-center justify-center gap-2 rounded-[5px] border text-[12.5px] font-semibold tracking-[0.04em] transition-colors"
+                                                style={{
+                                                    borderColor: activo ? o.color : "var(--border-default)",
+                                                    background: activo ? o.fondo : "var(--surface-raised)",
+                                                    color: activo ? o.color : "var(--ink-secondary)",
+                                                }}
+                                            >
+                                                {activo && <Check size={14} strokeWidth={3} />}
+                                                {o.texto}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </Campo>
+
+                            <Campo label="Diagnóstico CIE10" nombre="codigoDiagnostico" error={v.error("codigoDiagnostico")} requerido className="relative">
                                 <Buscador
                                     placeholder="Buscar por código o nombre…"
                                     texto={cie10Query}
@@ -535,68 +596,149 @@ export default function PatologiasPage() {
                                     onElegir={(d) => elegirCie10(d)}
                                     renderItem={(d) => (
                                         <>
-                                            <span className="font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
+                                            <span className="dato-mono font-semibold">{d.codigoDiagnostico}</span> — {d.nombreDiagnostico}
                                         </>
                                     )}
                                     sinResultados="No se encontraron diagnósticos."
                                 />
                                 {form.codigoDiagnostico && (
-                                    <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
-                                        {form.codigoDiagnostico} — {cie10Nombre || "(sin nombre)"}
+                                    <p className="flex items-center gap-2 text-[12px]" style={{ color: "var(--ink-secondary)" }}>
+                                        <Etiqueta className="dato-mono font-semibold" style={{ color: "var(--ink-primary)" }}>
+                                            {form.codigoDiagnostico}
+                                        </Etiqueta>
+                                        {cie10Nombre || "(sin nombre)"}
                                     </p>
                                 )}
                             </Campo>
 
-                            <Campo label="Descripción del estudio patológico" nombre="descripcion" error={v.error("descripcion")} requerido={firmar} className="mt-3">
+                            <Campo label="Descripción del estudio patológico" nombre="descripcion" error={v.error("descripcion")} requerido>
                                 <RichTextEditor key={editorKey.current} rows={16} value={form.descripcion} onChange={(html) => set("descripcion", html)} />
                             </Campo>
 
-                            <div className="mt-3 space-y-1.5">
+                            <div className="space-y-1.5">
                                 <label className="text-[13px] font-medium">Observaciones</label>
                                 <Textarea rows={2} value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} />
                             </div>
 
-                            <div className="mt-3">
-                                <ResumenErrores mensaje={v.resumen} />
-                            </div>
-
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <label className="mr-auto flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium">
-                                    <input
-                                        type="checkbox"
-                                        checked={firmar}
-                                        onChange={(e) => {
-                                            setFirmar(e.target.checked);
-                                            // Sin firma ya no aplican los campos obligatorios de firma.
-                                            if (!e.target.checked) {
-                                                exigirFirma.current = false;
-                                                v.reiniciar();
-                                            }
-                                        }}
-                                    />
-                                    Firmar estudio (procesado)
-                                </label>
-                                {hasPermission("adjuntarImagenes") && (
-                                    <Button type="button" variant="outline" onClick={() => setDialogo("imagenes")}>
-                                        <Camera size={14} /> Imágenes
-                                    </Button>
-                                )}
-                                {hasPermission("adjuntos") && (
-                                    <Button type="button" variant="outline" onClick={() => setDialogo("adjuntos")}>
-                                        <Paperclip size={14} /> Adjuntos
-                                    </Button>
-                                )}
-                                <Button type="button" variant="outline" onClick={vistaPreliminar} disabled={generandoPdf || guardando}>
-                                    {generandoPdf ? <Loader2 className="animate-spin" size={14} /> : <FileDown size={14} />}
-                                    Vista preliminar
-                                </Button>
-                                <Button onClick={onGuardar} disabled={guardando}>
-                                    {guardando ? <Loader2 className="animate-spin" size={14} /> : firmar ? <PenLine size={14} /> : <Save size={14} />}
-                                    {firmar ? "Guardar y firmar" : "Guardar"}
-                                </Button>
-                            </div>
+                            <ResumenErrores mensaje={v.resumen} />
                         </div>
-                    </div>
+                    </Panel>
+
+                    <aside className="flex flex-col gap-4 xl:sticky xl:top-0">
+                        <Panel>
+                            <PanelHeader titulo="Antes de firmar">
+                                <span className="dato-mono">
+                                    {completos} de {requisitos.length}
+                                </span>
+                            </PanelHeader>
+                            <ul className="py-1.5">
+                                {requisitos.map((r) => (
+                                    <li key={r.texto} className="flex items-center gap-2.5 px-4 py-1.5 text-[12.5px]">
+                                        <span
+                                            className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
+                                            style={{
+                                                background: r.ok ? "var(--status-success-bg)" : "var(--status-warning-bg)",
+                                                color: r.ok ? "var(--status-success)" : "var(--status-warning)",
+                                            }}
+                                            aria-hidden
+                                        >
+                                            {r.ok ? <Check size={11} strokeWidth={3} /> : <CircleAlert size={11} strokeWidth={2.5} />}
+                                        </span>
+                                        <span style={{ color: r.ok ? "var(--ink-primary)" : "var(--ink-secondary)" }}>{r.texto}</span>
+                                        <span className="sr-only">{r.ok ? "completo" : "pendiente"}</span>
+                                        {r.valor && (
+                                            <span className="ml-auto max-w-[150px] truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }} title={r.valor}>
+                                                {r.valor}
+                                            </span>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="space-y-2.5 border-t px-4 py-3.5" style={{ borderColor: "var(--border-subtle)" }}>
+                                <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                    Al firmar, el estudio queda a su nombre, ya no se puede modificar y la orden pasa a ATENDIDO.
+                                </p>
+                                <Button className="h-10 w-full text-[13px]" onClick={guardarYFirmar} disabled={guardando}>
+                                    {guardando ? <Loader2 className="animate-spin" size={15} /> : <PenLine size={15} />}
+                                    Guardar y firmar
+                                </Button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button variant="outline" size="sm" onClick={guardarBorrador} disabled={guardando}>
+                                        <Save size={14} /> Guardar
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={vistaPreliminar} disabled={generandoPdf || guardando} title="Abre el informe en una pestaña nueva">
+                                        {generandoPdf ? <Loader2 className="animate-spin" size={14} /> : <ExternalLink size={14} />}
+                                        Abrir PDF
+                                    </Button>
+                                </div>
+                            </div>
+                        </Panel>
+
+                        <Panel>
+                            <PanelHeader titulo="Vista previa" etiqueta={ordenActiva.sede ? <Etiqueta>Formato {ordenActiva.sede.nombre}</Etiqueta> : undefined}>
+                                {previa && (
+                                    <Button variant="ghost" size="icon-sm" title="Actualizar vista previa" aria-label="Actualizar vista previa" onClick={generarPrevia} disabled={generandoPrevia || guardando}>
+                                        <RefreshCw size={14} className={generandoPrevia ? "animate-spin" : ""} />
+                                    </Button>
+                                )}
+                            </PanelHeader>
+                            <div className="p-3" style={{ background: "#e9ebee" }}>
+                                {previa ? (
+                                    <div className="relative">
+                                        <iframe title="Vista previa del informe" src={`${previa.url}#toolbar=0&navpanes=0&view=FitH`} className="aspect-[8.5/11] w-full rounded-sm bg-white shadow-sm" />
+                                        {cambios && (
+                                            <button
+                                                type="button"
+                                                onClick={generarPrevia}
+                                                className="absolute inset-x-3 top-3 rounded-md px-3 py-2 text-[12px] font-medium shadow"
+                                                style={{ background: "var(--status-warning-bg)", color: "var(--status-warning)" }}
+                                            >
+                                                Hay cambios: guardar y actualizar la vista previa
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="flex aspect-[8.5/11] flex-col items-center justify-center gap-3 rounded-sm bg-white px-6 text-center shadow-sm">
+                                        <FileDown size={22} style={{ color: "var(--ink-muted)" }} />
+                                        <p className="text-[12.5px]" style={{ color: "var(--ink-secondary)" }}>
+                                            Vea el informe tal como saldrá impreso, con el formato de la sede de la orden.
+                                        </p>
+                                        <Button variant="outline" size="sm" onClick={generarPrevia} disabled={generandoPrevia || guardando}>
+                                            {generandoPrevia ? <Loader2 className="animate-spin" size={14} /> : <Eye size={14} />}
+                                            Guardar y ver vista previa
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </Panel>
+
+                        <PacienteCard p={p} />
+
+                        <Panel>
+                            <PanelHeader titulo="Estudios anteriores" etiqueta={estudiosAnteriores.length ? <Etiqueta>{estudiosAnteriores.length}</Etiqueta> : undefined} />
+                            {estudiosAnteriores.length === 0 ? (
+                                <p className="px-4 py-5 text-center text-[12.5px] text-muted-foreground">Este paciente no tiene estudios anteriores firmados.</p>
+                            ) : (
+                                <ul>
+                                    {estudiosAnteriores.map((e) => (
+                                        <li key={e.id} className="flex items-center gap-3 border-b px-4 py-2.5 last:border-b-0" style={{ borderColor: "var(--border-subtle)" }}>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="dato-mono text-[12.5px] font-semibold">{e.orden.consecutivo || e.orden.id}</p>
+                                                <p className="flex items-center gap-1 text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                    <CalendarDays className="h-3 w-3" />
+                                                    {e.orden.fechaIngreso} · {e.orden.tipoEstudio?.nombreTipoEstudio ?? ""}
+                                                </p>
+                                                {e.descripcionMacroscopica && <p className="truncate text-[12px]">{e.descripcionMacroscopica}</p>}
+                                            </div>
+                                            <Button variant="ghost" size="icon-sm" title="Ver informe" aria-label={`Ver informe ${e.orden.consecutivo}`} onClick={() => verAnterior(e)}>
+                                                <Eye className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Panel>
+                    </aside>
                 </div>
 
                 <ImagenesDialog
@@ -618,13 +760,13 @@ export default function PatologiasPage() {
 
     return (
         <div className="space-y-5">
-            <div className="flex items-center justify-between rounded-lg border px-6 py-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+            <div className="encabezado-modulo flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
+                    <span className="label-clinical inline-block" style={{ color: "var(--ink-brand)" }}>
                         Atenciones
                     </span>
                     <h1 style={{ color: "var(--ink-primary)" }}>Patologías</h1>
-                    <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                    <p className="mt-1 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                         Pacientes por atender · {pendientes.length} órdenes sin firmar
                     </p>
                 </div>
@@ -634,98 +776,130 @@ export default function PatologiasPage() {
                 </Button>
             </div>
 
-            {error && <p className="rounded-md bg-red-50 px-4 py-2.5 text-[13px] text-red-700">{error}</p>}
+            {error && (
+                <p className="rounded-md px-4 py-2.5 text-[13px]" style={{ background: "var(--status-danger-bg)", color: "var(--status-danger)" }}>
+                    {error}
+                </p>
+            )}
 
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Buscar por orden, nombre o identificación..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                    {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+            <Panel>
+                <div className="flex flex-wrap items-center gap-2 border-b p-3" style={{ borderColor: "var(--border-subtle)" }}>
+                    <div className="relative min-w-[240px] flex-1 sm:max-w-md">
+                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "var(--ink-tertiary)" }} />
+                        <Input
+                            placeholder="Buscar por orden, nombre o identificación..."
+                            aria-label="Buscar pacientes por atender"
+                            className="h-8 pl-8 text-[13px]"
+                            style={{ background: "var(--surface-inset)" }}
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        {loading && <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />}
+                    </div>
+                    {sedes.length > 1 && (
+                        <Select selectClassName="h-8 text-[12.5px]" value={idSede} onChange={(e) => setIdSede(e.target.value)} aria-label="Sede">
+                            <option value="">Todas las sedes</option>
+                            {sedes.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.nombre}
+                                </option>
+                            ))}
+                        </Select>
+                    )}
+                    <span className="ml-auto text-[12px]" style={{ color: "var(--ink-tertiary)" }}>
+                        Doble clic en una fila para informar
+                    </span>
                 </div>
-                {sedes.length > 1 && (
-                    <Select value={idSede} onChange={(e) => setIdSede(e.target.value)}>
-                        <option value="">Todas las sedes</option>
-                        {sedes.map((s) => (
-                            <option key={s.id} value={s.id}>
-                                {s.nombre}
-                            </option>
-                        ))}
-                    </Select>
-                )}
-            </div>
-
-            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
-                        <TableRow className="bg-muted/50">
+                        <TableRow>
                             <TableHead>
                                 <span className="inline-flex items-center gap-1.5">
-                                    <Hash className="h-3.5 w-3.5" />
+                                    <Hash className="h-3 w-3" />
                                     Orden
                                 </span>
                             </TableHead>
                             <TableHead>
                                 <span className="inline-flex items-center gap-1.5">
-                                    <User className="h-3.5 w-3.5" />
+                                    <User className="h-3 w-3" />
                                     Paciente
                                 </span>
                             </TableHead>
                             <TableHead>
                                 <span className="inline-flex items-center gap-1.5">
-                                    <TestTube2 className="h-3.5 w-3.5" />
+                                    <TestTube2 className="h-3 w-3" />
                                     Espécimen / Estudio
                                 </span>
                             </TableHead>
                             <TableHead>Sede</TableHead>
-                            <TableHead className="text-center">Estado</TableHead>
-                            <TableHead className="text-center">Acción</TableHead>
+                            <TableHead className="text-right" title="Días hábiles desde el ingreso">
+                                Espera
+                            </TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">
+                                <span className="sr-only">Acción</span>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {!loading && pendientes.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={6} className="py-8 text-center text-[13px] text-muted-foreground">
+                                <TableCell colSpan={7} className="py-8 text-center text-[13px] text-muted-foreground">
                                     No hay órdenes pendientes de informe.
                                 </TableCell>
                             </TableRow>
                         )}
                         {tablaPendientes.visibles.map((orden) => {
                             const p = orden.paciente;
+                            const dias = diasHabilesDesde(orden.fechaIngreso);
+                            const vencido = dias > PLAZO_DIAS_HABILES;
                             return (
-                                <TableRow key={orden.id} className="cursor-pointer align-top hover:bg-muted/40" onDoubleClick={() => abrirOrden(orden)}>
-                                    <TableCell className="py-3">
-                                        <p className="font-bold">{orden.consecutivo || orden.id}</p>
-                                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <TableRow key={orden.id} className="cursor-pointer" onDoubleClick={() => abrirOrden(orden)}>
+                                    <TableCell>
+                                        <p className="dato-mono text-[12.5px] font-semibold">{orden.consecutivo || orden.id}</p>
+                                        <p className="dato-mono flex items-center gap-1 text-[11px]" style={{ color: "var(--ink-tertiary)" }}>
                                             <CalendarDays className="h-3 w-3" />
                                             {orden.fechaIngreso}
                                         </p>
                                     </TableCell>
-                                    <TableCell className="py-3">
-                                        <p className="font-bold">{nombrePaciente(p).toUpperCase()}</p>
+                                    <TableCell>
+                                        <p className="font-medium" style={{ color: "var(--ink-primary)" }}>
+                                            {nombrePaciente(p).toUpperCase()}
+                                        </p>
                                         {p && (
-                                            <p className="text-xs text-muted-foreground">
-                                                {p.idTipoIdentificacion}
-                                                {p.identificacion} · {p.sexo} · {calcularEdad(p.fechaNacimiento)} años
+                                            <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                <span className="dato-mono">
+                                                    {p.idTipoIdentificacion}
+                                                    {p.identificacion}
+                                                </span>{" "}
+                                                · {p.sexo} · {calcularEdad(p.fechaNacimiento)} años
                                                 {p.telefono ? ` · ${p.telefono}` : ""}
                                             </p>
                                         )}
                                     </TableCell>
-                                    <TableCell className="max-w-[320px] py-3 text-sm">
-                                        {orden.especimen?.nombre ?? "—"}
-                                        {orden.tipoEstudio?.nombreTipoEstudio ? <span className="block text-xs text-muted-foreground">{orden.tipoEstudio.nombreTipoEstudio}</span> : null}
+                                    <TableCell className="max-w-[320px]">
+                                        <p className="truncate">{orden.especimen?.nombre ?? "—"}</p>
+                                        {orden.tipoEstudio?.nombreTipoEstudio ? (
+                                            <p className="text-[11.5px]" style={{ color: "var(--ink-tertiary)" }}>
+                                                {orden.tipoEstudio.nombreTipoEstudio}
+                                            </p>
+                                        ) : null}
                                     </TableCell>
-                                    <TableCell className="py-3 text-xs">{orden.sede?.nombre ?? ""}</TableCell>
-                                    <TableCell className="py-3 text-center">
-                                        {orden.tieneInforme ? (
-                                            <Badge className="border-blue-200 bg-blue-100 text-blue-700 hover:bg-blue-100/80">Con informe</Badge>
-                                        ) : (
-                                            <Badge variant="secondary">Pendiente</Badge>
-                                        )}
+                                    <TableCell>{orden.sede?.nombre ? <Etiqueta>{orden.sede.nombre}</Etiqueta> : ""}</TableCell>
+                                    <TableCell
+                                        className={cn("dato-mono text-right text-[12px]", vencido && "font-semibold")}
+                                        style={{ color: vencido ? "var(--clinical-600)" : "var(--ink-secondary)" }}
+                                        title={vencido ? `Supera ${PLAZO_DIAS_HABILES} días hábiles` : undefined}
+                                    >
+                                        {dias} {dias === 1 ? "día" : "días"}
                                     </TableCell>
-                                    <TableCell className="py-3 text-center">
-                                        <Button size="sm" onClick={() => abrirOrden(orden)}>
+                                    <TableCell>
+                                        {orden.tieneInforme ? <Pildora tono="info">Con informe</Pildora> : <Pildora tono="aviso">Pendiente</Pildora>}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button size="sm" variant={orden.tieneInforme ? "default" : "outline"} onClick={() => abrirOrden(orden)}>
                                             <Microscope size={14} />
-                                            Informar
+                                            {orden.tieneInforme ? "Revisar y firmar" : "Informar"}
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -733,9 +907,23 @@ export default function PatologiasPage() {
                         })}
                     </TableBody>
                 </Table>
-            </div>
-            <PaginationControls {...tablaPendientes.paginacion} />
+                <PaginationControls className="border-t px-3 py-2.5" {...tablaPendientes.paginacion} />
+            </Panel>
             {dialogos}
+        </div>
+    );
+}
+
+/** Dato del encabezado del caso: etiqueta pequeña en mayúsculas y valor. */
+function DatoCaso({ etiqueta, valor, mono }: { etiqueta: string; valor: React.ReactNode; mono?: boolean }) {
+    return (
+        <div className="min-w-0">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--ink-tertiary)" }}>
+                {etiqueta}
+            </p>
+            <p className={cn("mt-0.5 truncate text-[13px] font-medium", mono && "dato-mono")} style={{ color: "var(--ink-primary)" }}>
+                {valor}
+            </p>
         </div>
     );
 }

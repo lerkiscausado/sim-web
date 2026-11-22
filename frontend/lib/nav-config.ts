@@ -35,6 +35,8 @@ export interface NavItem {
     icon?: LucideIcon;
     description?: string;
     children?: NavItem[];
+    /** Contador de pendientes que se muestra junto a la opción en el menú lateral. */
+    contador?: "patologias" | "citologias";
 }
 
 export const navConfig: NavItem[] = [
@@ -58,8 +60,8 @@ export const navConfig: NavItem[] = [
         label: "Atenciones",
         icon: Stethoscope,
         children: [
-            { label: "Citologías", href: "/atenciones/citologias", icon: FlaskConical, description: "Registro y resultados de estudios citológicos." },
-            { label: "Patologías", href: "/atenciones/patologias", icon: Microscope, description: "Análisis y diagnósticos de muestras patológicas." },
+            { label: "Citologías", href: "/atenciones/citologias", icon: FlaskConical, contador: "citologias", description: "Registro y resultados de estudios citológicos." },
+            { label: "Patologías", href: "/atenciones/patologias", icon: Microscope, contador: "patologias", description: "Análisis y diagnósticos de muestras patológicas." },
             { label: "Historia Clínica", href: "/atenciones/historia-clinica", icon: Stethoscope, description: "Consulta y registro de historias clínicas de endoscopia." },
             { label: "Endoscopias", href: "/atenciones/endoscopias", icon: Activity, description: "Reportes de procedimientos de endoscopia digestiva." },
             { label: "Plantillas Patología", href: "/atenciones/plantillas-patologia", icon: NotebookText, description: "Plantillas rápidas de macro, micro y diagnóstico para informes de patología." },

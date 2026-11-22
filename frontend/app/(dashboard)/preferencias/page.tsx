@@ -31,10 +31,7 @@ export default function PreferenciasPage() {
 
     return (
         <div className="max-w-2xl space-y-5">
-            <div
-                className="rounded-lg border px-6 py-5"
-                style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}
-            >
+            <div className="encabezado-modulo">
                 <span className="label-clinical mb-2 inline-block" style={{ color: "var(--ink-brand)" }}>
                     Mi Cuenta
                 </span>

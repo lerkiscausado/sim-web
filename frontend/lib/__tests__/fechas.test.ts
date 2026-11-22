@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { aISOLocal, calcularEdad, deISOLocal, hoyISO, sumarDiasHabiles } from "../fechas";
+import { aISOLocal, calcularEdad, deISOLocal, diasHabilesDesde, hoyISO, sumarDiasHabiles } from "../fechas";
 
 afterEach(() => vi.useRealTimers());
 
@@ -48,5 +48,22 @@ describe("calcularEdad", () => {
     it("no da negativos ni falla con fechas inválidas", () => {
         expect(calcularEdad("2030-01-01", hoy)).toBe(0);
         expect(calcularEdad("", hoy)).toBe(0);
+    });
+});
+
+describe("diasHabilesDesde", () => {
+    // 2026-11-20 es viernes; 2026-11-23 es lunes.
+    it("no cuenta el fin de semana", () => {
+        expect(diasHabilesDesde("2026-11-20", new Date(2026, 10, 23, 9))).toBe(1);
+    });
+    it("el mismo día es 0", () => {
+        expect(diasHabilesDesde("2026-11-23", new Date(2026, 10, 23, 18))).toBe(0);
+    });
+    it("una semana completa son 5 días hábiles", () => {
+        expect(diasHabilesDesde("2026-11-16", new Date(2026, 10, 23))).toBe(5);
+    });
+    it("fechas futuras o inválidas dan 0", () => {
+        expect(diasHabilesDesde("2026-12-01", new Date(2026, 10, 23))).toBe(0);
+        expect(diasHabilesDesde("", new Date(2026, 10, 23))).toBe(0);
     });
 });

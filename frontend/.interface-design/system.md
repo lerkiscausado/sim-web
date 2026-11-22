@@ -21,10 +21,11 @@
 **4px** (`--space-1` through `--space-12`). All gaps, padding, and margins must be multiples of 4px.
 
 ## Color Palette
-- **Primary:** `--clinical-900` to `--clinical-400` — institutional hospital blue, slightly cool, authoritative
-- **Background:** `--surface-canvas: #f0f4f8` — slightly blue-tinted gray, never pure white
+- **Brand / primary action:** `--clinical-500` (#e5322b, SIM red). Used for the main button of each screen, active menu marker and overdue cases — never for large surfaces.
+- **Navigation rail:** graphite `--rail-surface` (#15191f) with `--rail-*` tokens.
+- **Background:** `--surface-canvas: #f3f4f6` — neutral gray, never pure white
 - **Cards:** `--surface-raised: #ffffff`
-- **Inset (inputs):** `--surface-inset: #eef2f7` — slightly darker than surroundings, signals "type here"
+- **Inset (inputs, table headers):** `--surface-inset: #f6f7f9`
 
 ## Text Hierarchy (4 levels — always use all four)
 | Token | Role |
@@ -45,16 +46,16 @@
 | `--border-focus` | Focus ring (`--clinical-500`) |
 
 ## Navigation
-- Surface: `--nav-surface` (clinical-900) — compact 56px instrument panel
-- Text: `--nav-ink` (dim), `--nav-ink-active` (white), `--nav-ink-accent` (clinical-300 for role/tagline)
-- Active underline: `--nav-indicator` (2px bar, clinical-300)
-- Dropdowns: white surface, shadow-overlay, 2px left accent border on active items
+- Left rail (`components/layout/Sidebar.tsx`), 240px, graphite. Groups from `lib/nav-config.ts` are collapsible section headers; the active item gets a 3px red marker and pending counters (`contador`) come from `/inicio/resumen`.
+- Top bar (52px, white): breadcrumbs + global search (Ctrl/⌘ K, `CommandPalette.tsx`).
+- Below `lg` the rail becomes a slide-over menu.
 
 ## Signature Element
 **Capacity bar on stat cards.** A 4px bar spanning the full card bottom shows volume/load visually. Replaces the standard icon-left + big-number pattern. Color matches the stat's semantic color at 70% opacity.
 
 ## Typography
-- **Font:** Inter — precise, legible, neutral enough for clinical use
+- **Font:** IBM Plex Sans (self-hosted via @fontsource, no Google Fonts at build time)
+- **Case numbers, IDs, dates, counts:** IBM Plex Mono via `.dato-mono`
 - **Headlines:** Tight tracking (`-0.025em`), bold weight
 - **Labels:** `.label-clinical` class — `0.733rem`, `font-weight: 600`, `letter-spacing: 0.07em`, uppercase
 - **Data values:** `.data-value` class — `1.8rem`, `font-weight: 700`, `letter-spacing: -0.03em`, tabular-nums
@@ -66,6 +67,8 @@
 - `--radius-lg: 10px` — welcome banner, major containers
 
 ## Key Component Patterns
+
+Shared building blocks live in `components/ui/panel.tsx`: `Panel`, `PanelHeader`, `Etiqueta`, `Pildora`, `EstadoOrden`, `Indicador` (stat card with capacity bar). Page headers use the unboxed `.encabezado-modulo` class.
 
 ### Stat Card
 ```

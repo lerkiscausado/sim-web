@@ -23,6 +23,13 @@
 -- Recomendado: backup previo.
 -- =============================================================================
 
+-- La base heredada del escritorio tiene defaults que el modo estricto de
+-- MySQL 8 rechaza al reconstruir una tabla (fechas 0000-00-00, SET con
+-- default vacío). Se desactiva el modo estricto SOLO en esta sesión y se
+-- restaura al final del script.
+SET @sw_006_sql_mode = @@SESSION.sql_mode;
+SET SESSION sql_mode = '';
+
 CREATE TABLE IF NOT EXISTS sim_web_migraciones (
   nombre      VARCHAR(100) NOT NULL PRIMARY KEY,
   aplicada_en DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -97,7 +104,15 @@ BEGIN
   -- 3. SET -> ENUM conservando la lista de valores, la nulabilidad y el default.
   INSERT INTO sw_006_sentencias (sql_text)
   SELECT CONCAT('ALTER TABLE `', c.TABLE_NAME, '` MODIFY COLUMN `', c.COLUMN_NAME, '` ',
-                CONCAT('enum', SUBSTRING(c.COLUMN_TYPE, 4)),
+                -- Si el default es vacío y '' no está en la lista, se agrega '' como
+                -- primer valor: un SET acepta '' (conjunto vacío) y un ENUM no.
+                IF(c.COLUMN_DEFAULT IS NOT NULL AND c.COLUMN_DEFAULT <> 'NULL'
+                     AND TRIM(BOTH '''' FROM c.COLUMN_DEFAULT) = ''
+                     AND c.COLUMN_TYPE NOT LIKE 'set('''',%'
+                     AND c.COLUMN_TYPE NOT LIKE '%,'''')'
+                     AND c.COLUMN_TYPE NOT LIKE '%,'''',%',
+                   CONCAT('enum('''',', SUBSTRING(c.COLUMN_TYPE, 5)),
+                   CONCAT('enum', SUBSTRING(c.COLUMN_TYPE, 4))),
                 IF(c.IS_NULLABLE = 'NO', ' NOT NULL', ' NULL'),
                 IF(c.COLUMN_DEFAULT IS NULL OR c.COLUMN_DEFAULT = 'NULL', '',
                    CONCAT(' DEFAULT ', QUOTE(TRIM(BOTH '''' FROM c.COLUMN_DEFAULT)))))
@@ -142,6 +157,8 @@ DELIMITER ;
 
 CALL sw_006_ejecutar();
 DROP PROCEDURE IF EXISTS sw_006_ejecutar;
+
+SET SESSION sql_mode = @sw_006_sql_mode;
 
 -- -----------------------------------------------------------------------------
 -- Verificación: las tres cifras deben dar 0 y `registrada` debe dar 1.

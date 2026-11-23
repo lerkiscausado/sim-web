@@ -18,6 +18,7 @@ import { reglas, useValidacion } from "@/lib/validacion";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
+import { PAISES_NACIMIENTO, ETNIAS, DISCAPACIDADES, IDENTIDADES_GENERO } from "@/lib/rda-catalogos";
 
 export interface Paciente {
     id: number;
@@ -34,6 +35,14 @@ export interface Paciente {
     correoElectronico: string | null;
     estadoCivil: string;
     codigoTipoUsuario: number;
+    zona?: "R" | "U" | null;
+    codigoMunicipio?: string | null;
+    nombreMunicipio?: string | null;
+    codigoPaisNacimiento?: string | null;
+    codigoEtnia?: string | null;
+    codigoDiscapacidad?: string | null;
+    codigoIdentidadGenero?: string | null;
+    horaNacimiento?: string | null;
     tipoIdentificacion?: { id: string; nombreTipoIdentificacion: string };
 }
 
@@ -66,6 +75,15 @@ const FORM_INICIAL = {
     correoElectronico: "",
     estadoCivil: "SOLTERO",
     codigoTipoUsuario: 1,
+    // Datos RDA: mismos valores por defecto que frmUsuarios del escritorio.
+    zona: "U",
+    codigoMunicipio: "",
+    nombreMunicipio: "",
+    codigoPaisNacimiento: "170",
+    codigoEtnia: "99",
+    codigoDiscapacidad: "08",
+    codigoIdentidadGenero: "",
+    horaNacimiento: "",
 };
 
 /** Letras (con tildes y ñ), espacios, apóstrofo y guion. */
@@ -110,6 +128,8 @@ export function PacienteFormDialog({
         telefono: [reglas.maxLong(150), reglas.telefono()],
         correoElectronico: [reglas.maxLong(750), reglas.email()],
         estadoCivil: [reglas.requerido("Selecciona el estado civil.")],
+        codigoMunicipio: [reglas.patron(/^\d{5}$/, "Código DIVIPOLA de 5 dígitos, ej. 13001 (Cartagena).")],
+        horaNacimiento: [reglas.patron(/^([01]\d|2[0-3]):[0-5]\d$/, "Formato HH:MM.")],
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +153,14 @@ export function PacienteFormDialog({
                 correoElectronico: editando.correoElectronico ?? "",
                 estadoCivil: editando.estadoCivil,
                 codigoTipoUsuario: editando.codigoTipoUsuario,
+                zona: editando.zona ?? "U",
+                codigoMunicipio: (editando.codigoMunicipio ?? "").trim(),
+                nombreMunicipio: editando.nombreMunicipio ?? "",
+                codigoPaisNacimiento: editando.codigoPaisNacimiento || "170",
+                codigoEtnia: editando.codigoEtnia || "99",
+                codigoDiscapacidad: editando.codigoDiscapacidad || "08",
+                codigoIdentidadGenero: editando.codigoIdentidadGenero ?? "",
+                horaNacimiento: (editando.horaNacimiento ?? "").slice(0, 5),
             });
         } else {
             setForm({ ...FORM_INICIAL, identificacion: identificacionSugerida?.trim() ?? "" });
@@ -164,14 +192,16 @@ export function PacienteFormDialog({
         setFormError(null);
         try {
             const archivoFoto = fotoArchivo ? { fieldName: "foto", file: fotoArchivo } : null;
+            // La hora vacía no se envía (la columna es TIME).
+            const datos = { ...form, horaNacimiento: form.horaNacimiento || undefined };
             let guardado: Paciente;
             if (editando) {
                 // Tipo de identificación e identificación no se envían: no son editables.
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { idTipoIdentificacion, identificacion, ...resto } = form;
+                const { idTipoIdentificacion, identificacion, ...resto } = datos;
                 guardado = await apiFetchMultipart<Paciente>(`/pacientes/${editando.id}`, "PATCH", resto, archivoFoto);
             } else {
-                guardado = await apiFetchMultipart<Paciente>("/pacientes", "POST", form, archivoFoto);
+                guardado = await apiFetchMultipart<Paciente>("/pacientes", "POST", datos, archivoFoto);
             }
             onSaved(guardado);
             onOpenChange(false);
@@ -315,6 +345,57 @@ export function PacienteFormDialog({
                             <option value="UNION LIBRE">Unión libre</option>
                             <option value="DIVORCIADO">Divorciado(a)</option>
                             <option value="VIUDO">Viudo(a)</option>
+                        </Select>
+                    </Campo>
+                    <Campo label="Zona de residencia" nombre="zona">
+                        <Select className="w-full" value={form.zona} onChange={(e) => setForm((f) => ({ ...f, zona: e.target.value }))}>
+                            <option value="U">Urbana</option>
+                            <option value="R">Rural</option>
+                        </Select>
+                    </Campo>
+                    <Campo label="Municipio de residencia (DIVIPOLA)" nombre="codigoMunicipio" error={v.error("codigoMunicipio")}>
+                        <div className="flex gap-2">
+                            <Input
+                                className="w-24"
+                                inputMode="numeric"
+                                maxLength={5}
+                                placeholder="13001"
+                                value={form.codigoMunicipio}
+                                onChange={(e) => setForm((f) => ({ ...f, codigoMunicipio: e.target.value.replace(/\D/g, "") }))}
+                            />
+                            <Input
+                                placeholder="Nombre (ej. Cartagena)"
+                                value={form.nombreMunicipio}
+                                onChange={(e) => setForm((f) => ({ ...f, nombreMunicipio: e.target.value }))}
+                            />
+                        </div>
+                    </Campo>
+
+                    <p className="col-span-2 mt-2 border-t pt-3 text-[12.5px] font-semibold" style={{ borderColor: "var(--border-default)" }}>
+                        Datos para el RDA (MinSalud)
+                    </p>
+                    <Campo label="País de nacimiento" nombre="codigoPaisNacimiento">
+                        <Select className="w-full" value={form.codigoPaisNacimiento} onChange={(e) => setForm((f) => ({ ...f, codigoPaisNacimiento: e.target.value }))}>
+                            {PAISES_NACIMIENTO.map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}
+                        </Select>
+                    </Campo>
+                    <Campo label="Hora de nacimiento (opcional)" nombre="horaNacimiento" error={v.error("horaNacimiento")}>
+                        <Input type="time" value={form.horaNacimiento} onChange={(e) => setForm((f) => ({ ...f, horaNacimiento: e.target.value }))} />
+                    </Campo>
+                    <Campo label="Pertenencia étnica" nombre="codigoEtnia">
+                        <Select className="w-full" value={form.codigoEtnia} onChange={(e) => setForm((f) => ({ ...f, codigoEtnia: e.target.value }))}>
+                            {ETNIAS.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
+                        </Select>
+                    </Campo>
+                    <Campo label="Discapacidad" nombre="codigoDiscapacidad">
+                        <Select className="w-full" value={form.codigoDiscapacidad} onChange={(e) => setForm((f) => ({ ...f, codigoDiscapacidad: e.target.value }))}>
+                            {DISCAPACIDADES.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
+                        </Select>
+                    </Campo>
+                    <Campo label="Identidad de género (opcional)" nombre="codigoIdentidadGenero">
+                        <Select className="w-full" value={form.codigoIdentidadGenero} onChange={(e) => setForm((f) => ({ ...f, codigoIdentidadGenero: e.target.value }))}>
+                            <option value="">Sin dato</option>
+                            {IDENTIDADES_GENERO.map((x) => <option key={x.codigo} value={x.codigo}>{x.nombre}</option>)}
                         </Select>
                     </Campo>
                 </div>

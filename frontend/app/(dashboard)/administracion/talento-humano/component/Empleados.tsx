@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, User, Briefcase, GraduationCap, IdCard } from "lucide-react";
+import { Search, Plus, Loader2, Pencil, Ban, CheckCircle2, User, Briefcase, GraduationCap, IdCard, FileBadge } from "lucide-react";
+import { EspecialistaRdaDialog } from "./EspecialistaRdaDialog";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -86,6 +87,7 @@ export default function Empleados() {
 
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editando, setEditando] = useState<EmpleadoItem | null>(null);
+    const [rdaDe, setRdaDe] = useState<EmpleadoItem | null>(null);
     const [form, setForm] = useState(FORM_INICIAL);
     const [formError, setFormError] = useState<string | null>(null);
     const v = useValidacion(form, {
@@ -272,6 +274,9 @@ export default function Empleados() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
+                                        <Button variant="ghost" size="sm" className="h-8 px-2" title="Datos RDA (RETHUS)" onClick={() => setRdaDe(item)}>
+                                            <FileBadge className="h-3.5 w-3.5" style={{ color: "#2563EB" }} />
+                                        </Button>
                                         <Button variant="ghost" size="sm" className="h-8 px-2" title="Editar" onClick={() => abrirEditar(item)}>
                                             <Pencil className="h-3.5 w-3.5" style={{ color: "#D97706" }} />
                                         </Button>
@@ -304,6 +309,12 @@ export default function Empleados() {
                 />
                 )}
             </CardContent>
+
+            <EspecialistaRdaDialog
+                idEmpleado={rdaDe?.id ?? null}
+                nombreEmpleado={rdaDe?.nombreEmpleado ?? ""}
+                onOpenChange={(o) => !o && setRdaDe(null)}
+            />
 
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogContent className="max-w-md">

@@ -26,6 +26,8 @@ import {
     BookOpen,
     Info,
     Search,
+    Network,
+    History,
     type LucideIcon,
 } from "lucide-react";
 
@@ -87,6 +89,8 @@ export const navConfig: NavItem[] = [
         children: [
             { label: "Reportes", href: "/configuracion/reportes", icon: BarChart, description: "Personalización de reportes y dashboards." },
             { label: "Usuarios de Sistema", href: "/configuracion/usuarios", icon: UserCog, description: "Gestión de usuarios, roles y permisos de acceso." },
+            { label: "Interoperabilidad", href: "/configuracion/interoperabilidad", icon: Network, description: "Conexión con MinSalud para el Resumen Digital de Atención (RDA)." },
+            { label: "Historial RDA", href: "/configuracion/historial-rda", icon: History, description: "Envíos del RDA a MinSalud: aceptados, errores, reenvíos y firmados sin RDA." },
         ],
     },
     {
@@ -126,6 +130,8 @@ export const breadcrumbLabels: Record<string, string> = {
     "talento-humano": "Talento Humano",
     configuracion: "Configuración",
     usuarios: "Usuarios de Sistema",
+    interoperabilidad: "Interoperabilidad",
+    "historial-rda": "Historial RDA",
     ayuda: "Ayuda",
     soporte: "Soporte Técnico",
     tutoriales: "Tutoriales",

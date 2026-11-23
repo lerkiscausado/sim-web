@@ -258,8 +258,8 @@ export class HistoriaClinicaService {
   async antecedentes(idOrden: number, idUsuario: number) {
     const actual = await this.antecedentesRepo.findOne({ where: { idOrden } });
     const [previos] = await this.dataSource.query(
-      `SELECT GROUP_CONCAT(NULLIF(TRIM(ANTECEDENTES_FAMILIARES), '') SEPARATOR '. ') AS familiares,
-              GROUP_CONCAT(NULLIF(TRIM(ANTECEDENTES_PERSONALES), '') SEPARATOR '. ') AS personales
+      `SELECT GROUP_CONCAT(DISTINCT NULLIF(TRIM(ANTECEDENTES_FAMILIARES), '') SEPARATOR '. ') AS familiares,
+              GROUP_CONCAT(DISTINCT NULLIF(TRIM(ANTECEDENTES_PERSONALES), '') SEPARATOR '. ') AS personales
        FROM antecedentes WHERE ID_USUARIO = ? AND ID_ORDEN <> ?`,
       [idUsuario, idOrden],
     );

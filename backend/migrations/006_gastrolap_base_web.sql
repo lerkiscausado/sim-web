@@ -34,6 +34,10 @@ CREATE PROCEDURE sw_006_ejecutar()
 BEGIN
   DECLARE v_id  INT DEFAULT 0;
   DECLARE v_max INT DEFAULT 0;
+  -- Si la columna ya existe (p. ej. con otras mayúsculas que INFORMATION_SCHEMA
+  -- no empareja), MySQL da 1060 "Duplicate column name": el estado deseado ya
+  -- se cumple, así que se sigue con la siguiente sentencia.
+  DECLARE CONTINUE HANDLER FOR 1060 BEGIN END;
 
   DROP TEMPORARY TABLE IF EXISTS sw_006_sentencias;
   CREATE TEMPORARY TABLE sw_006_sentencias (
@@ -49,7 +53,7 @@ BEGIN
     AND t.TABLE_NAME <> 'sim_web_migraciones'
     AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS c
                     WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
-                      AND c.COLUMN_NAME = 'createdAt');
+                      AND LOWER(c.COLUMN_NAME) = LOWER('createdAt'));
 
   -- 2b. Agregar updatedAt donde falte.
   INSERT INTO sw_006_sentencias (sql_text)
@@ -59,7 +63,7 @@ BEGIN
     AND t.TABLE_NAME <> 'sim_web_migraciones'
     AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS c
                     WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
-                      AND c.COLUMN_NAME = 'updatedAt');
+                      AND LOWER(c.COLUMN_NAME) = LOWER('updatedAt'));
 
   -- Ejecuta 2a/2b antes de calcular los defaults (las columnas deben existir).
   SELECT COALESCE(MAX(id), 0) INTO v_max FROM sw_006_sentencias;
@@ -114,7 +118,7 @@ BEGIN
   FROM INFORMATION_SCHEMA.TABLES t
   WHERE t.TABLE_SCHEMA = DATABASE() AND t.TABLE_NAME = 'contratos'
     AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS c
-                    WHERE c.TABLE_SCHEMA = DATABASE() AND c.TABLE_NAME = 'contratos' AND c.COLUMN_NAME = 'deletedAt');
+                    WHERE c.TABLE_SCHEMA = DATABASE() AND c.TABLE_NAME = 'contratos' AND LOWER(c.COLUMN_NAME) = LOWER('deletedAt'));
 
   INSERT INTO sw_006_sentencias (sql_text)
   SELECT 'ALTER TABLE `contratos` MODIFY COLUMN `contrasena` VARCHAR(255) NOT NULL'
@@ -130,27 +134,30 @@ BEGIN
   END WHILE;
 
   DROP TEMPORARY TABLE IF EXISTS sw_006_sentencias;
+
+  -- Solo se registra si el procedimiento llegó hasta aquí sin errores.
+  INSERT IGNORE INTO sim_web_migraciones (nombre) VALUES ('006_gastrolap_base_web');
 END$$
 DELIMITER ;
 
 CALL sw_006_ejecutar();
 DROP PROCEDURE IF EXISTS sw_006_ejecutar;
 
-INSERT IGNORE INTO sim_web_migraciones (nombre) VALUES ('006_gastrolap_base_web');
-
 -- -----------------------------------------------------------------------------
--- Verificación: las tres cifras deben dar 0.
+-- Verificación: las tres cifras deben dar 0 y `registrada` debe dar 1.
 -- -----------------------------------------------------------------------------
 SELECT
   (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES t
     WHERE t.TABLE_SCHEMA = DATABASE() AND t.TABLE_TYPE = 'BASE TABLE'
       AND NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS c
                       WHERE c.TABLE_SCHEMA = t.TABLE_SCHEMA AND c.TABLE_NAME = t.TABLE_NAME
-                        AND c.COLUMN_NAME = 'createdAt')
+                        AND LOWER(c.COLUMN_NAME) = 'createdat')
       AND t.TABLE_NAME <> 'sim_web_migraciones')                       AS tablas_sin_createdAt,
   (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS c
     JOIN INFORMATION_SCHEMA.TABLES t ON t.TABLE_SCHEMA = c.TABLE_SCHEMA AND t.TABLE_NAME = c.TABLE_NAME AND t.TABLE_TYPE = 'BASE TABLE'
     WHERE c.TABLE_SCHEMA = DATABASE() AND c.DATA_TYPE = 'set')        AS columnas_set_restantes,
   (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS c
     WHERE c.TABLE_SCHEMA = DATABASE() AND c.TABLE_NAME = 'users' AND c.COLUMN_NAME = 'PASS'
-      AND c.CHARACTER_MAXIMUM_LENGTH < 255)                           AS pass_sin_ampliar;
+      AND c.CHARACTER_MAXIMUM_LENGTH < 255)                           AS pass_sin_ampliar,
+  (SELECT COUNT(*) FROM sim_web_migraciones
+    WHERE nombre = '006_gastrolap_base_web')                          AS registrada;

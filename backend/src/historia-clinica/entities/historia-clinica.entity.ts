@@ -89,6 +89,32 @@ export class HistoriaClinica {
   @Column({ name: 'ID_ESPECIALISTA', type: 'int' })
   idEspecialista: number;
 
+  @Column({ name: 'REVISIONXSISTEMAS', type: 'text', nullable: true })
+  revisionxSistemas?: string | null;
+
+  @Column({ name: 'REMISION', type: 'text', nullable: true })
+  remision?: string | null;
+
+  @Column({ name: 'ESTUDIOS_DIAGNOSTICOS', type: 'text', nullable: true })
+  estudiosDiagnosticos?: string | null;
+
+  // ── Resolución 3100 (agregadas por GASTROLAP_instalacion_completa_bd.sql) ──
+  /** 1 = firmada: la historia ya no se modifica; las correcciones van como adendas. */
+  @Column({
+    name: 'firmada',
+    type: 'tinyint',
+    width: 1,
+    default: 0,
+    transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number | null) => v === 1 },
+  })
+  firmada: boolean;
+
+  @Column({ name: 'fecha_firma', type: 'datetime', nullable: true })
+  fechaFirma?: Date | null;
+
+  @Column({ name: 'usuario_firma', type: 'int', nullable: true })
+  usuarioFirma?: number | null;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpsertHistoriaClinicaDto {
   @IsInt()
@@ -24,7 +24,10 @@ export class UpsertHistoriaClinicaDto {
   @IsOptional() @IsString() laboratorios?: string;
   @IsOptional() @IsString() otrosEstudios?: string;
   @IsOptional() @IsString() recomendaciones?: string;
+  @IsOptional() @IsString() revisionxSistemas?: string;
+  @IsOptional() @IsString() remision?: string;
+  @IsOptional() @IsString() estudiosDiagnosticos?: string;
 
-  /** 'A' = abierta/activa, 'C' = cerrada. Se cierra al firmar la consulta. */
-  @IsOptional() @IsIn(['A', 'C']) estado?: string;
+  // El estado (ESTADO, firmada) ya no lo manda el cliente: solo cambia al firmar
+  // (PATCH .../firmar), por la Resolución 3100.
 }

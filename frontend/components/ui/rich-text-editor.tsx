@@ -11,6 +11,8 @@ interface RichTextEditorProps {
     placeholder?: string;
     rows?: number;
     className?: string;
+    /** Solo lectura: oculta la barra de formato y no deja editar (p. ej. historia firmada). */
+    disabled?: boolean;
 }
 
 const ALLOWED_TAGS = [
@@ -74,7 +76,7 @@ function exec(command: string) {
     document.execCommand(command, false);
 }
 
-export function RichTextEditor({ value, onChange, placeholder, rows = 4, className }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange, placeholder, rows = 4, className, disabled = false }: RichTextEditorProps) {
     const ref = useRef<HTMLDivElement>(null);
     const isFocused = useRef(false);
 
@@ -95,8 +97,8 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, classNa
     const minHeight = `${rows * 1.5}rem`;
 
     return (
-        <div className={cn("rte-caja rounded-md border overflow-hidden", className)}>
-            <div className="flex items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1">
+        <div className={cn("rte-caja rounded-md border overflow-hidden", disabled && "bg-muted/30", className)}>
+            <div className={cn("flex items-center gap-0.5 border-b bg-muted/40 px-1.5 py-1", disabled && "hidden")}>
                 <ToolbarButton icon={Bold} label="Negrita" onClick={() => exec("bold")} />
                 <ToolbarButton icon={Italic} label="Cursiva" onClick={() => exec("italic")} />
                 <ToolbarButton icon={Underline} label="Subrayado" onClick={() => exec("underline")} />
@@ -112,7 +114,8 @@ export function RichTextEditor({ value, onChange, placeholder, rows = 4, classNa
             </div>
             <div
                 ref={ref}
-                contentEditable
+                contentEditable={!disabled}
+                aria-readonly={disabled}
                 suppressContentEditableWarning
                 data-placeholder={placeholder}
                 className="prose-sm max-w-none px-3 py-2 text-sm outline-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"

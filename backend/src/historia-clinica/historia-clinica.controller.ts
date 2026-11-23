@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { HistoriaClinicaService } from './historia-clinica.service';
 import { UpsertHistoriaClinicaDto } from './dto/upsert-historia-clinica.dto';
+import { GuardarAntecedentesDto } from './dto/guardar-antecedentes.dto';
+import { AddAdendaDto } from './dto/add-adenda.dto';
 import {
   AddHistoriaDiagnosticoDto,
   AddHistoriaMedicamentoDto,
@@ -23,6 +25,42 @@ export class HistoriaClinicaController {
     return this.service.findPendientes(req.user.idEmpleado, q);
   }
 
+  /** Historias ya firmadas por el especialista (para consultarlas y agregar adendas). */
+  @Get('firmadas')
+  findFirmadas(@Req() req: any, @Query('q') q?: string) {
+    return this.service.findFirmadas(req.user.idEmpleado, q);
+  }
+
+  @Get('orden/:idOrden/antecedentes')
+  antecedentes(@Param('idOrden', ParseIntPipe) idOrden: number, @Query('idUsuario', ParseIntPipe) idUsuario: number) {
+    return this.service.antecedentes(idOrden, idUsuario);
+  }
+
+  @Put('antecedentes')
+  guardarAntecedentes(@Body() dto: GuardarAntecedentesDto, @Req() req: any) {
+    return this.service.guardarAntecedentes(dto, req.user.idEmpleado);
+  }
+
+  @Get('detalle-orden/:idDetalleOrden/faltantes')
+  faltantes(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.service.faltantesParaFirmar(idDetalleOrden);
+  }
+
+  @Get('detalle-orden/:idDetalleOrden/adendas')
+  listAdendas(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.service.listAdendas(idDetalleOrden);
+  }
+
+  @Post('detalle-orden/:idDetalleOrden/adendas')
+  addAdenda(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number, @Body() dto: AddAdendaDto, @Req() req: any) {
+    return this.service.addAdenda(idDetalleOrden, dto.texto, req.user.idEmpleado);
+  }
+
+  @Get('detalle-orden/:idDetalleOrden/trazabilidad')
+  trazabilidad(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.service.listTrazabilidad(idDetalleOrden);
+  }
+
   @Get('detalle-orden/:idDetalleOrden')
   findByDetalleOrden(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
     return this.service.findByDetalleOrden(idDetalleOrden);
@@ -39,8 +77,8 @@ export class HistoriaClinicaController {
   }
 
   @Patch('detalle-orden/:idDetalleOrden/firmar')
-  firmar(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
-    return this.service.firmar(idDetalleOrden);
+  firmar(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number, @Req() req: any) {
+    return this.service.firmar(idDetalleOrden, req.user.idEmpleado);
   }
 
   // ---- Diagnósticos ----
@@ -50,8 +88,8 @@ export class HistoriaClinicaController {
   }
 
   @Post('diagnosticos')
-  addDiagnostico(@Body() dto: AddHistoriaDiagnosticoDto) {
-    return this.service.addDiagnostico(dto);
+  addDiagnostico(@Body() dto: AddHistoriaDiagnosticoDto, @Req() req: any) {
+    return this.service.addDiagnostico(dto, req.user.idEmpleado);
   }
 
   @Delete('detalle-orden/:idDetalleOrden/orden/:idOrden/diagnosticos/:idDiagnostico')
@@ -59,8 +97,9 @@ export class HistoriaClinicaController {
     @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
     @Param('idOrden', ParseIntPipe) idOrden: number,
     @Param('idDiagnostico') idDiagnostico: string,
+    @Req() req: any,
   ) {
-    return this.service.removeDiagnostico(idDetalleOrden, idOrden, idDiagnostico);
+    return this.service.removeDiagnostico(idDetalleOrden, idOrden, idDiagnostico, req.user.idEmpleado);
   }
 
   // ---- Medicamentos ----
@@ -70,8 +109,8 @@ export class HistoriaClinicaController {
   }
 
   @Post('medicamentos')
-  addMedicamento(@Body() dto: AddHistoriaMedicamentoDto) {
-    return this.service.addMedicamento(dto);
+  addMedicamento(@Body() dto: AddHistoriaMedicamentoDto, @Req() req: any) {
+    return this.service.addMedicamento(dto, req.user.idEmpleado);
   }
 
   @Delete('detalle-orden/:idDetalleOrden/orden/:idOrden/medicamentos/:idMedicamento')
@@ -79,8 +118,9 @@ export class HistoriaClinicaController {
     @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
     @Param('idOrden', ParseIntPipe) idOrden: number,
     @Param('idMedicamento', ParseIntPipe) idMedicamento: number,
+    @Req() req: any,
   ) {
-    return this.service.removeMedicamento(idDetalleOrden, idOrden, idMedicamento);
+    return this.service.removeMedicamento(idDetalleOrden, idOrden, idMedicamento, req.user.idEmpleado);
   }
 
   // ---- Laboratorios ----
@@ -90,8 +130,8 @@ export class HistoriaClinicaController {
   }
 
   @Post('laboratorios')
-  addLaboratorio(@Body() dto: AddHistoriaLaboratorioDto) {
-    return this.service.addLaboratorio(dto);
+  addLaboratorio(@Body() dto: AddHistoriaLaboratorioDto, @Req() req: any) {
+    return this.service.addLaboratorio(dto, req.user.idEmpleado);
   }
 
   @Delete('detalle-orden/:idDetalleOrden/orden/:idOrden/laboratorios/:codigoCups')
@@ -99,8 +139,9 @@ export class HistoriaClinicaController {
     @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
     @Param('idOrden', ParseIntPipe) idOrden: number,
     @Param('codigoCups') codigoCups: string,
+    @Req() req: any,
   ) {
-    return this.service.removeLaboratorio(idDetalleOrden, idOrden, codigoCups);
+    return this.service.removeLaboratorio(idDetalleOrden, idOrden, codigoCups, req.user.idEmpleado);
   }
 
   // ---- Procedimientos ----
@@ -110,8 +151,8 @@ export class HistoriaClinicaController {
   }
 
   @Post('procedimientos')
-  addProcedimiento(@Body() dto: AddHistoriaProcedimientoDto) {
-    return this.service.addProcedimiento(dto);
+  addProcedimiento(@Body() dto: AddHistoriaProcedimientoDto, @Req() req: any) {
+    return this.service.addProcedimiento(dto, req.user.idEmpleado);
   }
 
   @Delete('detalle-orden/:idDetalleOrden/orden/:idOrden/procedimientos/:codigoCups')
@@ -119,8 +160,9 @@ export class HistoriaClinicaController {
     @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
     @Param('idOrden', ParseIntPipe) idOrden: number,
     @Param('codigoCups') codigoCups: string,
+    @Req() req: any,
   ) {
-    return this.service.removeProcedimiento(idDetalleOrden, idOrden, codigoCups);
+    return this.service.removeProcedimiento(idDetalleOrden, idOrden, codigoCups, req.user.idEmpleado);
   }
 
   // ---- Revisión por sistemas ----
@@ -130,8 +172,8 @@ export class HistoriaClinicaController {
   }
 
   @Post('rxs')
-  addRxs(@Body() dto: AddHistoriaRxsDto) {
-    return this.service.addRxs(dto);
+  addRxs(@Body() dto: AddHistoriaRxsDto, @Req() req: any) {
+    return this.service.addRxs(dto, req.user.idEmpleado);
   }
 
   @Delete('detalle-orden/:idDetalleOrden/orden/:idOrden/rxs/:idRxs')
@@ -139,7 +181,8 @@ export class HistoriaClinicaController {
     @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
     @Param('idOrden', ParseIntPipe) idOrden: number,
     @Param('idRxs', ParseIntPipe) idRxs: number,
+    @Req() req: any,
   ) {
-    return this.service.removeRxs(idDetalleOrden, idOrden, idRxs);
+    return this.service.removeRxs(idDetalleOrden, idOrden, idRxs, req.user.idEmpleado);
   }
 }

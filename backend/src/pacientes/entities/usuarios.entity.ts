@@ -83,6 +83,30 @@ export class Usuarios {
   @Column({ name: 'FOTO', type: 'blob' })
   foto: Buffer;
 
+  // ── Datos que exige el RDA (MinSalud). Todos opcionales; si faltan, el RDA usa
+  //    los valores por defecto 170 (Colombia), 99 (sin etnia), 08 (sin discapacidad).
+  /** País de nacimiento, ISO 3166 numérico (170 = Colombia). */
+  @Column({ name: 'codigo_pais_nacimiento', type: 'varchar', length: 5, nullable: true })
+  codigoPaisNacimiento?: string | null;
+
+  /** ColombianEthnicGroup. */
+  @Column({ name: 'codigo_etnia', type: 'varchar', length: 5, nullable: true })
+  codigoEtnia?: string | null;
+
+  /** ColombianDisabilityClassification (08 = sin discapacidad). */
+  @Column({ name: 'codigo_discapacidad', type: 'varchar', length: 5, nullable: true })
+  codigoDiscapacidad?: string | null;
+
+  /** ColombianGenderIdentity (opcional). */
+  @Column({ name: 'codigo_identidad_genero', type: 'varchar', length: 5, nullable: true })
+  codigoIdentidadGenero?: string | null;
+
+  @Column({ name: 'hora_nacimiento', type: 'time', nullable: true })
+  horaNacimiento?: string | null;
+
+  @Column({ name: 'nombre_municipio', type: 'varchar', length: 120, nullable: true })
+  nombreMunicipio?: string | null;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

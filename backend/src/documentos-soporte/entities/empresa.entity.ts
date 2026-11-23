@@ -45,6 +45,10 @@ export class Empresa {
   @Column({ name: 'ESTADO', type: 'enum', enum: EstadoActivoInactivo })
   estado: EstadoActivoInactivo;
 
+  /** Código de habilitación del prestador (REPS). */
+  @Column({ name: 'codigo_prestador', type: 'varchar', length: 50, nullable: true })
+  codigoPrestador?: string | null;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

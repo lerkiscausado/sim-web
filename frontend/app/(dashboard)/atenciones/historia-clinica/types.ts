@@ -44,7 +44,50 @@ export interface HistoriaClinicaData {
     laboratorios?: string | null;
     otrosEstudios?: string | null;
     recomendaciones?: string | null;
+    revisionxSistemas?: string | null;
+    remision?: string | null;
+    estudiosDiagnosticos?: string | null;
     estado?: string | null;
+    /** Resolución 3100: firmada = no se modifica, solo adendas. */
+    firmada?: boolean;
+    fechaFirma?: string | null;
+    usuarioFirma?: number | null;
+}
+
+/** Campos que acepta POST /atenciones/historia-clinica (el backend rechaza cualquier otro). */
+export const CAMPOS_EDITABLES_HISTORIA = [
+    "idOrden", "idDetalleOrden", "responsables", "motivoConsulta", "consultaControl", "enfermedadActual",
+    "examenFisico", "peso", "talla", "tensionArterial", "frecuenciaCardiaca", "frecuenciaRespiratoria",
+    "temperatura", "diagnostico", "planSeguir", "formulacion", "laboratorios", "otrosEstudios",
+    "recomendaciones", "revisionxSistemas", "remision", "estudiosDiagnosticos",
+] as const;
+
+/** Nombre del tipo de estudio que abre las pestañas de primera vez (frmHistoria de SIM-ENDOSCOPIA). */
+export const ESTUDIO_PRIMERA_VEZ = "CONSULTA PRIMERA VEZ";
+
+export function esPrimeraVez(estudio?: string | null) {
+    return (estudio ?? "").trim().toUpperCase() === ESTUDIO_PRIMERA_VEZ;
+}
+
+export interface AntecedentesHistoria {
+    familiares: string;
+    personales: string;
+    previosFamiliares: string;
+    previosPersonales: string;
+}
+
+export interface Adenda {
+    id: number;
+    texto: string;
+    fechaHora: string;
+    idUsuario: number | null;
+    autor: string | null;
+}
+
+export interface HistoriaFirmada extends OrdenPendiente {
+    idHistoria: number;
+    fechaFirma: string | null;
+    adendas: number;
 }
 
 export interface ItemDiagnostico {

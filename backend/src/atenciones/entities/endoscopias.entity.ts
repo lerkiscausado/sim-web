@@ -70,6 +70,12 @@ export class Endoscopias {
   @Column({ name: 'CODIGO_DIAGNOSTICO', type: 'char', length: 4, nullable: true })
   codigoDiagnostico?: string | null;
 
+  @Column({ name: 'TOMA_BIOPSIA', type: 'enum', enum: ['NO', 'SI'], nullable: true })
+  tomaBiopsia?: 'NO' | 'SI' | null;
+
+  @Column({ name: 'BIOPSIA', type: 'text', nullable: true })
+  biopsia?: string | null;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

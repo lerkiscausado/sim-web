@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Plus, Trash2, PenLine } from "lucide-react";
+import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Plus, Trash2, PenLine, Lock, CheckCircle2, AlertCircle, MessageSquarePlus, FileSignature } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Pildora } from "@/components/ui/panel";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { PacienteAvatar } from "@/components/ui/paciente-avatar";
 import {
@@ -27,8 +29,11 @@ import type {
     ItemRxs,
     EstudioAnterior,
     PacienteHistoria,
+    AntecedentesHistoria,
+    Adenda,
+    HistoriaFirmada,
 } from "./types";
-import { nombrePaciente, calcularEdad } from "./types";
+import { nombrePaciente, calcularEdad, esPrimeraVez, CAMPOS_EDITABLES_HISTORIA } from "./types";
 import { Select } from "@/components/ui/select";
 import { useFeedback } from "@/components/ui/feedback";
 import { usePaginacionLocal } from "@/lib/useTabla";
@@ -54,7 +59,27 @@ const FORM_INICIAL: HistoriaClinicaData = {
     laboratorios: "",
     otrosEstudios: "",
     recomendaciones: "",
+    revisionxSistemas: "",
+    estudiosDiagnosticos: "",
 };
+
+const ANTECEDENTES_VACIOS: AntecedentesHistoria = { familiares: "", personales: "", previosFamiliares: "", previosPersonales: "" };
+
+/** Solo los campos que acepta el backend (rechaza cualquier otro). */
+function payloadHistoria(form: HistoriaClinicaData) {
+    const out: Record<string, unknown> = {};
+    for (const k of CAMPOS_EDITABLES_HISTORIA) {
+        const v = form[k as keyof HistoriaClinicaData];
+        if (v !== undefined && v !== null) out[k] = v;
+    }
+    return out;
+}
+
+function fechaHora(v?: string | null) {
+    if (!v) return "—";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? v : d.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+}
 
 function PacienteCard({ p }: { p?: PacienteHistoria }) {
     if (!p) return null;
@@ -83,10 +108,12 @@ function PacienteCard({ p }: { p?: PacienteHistoria }) {
 }
 
 type Vista = "listado" | "informe";
+type Bandeja = "pendientes" | "firmadas";
 
 const SECCIONES = [
     { value: "motivo", label: "Motivo de Consulta", descripcion: "Razón principal por la que el paciente acude a la consulta." },
-    { value: "control", label: "Consulta de Control", descripcion: "Evolución y seguimiento de una consulta o tratamiento anterior." },
+    { value: "antecedentes", label: "Antecedentes", descripcion: "Antecedentes familiares y personales del paciente. Obligatorios para firmar." },
+    { value: "control", label: "Consulta de Control / Evolución", descripcion: "Evolución y seguimiento de una consulta o tratamiento anterior. Obligatoria para firmar." },
     { value: "enfermedad", label: "Enfermedad Actual", descripcion: "Descripción detallada de los síntomas y su evolución en el tiempo." },
     { value: "examen", label: "Examen Físico", descripcion: "Signos vitales y hallazgos del examen físico general." },
     { value: "rxs", label: "Revisión por Sistemas", descripcion: "Hallazgos positivos o negativos por cada sistema corporal." },
@@ -94,11 +121,23 @@ const SECCIONES = [
     { value: "analisis", label: "Análisis y Plan a Seguir", descripcion: "Interpretación clínica del caso y la conducta a seguir." },
     { value: "formulacion", label: "Formulación", descripcion: "Medicamentos formulados al paciente, con dosis y vía de administración." },
     { value: "laboratorios", label: "Laboratorios", descripcion: "Exámenes de laboratorio solicitados al paciente." },
-    { value: "procedimientos", label: "Procedimientos", descripcion: "Procedimientos y otros estudios solicitados al paciente." },
+    { value: "procedimientos", label: "Procedimientos y Estudios", descripcion: "Procedimientos, estudios diagnósticos y otros estudios solicitados al paciente." },
 ] as const;
 
+/**
+ * Pestañas visibles según el tipo de estudio, como frmHistoria de SIM-ENDOSCOPIA:
+ * "CONSULTA PRIMERA VEZ" muestra motivo, antecedentes, enfermedad actual y revisión
+ * por sistemas; cualquier otro tipo muestra la consulta de control (evolución).
+ */
+const SOLO_PRIMERA_VEZ = ["motivo", "antecedentes", "enfermedad", "rxs"];
+function seccionesPara(primeraVez: boolean) {
+    return SECCIONES.filter((s) =>
+        primeraVez ? s.value !== "control" : !SOLO_PRIMERA_VEZ.includes(s.value),
+    );
+}
+
 export default function HistoriaClinicaPage() {
-    const { avisar } = useFeedback();
+    const { avisar, confirmar } = useFeedback();
     const [vista, setVista] = useState<Vista>("listado");
     const [seccionActiva, setSeccionActiva] = useState<string>("motivo");
     const [pendientes, setPendientes] = useState<OrdenPendiente[]>([]);
@@ -106,8 +145,19 @@ export default function HistoriaClinicaPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
 
+    const [bandeja, setBandeja] = useState<Bandeja>("pendientes");
+    const [firmadas, setFirmadas] = useState<HistoriaFirmada[]>([]);
     const [ordenActiva, setOrdenActiva] = useState<OrdenPendiente | null>(null);
+    const [antecedentes, setAntecedentes] = useState<AntecedentesHistoria>(ANTECEDENTES_VACIOS);
+    const [faltantes, setFaltantes] = useState<string[] | null>(null);
+    const [adendas, setAdendas] = useState<Adenda[]>([]);
+    const [adendaTexto, setAdendaTexto] = useState("");
+    const [guardandoAdenda, setGuardandoAdenda] = useState(false);
     const [form, setForm] = useState<HistoriaClinicaData>(FORM_INICIAL);
+    /** Resolución 3100: una historia firmada (o cerrada) no se edita; solo admite adendas. */
+    const soloLectura = !!(form.firmada || form.estado === "C");
+    const primeraVez = esPrimeraVez(ordenActiva?.estudio);
+    const secciones = seccionesPara(primeraVez);
     const [guardando, setGuardando] = useState(false);
     const [firmando, setFirmando] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
@@ -156,14 +206,19 @@ export default function HistoriaClinicaPage() {
     const [rxsCatalogo, setRxsCatalogo] = useState<{ id: number; nombre: string }[]>([]);
     const [rxsForm, setRxsForm] = useState({ idRxs: "", descripcion: "" });
     const tablaPendientes = usePaginacionLocal(pendientes, "pendientes-historia-clinica");
+    const tablaFirmadas = usePaginacionLocal(firmadas, "firmadas-historia-clinica");
 
     const cargarPendientes = useCallback(async (q?: string) => {
         setLoading(true);
         setError(null);
         try {
             const qs = q ? `?q=${encodeURIComponent(q)}` : "";
-            const pend = await api.get<OrdenPendiente[]>(`/atenciones/historia-clinica/pendientes${qs}`);
+            const [pend, firm] = await Promise.all([
+                api.get<OrdenPendiente[]>(`/atenciones/historia-clinica/pendientes${qs}`),
+                api.get<HistoriaFirmada[]>(`/atenciones/historia-clinica/firmadas${qs}`).catch(() => [] as HistoriaFirmada[]),
+            ]);
             setPendientes(pend);
+            setFirmadas(firm);
         } catch (err) {
             setError(err instanceof ApiError ? err.message : "No se pudo cargar la información");
         } finally {
@@ -233,7 +288,22 @@ export default function HistoriaClinicaPage() {
         setFormError(null);
         v.reiniciar();
         setForm({ ...FORM_INICIAL, idOrden: orden.idOrden, idDetalleOrden: orden.idDetalleOrden });
+        setSeccionActiva(esPrimeraVez(orden.estudio) ? "motivo" : "control");
+        setAntecedentes(ANTECEDENTES_VACIOS);
+        setFaltantes(null);
+        setAdendas([]);
+        setAdendaTexto("");
         setVista("informe");
+
+        api
+            .get<AntecedentesHistoria>(`/atenciones/historia-clinica/orden/${orden.idOrden}/antecedentes?idUsuario=${orden.idUsuario}`)
+            .then(setAntecedentes)
+            .catch(() => setAntecedentes(ANTECEDENTES_VACIOS));
+        cargarFaltantes(orden.idDetalleOrden);
+        api
+            .get<Adenda[]>(`/atenciones/historia-clinica/detalle-orden/${orden.idDetalleOrden}/adendas`)
+            .then(setAdendas)
+            .catch(() => setAdendas([]));
 
         api
             .get<EstudioAnterior[]>(`/atenciones/historia-clinica/paciente/${orden.idUsuario}/estudios-anteriores`)
@@ -257,7 +327,14 @@ export default function HistoriaClinicaPage() {
         }
     }
 
+    function cargarFaltantes(idDetalleOrden: number) {
+        api.get<string[]>(`/atenciones/historia-clinica/detalle-orden/${idDetalleOrden}/faltantes`)
+            .then(setFaltantes)
+            .catch(() => setFaltantes(null));
+    }
+
     function recargarListas(idDetalleOrden: number) {
+        cargarFaltantes(idDetalleOrden);
         api.get<ItemDiagnostico[]>(`/atenciones/historia-clinica/detalle-orden/${idDetalleOrden}/diagnosticos`).then(setDiagnosticos).catch(() => setDiagnosticos([]));
         api.get<ItemMedicamento[]>(`/atenciones/historia-clinica/detalle-orden/${idDetalleOrden}/medicamentos`).then(setMedicamentos).catch(() => setMedicamentos([]));
         api.get<ItemCups[]>(`/atenciones/historia-clinica/detalle-orden/${idDetalleOrden}/laboratorios`).then(setLaboratorios).catch(() => setLaboratorios([]));
@@ -271,14 +348,30 @@ export default function HistoriaClinicaPage() {
         cargarPendientes(searchTerm);
     }
 
-    async function guardarInforme() {
+    /** Guarda la historia y, en primera vez, los antecedentes de la orden (como GuardarHistoria + GuardarAntecedentes). */
+    async function persistir() {
         if (!ordenActiva) return;
+        await api.post("/atenciones/historia-clinica", payloadHistoria(form));
+        if (primeraVez) {
+            const ant = await api.put<AntecedentesHistoria>("/atenciones/historia-clinica/antecedentes", {
+                idOrden: ordenActiva.idOrden,
+                idUsuario: ordenActiva.idUsuario,
+                familiares: antecedentes.familiares,
+                personales: antecedentes.personales,
+            });
+            setAntecedentes(ant);
+        }
+    }
+
+    async function guardarInforme() {
+        if (!ordenActiva || soloLectura) return;
         setFormError(null);
         if (!v.comprobar()) return;
         setGuardando(true);
         try {
-            await api.post("/atenciones/historia-clinica", form);
+            await persistir();
             avisar.exito("Historia clínica guardada.");
+            cargarFaltantes(ordenActiva.idDetalleOrden);
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo guardar la historia clínica");
         } finally {
@@ -287,17 +380,44 @@ export default function HistoriaClinicaPage() {
     }
 
     async function firmarHistoria() {
-        if (!ordenActiva || !v.comprobar()) return;
+        if (!ordenActiva || soloLectura || !v.comprobar()) return;
+        const ok = await confirmar({
+            titulo: "¿Firmar la historia?",
+            mensaje: "Después de firmar no se podrá modificar (Resolución 3100). Las correcciones se harán con adendas.",
+            textoAceptar: "Firmar",
+            peligro: true,
+        });
+        if (!ok) return;
         setFirmando(true);
         setFormError(null);
         try {
+            await persistir();
             await api.patch(`/atenciones/historia-clinica/detalle-orden/${ordenActiva.idDetalleOrden}/firmar`);
             avisar.exito("Historia clínica firmada.");
             volverAlListado();
         } catch (err) {
             setFormError(err instanceof ApiError ? err.message : "No se pudo firmar la historia");
+            cargarFaltantes(ordenActiva.idDetalleOrden);
         } finally {
             setFirmando(false);
+        }
+    }
+
+    async function agregarAdenda() {
+        if (!ordenActiva || !adendaTexto.trim()) return;
+        setGuardandoAdenda(true);
+        try {
+            const lista = await api.post<Adenda[]>(
+                `/atenciones/historia-clinica/detalle-orden/${ordenActiva.idDetalleOrden}/adendas`,
+                { texto: adendaTexto.trim() },
+            );
+            setAdendas(lista);
+            setAdendaTexto("");
+            avisar.exito("Adenda agregada.");
+        } catch (err) {
+            avisar.error(err instanceof ApiError ? err.message : "No se pudo agregar la adenda");
+        } finally {
+            setGuardandoAdenda(false);
         }
     }
 
@@ -414,6 +534,28 @@ export default function HistoriaClinicaPage() {
                         <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
                             {ordenActiva.estudio} · Fecha de ingreso: {ordenActiva.fechaIngreso}
                         </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[12.5px]">
+                            {soloLectura ? (
+                                <Pildora tono="exito">
+                                    <Lock className="mr-1 inline h-3 w-3" />
+                                    Firmada{form.fechaFirma ? ` el ${fechaHora(form.fechaFirma)}` : ""}
+                                </Pildora>
+                            ) : (
+                                <Pildora tono="neutro">Borrador</Pildora>
+                            )}
+                            {!soloLectura && faltantes && faltantes.length > 0 && (
+                                <span className="inline-flex items-center gap-1" style={{ color: "var(--status-danger, #dc2626)" }}>
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    Falta: {faltantes.join(", ")}
+                                </span>
+                            )}
+                            {!soloLectura && faltantes && faltantes.length === 0 && (
+                                <span className="inline-flex items-center gap-1" style={{ color: "var(--status-success, #16a34a)" }}>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    Lista para firmar
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <Button variant="outline" size="sm" onClick={volverAlListado}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -475,7 +617,7 @@ export default function HistoriaClinicaPage() {
                                 value={seccionActiva}
                                 onChange={(e) => setSeccionActiva(e.target.value)}
                             >
-                                {SECCIONES.map((s) => (
+                                {secciones.map((s) => (
                                     <option key={s.value} value={s.value}>
                                         {s.label}
                                     </option>
@@ -491,6 +633,7 @@ export default function HistoriaClinicaPage() {
                             </div>
                         </div>
 
+                        <fieldset disabled={soloLectura} className="contents">
                             {seccionActiva === "motivo" && (
                             <div className="mt-3">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -501,7 +644,7 @@ export default function HistoriaClinicaPage() {
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[13px] font-medium">Motivo de Consulta</label>
-                                            <RichTextEditor rows={5} value={form.motivoConsulta ?? ""} onChange={(html) => setForm((f) => ({ ...f, motivoConsulta: html }))} />
+                                            <RichTextEditor disabled={soloLectura} rows={5} value={form.motivoConsulta ?? ""} onChange={(html) => setForm((f) => ({ ...f, motivoConsulta: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -513,7 +656,52 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[13px] font-medium">Consulta de Control o Evolución</label>
-                                        <RichTextEditor rows={6} value={form.consultaControl ?? ""} onChange={(html) => setForm((f) => ({ ...f, consultaControl: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={6} value={form.consultaControl ?? ""} onChange={(html) => setForm((f) => ({ ...f, consultaControl: html }))} />
+                                    </div>
+                                </div>
+                            </div>
+                            )}
+
+                            {seccionActiva === "antecedentes" && (
+                            <div className="mt-3 space-y-4">
+                                {(antecedentes.previosFamiliares || antecedentes.previosPersonales) && (
+                                    <div className="rounded-lg border p-5 text-[12.5px]" style={{ background: "var(--surface-sunken, #f8f8f8)", borderColor: "var(--border-default)" }}>
+                                        <div className="mb-2 flex items-center justify-between">
+                                            <p className="font-bold">Registrados en órdenes anteriores</p>
+                                            {!soloLectura && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setAntecedentes((a) => ({
+                                                            ...a,
+                                                            familiares: a.familiares || a.previosFamiliares,
+                                                            personales: a.personales || a.previosPersonales,
+                                                        }))
+                                                    }
+                                                >
+                                                    Usar en esta orden
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <p><span className="font-medium">Familiares:</span> {antecedentes.previosFamiliares || "—"}</p>
+                                        <p className="mt-1"><span className="font-medium">Personales:</span> {antecedentes.previosPersonales || "—"}</p>
+                                    </div>
+                                )}
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-medium">Antecedentes Familiares *</label>
+                                            <Textarea rows={4} value={antecedentes.familiares} onChange={(e) => setAntecedentes((a) => ({ ...a, familiares: e.target.value }))} placeholder="Ej.: Madre con diabetes tipo 2. Padre con HTA." />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[13px] font-medium">Antecedentes Personales *</label>
+                                            <Textarea rows={4} value={antecedentes.personales} onChange={(e) => setAntecedentes((a) => ({ ...a, personales: e.target.value }))} placeholder="Patológicos, quirúrgicos, alérgicos, farmacológicos…" />
+                                        </div>
+                                        <p className="text-[12px]" style={{ color: "var(--ink-secondary)" }}>
+                                            Se guardan con la historia. Texto libre, como en el escritorio; el RDA-Paciente los toma de aquí.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -524,7 +712,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[13px] font-medium">Enfermedad Actual</label>
-                                        <RichTextEditor rows={6} value={form.enfermedadActual ?? ""} onChange={(html) => setForm((f) => ({ ...f, enfermedadActual: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={6} value={form.enfermedadActual ?? ""} onChange={(html) => setForm((f) => ({ ...f, enfermedadActual: html }))} />
                                     </div>
                                 </div>
                             </div>
@@ -554,7 +742,7 @@ export default function HistoriaClinicaPage() {
                                         </Campo>
                                         <div className="col-span-3 space-y-1.5">
                                             <label className="text-[13px] font-medium">Descripción del Examen Físico</label>
-                                            <RichTextEditor rows={4} value={form.examenFisico ?? ""} onChange={(html) => setForm((f) => ({ ...f, examenFisico: html }))} />
+                                            <RichTextEditor disabled={soloLectura} rows={4} value={form.examenFisico ?? ""} onChange={(html) => setForm((f) => ({ ...f, examenFisico: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -562,7 +750,13 @@ export default function HistoriaClinicaPage() {
                             )}
 
                             {seccionActiva === "rxs" && (
-                            <div className="mt-3">
+                            <div className="mt-3 space-y-4">
+                                <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[13px] font-medium">Revisión por Sistemas (texto)</label>
+                                        <RichTextEditor disabled={soloLectura} rows={3} value={form.revisionxSistemas ?? ""} onChange={(html) => setForm((f) => ({ ...f, revisionxSistemas: html }))} />
+                                    </div>
+                                </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="space-y-1.5">
@@ -600,7 +794,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[13px] font-medium">Diagnóstico</label>
-                                        <RichTextEditor rows={4} value={form.diagnostico ?? ""} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={4} value={form.diagnostico ?? ""} onChange={(html) => setForm((f) => ({ ...f, diagnostico: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -649,11 +843,11 @@ export default function HistoriaClinicaPage() {
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
                                             <label className="text-[13px] font-medium">Análisis y Plan a Seguir</label>
-                                            <RichTextEditor rows={5} value={form.planSeguir ?? ""} onChange={(html) => setForm((f) => ({ ...f, planSeguir: html }))} />
+                                            <RichTextEditor disabled={soloLectura} rows={5} value={form.planSeguir ?? ""} onChange={(html) => setForm((f) => ({ ...f, planSeguir: html }))} />
                                         </div>
                                         <div className="space-y-1.5">
                                             <label className="text-[13px] font-medium">Recomendaciones</label>
-                                            <RichTextEditor rows={3} value={form.recomendaciones ?? ""} onChange={(html) => setForm((f) => ({ ...f, recomendaciones: html }))} />
+                                            <RichTextEditor disabled={soloLectura} rows={3} value={form.recomendaciones ?? ""} onChange={(html) => setForm((f) => ({ ...f, recomendaciones: html }))} />
                                         </div>
                                     </div>
                                 </div>
@@ -665,7 +859,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[13px] font-medium">Formulación</label>
-                                        <RichTextEditor rows={3} value={form.formulacion ?? ""} onChange={(html) => setForm((f) => ({ ...f, formulacion: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={3} value={form.formulacion ?? ""} onChange={(html) => setForm((f) => ({ ...f, formulacion: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -728,7 +922,7 @@ export default function HistoriaClinicaPage() {
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
                                         <label className="text-[13px] font-medium">Laboratorios (texto libre)</label>
-                                        <RichTextEditor rows={2} value={form.laboratorios ?? ""} onChange={(html) => setForm((f) => ({ ...f, laboratorios: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={2} value={form.laboratorios ?? ""} onChange={(html) => setForm((f) => ({ ...f, laboratorios: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -775,8 +969,12 @@ export default function HistoriaClinicaPage() {
                             <div className="mt-3 space-y-4">
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                                     <div className="space-y-1.5">
+                                        <label className="text-[13px] font-medium">Estudios Diagnósticos</label>
+                                        <RichTextEditor disabled={soloLectura} rows={2} value={form.estudiosDiagnosticos ?? ""} onChange={(html) => setForm((f) => ({ ...f, estudiosDiagnosticos: html }))} />
+                                    </div>
+                                    <div className="mt-3 space-y-1.5">
                                         <label className="text-[13px] font-medium">Otros Estudios</label>
-                                        <RichTextEditor rows={2} value={form.otrosEstudios ?? ""} onChange={(html) => setForm((f) => ({ ...f, otrosEstudios: html }))} />
+                                        <RichTextEditor disabled={soloLectura} rows={2} value={form.otrosEstudios ?? ""} onChange={(html) => setForm((f) => ({ ...f, otrosEstudios: html }))} />
                                     </div>
                                 </div>
                                 <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
@@ -819,6 +1017,8 @@ export default function HistoriaClinicaPage() {
                             </div>
                             )}
 
+                        </fieldset>
+
                         {/* Acciones globales: siempre visibles, sin importar la ficha activa */}
                         <div className="mt-4 rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                             <ResumenErrores mensaje={v.resumen} />
@@ -827,6 +1027,36 @@ export default function HistoriaClinicaPage() {
                                     {formError}
                                 </p>
                             )}
+                            {soloLectura ? (
+                                <div className="space-y-3">
+                                    <p className="flex items-center gap-2 text-sm font-bold">
+                                        <FileSignature className="h-4 w-4" />
+                                        Adendas
+                                    </p>
+                                    <p className="text-[12.5px]" style={{ color: "var(--ink-secondary)" }}>
+                                        La historia está firmada y no se puede modificar (Resolución 3100). Para corregir o aclarar, agregue una adenda: queda con su nombre, la fecha y la hora del servidor.
+                                    </p>
+                                    {adendas.length === 0 ? (
+                                        <p className="text-[12.5px] text-muted-foreground">Sin adendas.</p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {adendas.map((a) => (
+                                                <div key={a.id} className="rounded-md border px-3 py-2 text-[12.5px]" style={{ borderColor: "var(--border-default)" }}>
+                                                    <p className="mb-1 text-xs text-muted-foreground">
+                                                        {fechaHora(a.fechaHora)} · {a.autor ?? `Usuario ${a.idUsuario ?? "—"}`}
+                                                    </p>
+                                                    <p className="whitespace-pre-wrap">{a.texto}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <Textarea rows={3} value={adendaTexto} onChange={(e) => setAdendaTexto(e.target.value)} placeholder="Texto de la adenda…" />
+                                    <Button onClick={agregarAdenda} disabled={guardandoAdenda || !adendaTexto.trim()}>
+                                        {guardandoAdenda ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquarePlus className="mr-2 h-4 w-4" />}
+                                        Agregar adenda
+                                    </Button>
+                                </div>
+                            ) : (
                             <div className="flex flex-wrap gap-2">
                                 <Button onClick={guardarInforme} disabled={guardando}>
                                     {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -837,6 +1067,7 @@ export default function HistoriaClinicaPage() {
                                     Firmar y Cerrar
                                 </Button>
                             </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -864,7 +1095,9 @@ export default function HistoriaClinicaPage() {
                     </span>
                     <h1 style={{ color: "var(--ink-primary)" }}>Historia Clínica</h1>
                     <p className="mt-1.5 text-[13px]" style={{ color: "var(--ink-secondary)" }}>
-                        Tus pacientes pendientes de historia clínica
+                        {bandeja === "pendientes"
+                            ? "Tus pacientes pendientes de historia clínica"
+                            : "Historias que ya firmaste: consúltalas o agrega adendas"}
                     </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => cargarPendientes(searchTerm)} disabled={loading}>
@@ -879,6 +1112,26 @@ export default function HistoriaClinicaPage() {
                 </p>
             )}
 
+            <div className="flex gap-1 border-b" style={{ borderColor: "var(--border-default)" }}>
+                {([
+                    ["pendientes", `Pendientes (${pendientes.length})`],
+                    ["firmadas", `Firmadas (${firmadas.length})`],
+                ] as const).map(([valor, texto]) => (
+                    <button
+                        key={valor}
+                        type="button"
+                        onClick={() => setBandeja(valor)}
+                        className="-mb-px border-b-2 px-3 py-2 text-[13px] font-medium"
+                        style={{
+                            borderColor: bandeja === valor ? "var(--ink-brand, #e5322b)" : "transparent",
+                            color: bandeja === valor ? "var(--ink-primary)" : "var(--ink-secondary)",
+                        }}
+                    >
+                        {texto}
+                    </button>
+                ))}
+            </div>
+
             <div className="relative max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -890,6 +1143,63 @@ export default function HistoriaClinicaPage() {
                 {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
             </div>
 
+            {bandeja === "firmadas" ? (
+            <>
+            <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/50">
+                            <TableHead><span className="inline-flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" />Orden</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5" />Paciente</span></TableHead>
+                            <TableHead><span className="inline-flex items-center gap-1.5"><TestTube2 className="h-3.5 w-3.5" />Estudio</span></TableHead>
+                            <TableHead>Firmada</TableHead>
+                            <TableHead className="text-center">Acción</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {!loading && firmadas.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={5} className="py-8 text-center text-[13px]" style={{ color: "var(--ink-secondary)" }}>
+                                    No hay historias firmadas.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                        {tablaFirmadas.visibles.map((h) => (
+                            <TableRow key={h.idDetalleOrden} className="align-top hover:bg-muted/40">
+                                <TableCell className="py-3">
+                                    <p className="font-bold">{h.consecutivo || h.idOrden}</p>
+                                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <CalendarDays className="h-3 w-3" />
+                                        {h.fechaIngreso}
+                                    </p>
+                                </TableCell>
+                                <TableCell className="py-3">
+                                    <p className="font-bold">{nombrePaciente(h.paciente).toUpperCase()}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                        {h.paciente.idTipoIdentificacion}
+                                        {h.paciente.identificacion}
+                                    </p>
+                                </TableCell>
+                                <TableCell className="py-3 text-sm">{h.estudio}</TableCell>
+                                <TableCell className="py-3 text-xs">
+                                    {fechaHora(h.fechaFirma)}
+                                    {h.adendas > 0 && <p className="text-muted-foreground">{h.adendas} adenda{h.adendas === 1 ? "" : "s"}</p>}
+                                </TableCell>
+                                <TableCell className="py-3 text-center">
+                                    <Button size="sm" variant="outline" onClick={() => abrirOrden(h)}>
+                                        <Eye size={14} />
+                                        Ver
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+            <PaginationControls {...tablaFirmadas.paginacion} />
+            </>
+            ) : (
+            <>
             <div className="rounded-lg border" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
                 <Table>
                     <TableHeader>
@@ -939,6 +1249,8 @@ export default function HistoriaClinicaPage() {
                 </Table>
             </div>
             <PaginationControls {...tablaPendientes.paginacion} />
+            </>
+            )}
         </div>
     );
 }

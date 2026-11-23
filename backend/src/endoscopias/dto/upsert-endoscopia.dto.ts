@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpsertEndoscopiaDto {
   @IsInt()
@@ -36,20 +36,34 @@ export class UpsertEndoscopiaDto {
   @IsString()
   anestesiologo?: string;
 
-  /** Reporte del procedimiento (plantilla precargada según el tipo de estudio). */
+  /** Descripción del procedimiento. */
   @IsString()
   @IsNotEmpty()
   campo1: string;
 
+  /** Pestañas según el tipo (frmEndoscopiaGL): Esófago/Estómago/Duodeno o Inspección/Tacto/Colonoscopia|Rectoscopia. */
+  @IsOptional() @IsString() campo2?: string;
+  @IsOptional() @IsString() campo3?: string;
+  @IsOptional() @IsString() campo4?: string;
+
+  /** ELCB (solo colonoscopia). El escritorio guarda "." cuando no aplica. */
+  @IsOptional() @IsString() campo5?: string;
+
+  /** Nombre del CUPS (el escritorio lo guarda aquí). */
   @IsOptional()
   @IsString()
   campo6?: string;
+
+  @IsOptional() @IsIn(['NO', 'SI']) tomaBiopsia?: 'NO' | 'SI';
+  @IsOptional() @IsString() biopsia?: string;
 
   @IsString()
   @IsNotEmpty()
   diagnostico: string;
 
+  /** CIE-10 (la columna es CHAR(4)). */
   @IsOptional()
   @IsString()
+  @MaxLength(4)
   codigoDiagnostico?: string;
 }

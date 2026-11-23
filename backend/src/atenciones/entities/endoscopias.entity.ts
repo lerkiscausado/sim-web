@@ -76,6 +76,22 @@ export class Endoscopias {
   @Column({ name: 'BIOPSIA', type: 'text', nullable: true })
   biopsia?: string | null;
 
+  // ── Resolución 3100 (migración 007) ──
+  @Column({
+    name: 'firmada',
+    type: 'tinyint',
+    width: 1,
+    default: 0,
+    transformer: { to: (v?: boolean) => (v ? 1 : 0), from: (v: number | null) => v === 1 },
+  })
+  firmada: boolean;
+
+  @Column({ name: 'fecha_firma', type: 'datetime', nullable: true })
+  fechaFirma?: Date | null;
+
+  @Column({ name: 'usuario_firma', type: 'int', nullable: true })
+  usuarioFirma?: number | null;
+
   @CreateDateColumn({ name: 'createdAt' })
   createdAt: Date;
 

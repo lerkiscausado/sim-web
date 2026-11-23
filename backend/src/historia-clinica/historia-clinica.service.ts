@@ -303,7 +303,11 @@ export class HistoriaClinicaService {
   }
 
   async upsert(dto: UpsertHistoriaClinicaDto, idEspecialista: number): Promise<HistoriaClinica> {
-    const { idOrden, idDetalleOrden, ...campos } = dto;
+    const { idOrden, idDetalleOrden, ...recibidos } = dto;
+    // Los campos que no vienen en la petición no deben pisar los valores por defecto con NULL.
+    const campos = Object.fromEntries(
+      Object.entries(recibidos).filter(([, v]) => v !== undefined),
+    ) as typeof recibidos;
     let historia = await this.asegurarEditable(idDetalleOrden, idEspecialista, 'Guardar historia');
     const nueva = !historia;
 

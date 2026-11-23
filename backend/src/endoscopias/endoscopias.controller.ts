@@ -4,6 +4,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { EndoscopiasService } from './endoscopias.service';
 import { UpsertEndoscopiaDto } from './dto/upsert-endoscopia.dto';
+import { AddAdendaDto } from '../historia-clinica/dto/add-adenda.dto';
 
 @Controller('atenciones/endoscopias')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -14,6 +15,32 @@ export class EndoscopiasController {
   @Get('pendientes')
   findPendientes(@Req() req: any, @Query('q') q?: string) {
     return this.service.findPendientes(req.user.idEmpleado, q);
+  }
+
+  @Get('firmadas')
+  findFirmadas(@Req() req: any, @Query('q') q?: string) {
+    return this.service.findFirmadas(req.user.idEmpleado, q);
+  }
+
+  /** Plantilla del especialista en sesión para el tipo de estudio. */
+  @Get('plantilla/:idTipoEstudio')
+  plantilla(@Param('idTipoEstudio', ParseIntPipe) idTipoEstudio: number, @Req() req: any) {
+    return this.service.plantilla(req.user.idEmpleado, idTipoEstudio);
+  }
+
+  @Get('detalle-orden/:idDetalleOrden/faltantes')
+  faltantes(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.service.faltantesParaFirmar(idDetalleOrden);
+  }
+
+  @Get('detalle-orden/:idDetalleOrden/adendas')
+  listAdendas(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.service.listAdendas(idDetalleOrden);
+  }
+
+  @Post('detalle-orden/:idDetalleOrden/adendas')
+  addAdenda(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number, @Body() dto: AddAdendaDto, @Req() req: any) {
+    return this.service.addAdenda(idDetalleOrden, dto.texto, req.user.idEmpleado);
   }
 
   @Get('detalle-orden/:idDetalleOrden')
@@ -32,7 +59,7 @@ export class EndoscopiasController {
   }
 
   @Patch('detalle-orden/:idDetalleOrden/firmar')
-  firmar(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
-    return this.service.firmar(idDetalleOrden);
+  firmar(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number, @Req() req: any) {
+    return this.service.firmar(idDetalleOrden, req.user.idEmpleado);
   }
 }

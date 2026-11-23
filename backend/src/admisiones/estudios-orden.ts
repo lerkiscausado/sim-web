@@ -1,20 +1,37 @@
+import { DataSource } from 'typeorm';
+
 /**
- * Estudios reales de una orden. En GASTROLAP la cabecera (ordenes.ID_TIPO_ESTUDIO) casi
+ * Estudios reales de las órdenes. En GASTROLAP la cabecera (ordenes.ID_TIPO_ESTUDIO) casi
  * siempre dice "CONSULTA PRIMERA VEZ" aunque la orden traiga endoscopia o colonoscopia: los
  * estudios están en detalle_orden (el escritorio lista por detalle, DOrdenes
- * ListadoOrdenesEndoscopia). Se muestran todos los tipos de las líneas no canceladas; si la
- * orden no tiene líneas, el de la cabecera.
+ * ListadoOrdenesEndoscopia).
+ *
+ * Rendimiento: detalle_orden.ID_ORDEN es CHAR, así que una subconsulta correlacionada que
+ * compare con ordenes.ID (INT) recorre la tabla por cada orden (5 s para 50 filas en la base
+ * de GASTROLAP). Por eso los estudios se buscan en una sola consulta con los ids como texto
+ * (usa el índice) y el filtro usa una subconsulta no correlacionada.
  */
-export function sqlEstudiosOrden(aliasOrden: string, aliasTipoCabecera: string) {
-  return `COALESCE((SELECT GROUP_CONCAT(DISTINCT te.NOMBRE_TIPO_ESTUDIO ORDER BY te.NOMBRE_TIPO_ESTUDIO SEPARATOR ' + ')
-            FROM detalle_orden de INNER JOIN tipo_estudio te ON te.ID = de.ID_TIPO_ESTUDIO
-            WHERE CAST(de.ID_ORDEN AS UNSIGNED) = \`${aliasOrden}\`.\`ID\` AND de.ESTADO <> 'CANCELADO'),
-          \`${aliasTipoCabecera}\`.\`NOMBRE_TIPO_ESTUDIO\`)`;
+export async function estudiosPorOrden(ds: DataSource, ids: number[]): Promise<Map<number, string>> {
+  const mapa = new Map<number, string>();
+  const unicos = [...new Set(ids.filter((n) => Number.isFinite(n)))];
+  for (let i = 0; i < unicos.length; i += 1000) {
+    const lote = unicos.slice(i, i + 1000).map(String);
+    const filas: { idOrden: string; estudios: string }[] = await ds.query(
+      `SELECT de.ID_ORDEN AS idOrden,
+              GROUP_CONCAT(DISTINCT te.NOMBRE_TIPO_ESTUDIO ORDER BY te.NOMBRE_TIPO_ESTUDIO SEPARATOR ' + ') AS estudios
+       FROM detalle_orden de INNER JOIN tipo_estudio te ON te.ID = de.ID_TIPO_ESTUDIO
+       WHERE de.ID_ORDEN IN (${lote.map(() => '?').join(',')}) AND de.ESTADO <> 'CANCELADO'
+       GROUP BY de.ID_ORDEN`,
+      lote,
+    );
+    for (const f of filas) mapa.set(Number(f.idOrden), f.estudios);
+  }
+  return mapa;
 }
 
-/** Filtro por tipo de estudio: el de la cabecera o el de cualquier línea de la orden. */
+/** Filtro por tipo de estudio: el de la cabecera o el de cualquier línea no cancelada de la orden. */
 export function sqlOrdenTieneEstudio(aliasOrden: string, parametro: string) {
-  return `(\`${aliasOrden}\`.\`ID_TIPO_ESTUDIO\` = :${parametro} OR EXISTS (
-            SELECT 1 FROM detalle_orden dx WHERE CAST(dx.ID_ORDEN AS UNSIGNED) = \`${aliasOrden}\`.\`ID\`
-              AND dx.ID_TIPO_ESTUDIO = :${parametro} AND dx.ESTADO <> 'CANCELADO'))`;
+  return `(\`${aliasOrden}\`.\`ID_TIPO_ESTUDIO\` = :${parametro} OR \`${aliasOrden}\`.\`ID\` IN (
+            SELECT CAST(dx.ID_ORDEN AS UNSIGNED) FROM detalle_orden dx
+            WHERE dx.ID_TIPO_ESTUDIO = :${parametro} AND dx.ESTADO <> 'CANCELADO'))`;
 }

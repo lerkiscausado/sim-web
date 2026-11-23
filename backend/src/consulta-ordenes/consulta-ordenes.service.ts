@@ -17,7 +17,7 @@ import { tablaPdf, ColumnaTabla } from '../reportes/tabla-pdf';
 import { fechaCorta, nombreArchivoSeguro } from '../reportes/pdf-utils';
 import { reciboEntregaPdf } from './recibo-entrega-pdf';
 import JSZip from 'jszip';
-import { sqlEstudiosOrden, sqlOrdenTieneEstudio } from '../admisiones/estudios-orden';
+import { estudiosPorOrden, sqlOrdenTieneEstudio } from '../admisiones/estudios-orden';
 import { aISOLocal } from '../common/registros.util';
 
 export interface FiltrosConsulta {
@@ -158,7 +158,7 @@ export class ConsultaOrdenesService {
         'u.correoElectronico AS correo',
         'c.nombre AS contrato',
         'e.nombreEntidad AS entidad',
-        `${sqlEstudiosOrden('o', 't')} AS estudio`,
+        't.nombreTipoEstudio AS estudio',
         't.prefijo AS prefijo',
         'o.comentarios AS comentarios',
         'o.estado AS estado',
@@ -212,7 +212,7 @@ export class ConsultaOrdenesService {
       .limit(take)
       .getRawMany();
     return {
-      data: filas.map((r) => this.normalizar(r)),
+      data: await this.conEstudios(filas.map((r) => this.normalizar(r))),
       total,
       page: Math.max(page, 1),
       pageSize: take,
@@ -222,7 +222,13 @@ export class ConsultaOrdenesService {
   /** Todas las filas filtradas (para exportar). Tope de seguridad de 50.000. */
   async todas(f: FiltrosConsulta, tope = 50000): Promise<FilaConsulta[]> {
     const filas = await this.seleccionar(this.base(f)).limit(tope).getRawMany();
-    return filas.map((r) => this.normalizar(r));
+    return this.conEstudios(filas.map((r) => this.normalizar(r)));
+  }
+
+  /** Reemplaza el estudio de la cabecera por los estudios reales de las líneas de la orden. */
+  private async conEstudios(filas: FilaConsulta[]): Promise<FilaConsulta[]> {
+    const mapa = await estudiosPorOrden(this.dataSource, filas.map((f) => f.orden));
+    return filas.map((f) => ({ ...f, estudio: mapa.get(f.orden) ?? f.estudio }));
   }
 
   async aniosDisponibles(): Promise<number[]> {

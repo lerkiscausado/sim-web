@@ -1,3 +1,4 @@
+import { InteroperabilidadModule } from './interoperabilidad/interoperabilidad.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -49,6 +50,7 @@ import { ConsultaOrdenesModule } from './consulta-ordenes/consulta-ordenes.modul
     AtencionesModule,
     HistoriaClinicaModule,
     EndoscopiasModule,
+    InteroperabilidadModule,
     CatalogosModule,
     EntidadesContratosModule,
     PacientesModule,

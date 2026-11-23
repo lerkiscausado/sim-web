@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InformesClinicosModule } from '../informes-clinicos/informes-clinicos.module';
+import { InteroperabilidadModule } from '../interoperabilidad/interoperabilidad.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HistoriaClinica } from './entities/historia-clinica.entity';
 import { HistoriaDiagnosticos } from './entities/historia-diagnosticos.entity';
@@ -17,6 +18,7 @@ import { HistoriaClinicaController } from './historia-clinica.controller';
 @Module({
   imports: [
     InformesClinicosModule,
+    InteroperabilidadModule,
     TypeOrmModule.forFeature([
       HistoriaClinica,
       HistoriaDiagnosticos,

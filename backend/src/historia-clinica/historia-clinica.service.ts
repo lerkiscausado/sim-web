@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
+import { RdaService } from '../interoperabilidad/rda.service';
 import { HistoriaClinica } from './entities/historia-clinica.entity';
 import { HistoriaDiagnosticos } from './entities/historia-diagnosticos.entity';
 import { HistoriaMedicamentos } from './entities/historia-medicamentos.entity';
@@ -67,6 +68,7 @@ export class HistoriaClinicaService {
     @InjectRepository(HistoriaClinicaAdenda)
     private readonly adendasRepo: Repository<HistoriaClinicaAdenda>,
     private readonly dataSource: DataSource,
+    private readonly rda: RdaService,
   ) {}
 
   // ───────────── Resolución 3100: trazabilidad y bloqueo ─────────────
@@ -406,6 +408,18 @@ export class HistoriaClinicaService {
       );
       await this.registrar('FIRMA', historia.idOrden, historia.id, idEmpleado, undefined, m);
     });
+
+    // RDA (MinSalud) en segundo plano: nunca bloquea ni deshace la firma.
+    const [orden] = await this.dataSource.query('SELECT ID_USUARIO AS idUsuario FROM ordenes WHERE ID = ?', [historia.idOrden]);
+    if (orden) {
+      this.rda.enviarTrasFirma({
+        idOrden: historia.idOrden,
+        idUsuario: Number(orden.idUsuario),
+        idEspecialista: idEmpleado,
+        idDetalleOrden,
+        tipo: 'C',
+      });
+    }
     return this.repo.findOne({ where: { id: historia.id } });
   }
 

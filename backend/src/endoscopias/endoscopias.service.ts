@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager } from 'typeorm';
+import { RdaService } from '../interoperabilidad/rda.service';
 import { Endoscopias } from '../atenciones/entities/endoscopias.entity';
 import { DetalleOrden, EstadoDetalleOrden } from '../admisiones/entities/detalle-orden.entity';
 import { UpsertEndoscopiaDto } from './dto/upsert-endoscopia.dto';
@@ -45,6 +46,7 @@ export class EndoscopiasService {
     @InjectRepository(EndoscopiaTrazabilidad)
     private readonly trazabilidadRepo: Repository<EndoscopiaTrazabilidad>,
     private readonly dataSource: DataSource,
+    private readonly rda: RdaService,
   ) {}
 
   private registrar(
@@ -337,6 +339,18 @@ export class EndoscopiasService {
       ]);
       await this.registrar('FIRMA', e.idOrden, e.id, idEmpleado, undefined, m);
     });
+
+    // RDA (MinSalud) en segundo plano: nunca bloquea ni deshace la firma.
+    const [orden] = await this.dataSource.query('SELECT ID_USUARIO AS idUsuario FROM ordenes WHERE ID = ?', [e.idOrden]);
+    if (orden) {
+      this.rda.enviarTrasFirma({
+        idOrden: e.idOrden,
+        idUsuario: Number(orden.idUsuario),
+        idEspecialista: idEmpleado,
+        idDetalleOrden,
+        tipo: 'P',
+      });
+    }
     return this.repo.findOne({ where: { id: e.id } });
   }
 

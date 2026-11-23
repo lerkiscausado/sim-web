@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InformesClinicosModule } from '../informes-clinicos/informes-clinicos.module';
+import { InteroperabilidadModule } from '../interoperabilidad/interoperabilidad.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Endoscopias } from '../atenciones/entities/endoscopias.entity';
 import { DetalleOrden } from '../admisiones/entities/detalle-orden.entity';
@@ -10,7 +11,8 @@ import { EndoscopiasController } from './endoscopias.controller';
 
 @Module({
   imports: [
-    InformesClinicosModule,TypeOrmModule.forFeature([Endoscopias, DetalleOrden, EndoscopiaTrazabilidad, EndoscopiaAdenda])],
+    InformesClinicosModule,
+    InteroperabilidadModule,TypeOrmModule.forFeature([Endoscopias, DetalleOrden, EndoscopiaTrazabilidad, EndoscopiaAdenda])],
   providers: [EndoscopiasService],
   controllers: [EndoscopiasController],
 })

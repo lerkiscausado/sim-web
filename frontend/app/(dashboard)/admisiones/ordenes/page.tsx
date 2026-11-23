@@ -692,7 +692,7 @@ export default function OrdenesPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="max-w-[260px]">
-                                            <p>{o.tipoEstudio?.nombreTipoEstudio ?? "—"}</p>
+                                            <p>{o.estudios ?? o.tipoEstudio?.nombreTipoEstudio ?? "—"}</p>
                                             <p className="truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }} title={o.especimen?.nombre}>
                                                 {o.especimen?.nombre ?? ""}
                                             </p>

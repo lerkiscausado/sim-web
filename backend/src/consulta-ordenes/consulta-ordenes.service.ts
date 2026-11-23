@@ -17,6 +17,7 @@ import { tablaPdf, ColumnaTabla } from '../reportes/tabla-pdf';
 import { fechaCorta, nombreArchivoSeguro } from '../reportes/pdf-utils';
 import { reciboEntregaPdf } from './recibo-entrega-pdf';
 import JSZip from 'jszip';
+import { sqlEstudiosOrden, sqlOrdenTieneEstudio } from '../admisiones/estudios-orden';
 import { aISOLocal } from '../common/registros.util';
 
 export interface FiltrosConsulta {
@@ -118,7 +119,7 @@ export class ConsultaOrdenesService {
       });
     if (f.idSede) qb.andWhere('o.idSede = :idSede', { idSede: f.idSede });
     if (f.idTipoEstudio)
-      qb.andWhere('o.idTipoEstudio = :tipo', { tipo: f.idTipoEstudio });
+      qb.andWhere(sqlOrdenTieneEstudio('o', 'tipo'), { tipo: f.idTipoEstudio });
     if (f.q && f.q.trim()) {
       const palabras = f.q.trim().split(/\s+/).slice(0, 5);
       palabras.forEach((p, i) => {
@@ -157,7 +158,7 @@ export class ConsultaOrdenesService {
         'u.correoElectronico AS correo',
         'c.nombre AS contrato',
         'e.nombreEntidad AS entidad',
-        't.nombreTipoEstudio AS estudio',
+        `${sqlEstudiosOrden('o', 't')} AS estudio`,
         't.prefijo AS prefijo',
         'o.comentarios AS comentarios',
         'o.estado AS estado',

@@ -70,6 +70,8 @@ export interface DetalleOrden {
 
 
 export interface OrdenListado {
+    /** Estudios reales de la orden (tipos de sus líneas de detalle), ej. "CONSULTA PRIMERA VEZ + ENDOSCOPIA". */
+    estudios?: string | null;
     id: number;
     numeroOrden: string;
     consecutivo: string;

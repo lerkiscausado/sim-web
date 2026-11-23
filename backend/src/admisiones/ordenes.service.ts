@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Ordenes, EstadoOrden } from './entities/ordenes.entity';
 import { DetalleOrden, EstadoDetalleOrden } from './entities/detalle-orden.entity';
 import { TipoEstudio } from '../catalogos/entities/tipo-estudio.entity';
+import { sqlOrdenTieneEstudio } from './estudios-orden';
 import { EntregaResultados } from '../atenciones/entities/entrega-resultados.entity';
 import { CreateOrdenDto } from './dto/create-orden.dto';
 import { CreateDetalleOrdenDto } from './dto/create-detalle-orden.dto';
@@ -211,7 +212,7 @@ export class OrdenesService {
       qb.andWhere('o.fechaIngreso <= :fechaFin', { fechaFin: filtros.fechaFin });
     }
     if (filtros?.idTipoEstudio) {
-      qb.andWhere('o.idTipoEstudio = :idTipoEstudio', { idTipoEstudio: filtros.idTipoEstudio });
+      qb.andWhere(sqlOrdenTieneEstudio('o', 'idTipoEstudio'), { idTipoEstudio: filtros.idTipoEstudio });
     }
     if (filtros?.estado) {
       const validos = Object.values(EstadoOrden) as string[];
@@ -229,7 +230,27 @@ export class OrdenesService {
     }
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, pageSize: take };
+    // Estudios reales de cada orden (líneas de detalle): en GASTROLAP la cabecera dice
+    // "CONSULTA PRIMERA VEZ" aunque la orden traiga endoscopia (ver estudios-orden.ts).
+    const estudios = new Map<number, string>();
+    if (data.length) {
+      const ids = data.map((o) => String(o.id));
+      const filas: { idOrden: string; estudios: string }[] = await this.dataSource.query(
+        `SELECT de.ID_ORDEN AS idOrden,
+                GROUP_CONCAT(DISTINCT te.NOMBRE_TIPO_ESTUDIO ORDER BY te.NOMBRE_TIPO_ESTUDIO SEPARATOR ' + ') AS estudios
+         FROM detalle_orden de INNER JOIN tipo_estudio te ON te.ID = de.ID_TIPO_ESTUDIO
+         WHERE de.ID_ORDEN IN (${ids.map(() => '?').join(',')}) AND de.ESTADO <> 'CANCELADO'
+         GROUP BY de.ID_ORDEN`,
+        ids,
+      );
+      for (const f of filas) estudios.set(Number(f.idOrden), f.estudios);
+    }
+    return {
+      data: data.map((o) => ({ ...o, estudios: estudios.get(o.id) ?? o.tipoEstudio?.nombreTipoEstudio ?? null })),
+      total,
+      page,
+      pageSize: take,
+    };
   }
 
   /** Años con órdenes registradas, para poblar el select de año en el listado. */

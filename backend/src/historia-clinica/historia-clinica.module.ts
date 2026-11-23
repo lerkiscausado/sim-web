@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { InformesClinicosModule } from '../informes-clinicos/informes-clinicos.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HistoriaClinica } from './entities/historia-clinica.entity';
 import { HistoriaDiagnosticos } from './entities/historia-diagnosticos.entity';
@@ -15,6 +16,7 @@ import { HistoriaClinicaController } from './historia-clinica.controller';
 
 @Module({
   imports: [
+    InformesClinicosModule,
     TypeOrmModule.forFeature([
       HistoriaClinica,
       HistoriaDiagnosticos,

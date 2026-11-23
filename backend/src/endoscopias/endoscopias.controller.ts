@@ -1,4 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { InformesClinicosPdfService, enviarPdf } from '../informes-clinicos/informes-clinicos-pdf.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
@@ -10,7 +13,21 @@ import { AddAdendaDto } from '../historia-clinica/dto/add-adenda.dto';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermission('endoscopia')
 export class EndoscopiasController {
-  constructor(private readonly service: EndoscopiasService) {}
+  constructor(
+    private readonly service: EndoscopiasService,
+    private readonly pdf: InformesClinicosPdfService,
+  ) {}
+
+  /** Informe en PDF (borrador con marca de agua si aún no está firmado). */
+  @Get('detalle-orden/:idDetalleOrden/pdf')
+  async pdfInforme(
+    @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
+    @Res() res: Response,
+    @Query('descargar') descargar?: string,
+  ) {
+    const { buffer, nombreArchivo } = await this.pdf.endoscopia(idDetalleOrden);
+    enviarPdf(res, buffer, nombreArchivo, descargar === '1');
+  }
 
   @Get('pendientes')
   findPendientes(@Req() req: any, @Query('q') q?: string) {

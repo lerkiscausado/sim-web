@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Plus, Trash2, PenLine, Lock, CheckCircle2, AlertCircle, MessageSquarePlus, FileSignature } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { Loader2, Stethoscope, RefreshCw, Eye, Hash, User, TestTube2, CalendarDays, ArrowLeft, Search, Plus, Trash2, PenLine, Lock, CheckCircle2, AlertCircle, MessageSquarePlus, FileSignature, FileText } from "lucide-react";
+import { api, ApiError, apiFetchBlobUrl } from "@/lib/api";
 import { Campo, ResumenErrores } from "@/components/ui/campo";
 import { reglas, useValidacion } from "@/lib/validacion";
 import { Button } from "@/components/ui/button";
@@ -557,10 +557,27 @@ export default function HistoriaClinicaPage() {
                             )}
                         </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={volverAlListado}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Volver al Listado
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            title="Informe en PDF (sale como borrador hasta que se firme)"
+                            onClick={async () => {
+                                try {
+                                    window.open(await apiFetchBlobUrl(`/atenciones/historia-clinica/detalle-orden/${ordenActiva.idDetalleOrden}/pdf`), "_blank");
+                                } catch {
+                                    avisar.error("Guarde primero para poder ver el PDF.");
+                                }
+                            }}
+                        >
+                            <FileText className="mr-2 h-4 w-4" />
+                            Ver PDF
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={volverAlListado}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Volver al Listado
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-10 gap-4">

@@ -29,9 +29,18 @@ export async function estudiosPorOrden(ds: DataSource, ids: number[]): Promise<M
   return mapa;
 }
 
-/** Filtro por tipo de estudio: el de la cabecera o el de cualquier línea no cancelada de la orden. */
+/**
+ * Filtro por tipo de estudio, con la misma regla que la columna: cuenta el tipo de las líneas
+ * no canceladas de la orden; el de la cabecera solo si la orden no tiene líneas vigentes (si
+ * no, casi todas las órdenes de GASTROLAP saldrían como "CONSULTA PRIMERA VEZ").
+ * Subconsultas no correlacionadas: MySQL las calcula una vez.
+ */
 export function sqlOrdenTieneEstudio(aliasOrden: string, parametro: string) {
-  return `(\`${aliasOrden}\`.\`ID_TIPO_ESTUDIO\` = :${parametro} OR \`${aliasOrden}\`.\`ID\` IN (
+  const o = `\`${aliasOrden}\``;
+  return `(${o}.\`ID\` IN (
             SELECT CAST(dx.ID_ORDEN AS UNSIGNED) FROM detalle_orden dx
-            WHERE dx.ID_TIPO_ESTUDIO = :${parametro} AND dx.ESTADO <> 'CANCELADO'))`;
+            WHERE dx.ID_TIPO_ESTUDIO = :${parametro} AND dx.ESTADO <> 'CANCELADO')
+          OR (${o}.\`ID_TIPO_ESTUDIO\` = :${parametro} AND ${o}.\`ID\` NOT IN (
+            SELECT CAST(dz.ID_ORDEN AS UNSIGNED) FROM detalle_orden dz
+            WHERE dz.ID_ORDEN IS NOT NULL AND dz.ESTADO <> 'CANCELADO')))`;
 }

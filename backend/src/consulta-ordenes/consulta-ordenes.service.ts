@@ -12,6 +12,7 @@ import { Patologia } from '../atenciones/entities/patologia.entity';
 import { Citologia } from '../atenciones/entities/citologia.entity';
 import { PatologiaPdfService } from '../atenciones/patologia-pdf.service';
 import { CitologiaPdfService } from '../atenciones/citologia-pdf.service';
+import { InformesClinicosPdfService } from '../informes-clinicos/informes-clinicos-pdf.service';
 import { tablaPdf, ColumnaTabla } from '../reportes/tabla-pdf';
 import { fechaCorta, nombreArchivoSeguro } from '../reportes/pdf-utils';
 import { reciboEntregaPdf } from './recibo-entrega-pdf';
@@ -93,6 +94,7 @@ export class ConsultaOrdenesService {
     private readonly dataSource: DataSource,
     private readonly patologiaPdf: PatologiaPdfService,
     private readonly citologiaPdf: CitologiaPdfService,
+    private readonly informesClinicos: InformesClinicosPdfService,
   ) {}
 
   /** DOrdenes.OrdenesCDPatologia(): misma consulta, con filtros y paginación. */
@@ -330,10 +332,30 @@ export class ConsultaOrdenesService {
   }
 
   /** Reporte de estudios (bbiReporteEstudios): firmado → informe de su sede; si no → preliminar. */
+  /**
+   * Informe de GASTROLAP (endoscopia o historia clínica) si la orden lo tiene. Se prefiere
+   * el estudio de endoscopia (es el "resultado"); si no hay, la historia clínica.
+   */
+  private async informeClinico(idOrden: number): Promise<{ buffer: Buffer; nombreArchivo: string } | null> {
+    const [e] = await this.dataSource.query(
+      'SELECT ID_DETALLE_ORDEN AS id FROM endoscopias WHERE ID_ORDEN = ? ORDER BY ID DESC LIMIT 1',
+      [idOrden],
+    );
+    if (e?.id) return this.informesClinicos.endoscopia(Number(e.id));
+    const [h] = await this.dataSource.query(
+      'SELECT ID_DETALLE_ORDEN AS id FROM historia_clinica WHERE ID_ORDEN = ? ORDER BY ID DESC LIMIT 1',
+      [idOrden],
+    );
+    if (h?.id) return this.informesClinicos.historia(Number(h.id));
+    return null;
+  }
+
   async pdfEstudio(
     idOrden: number,
     variante?: string,
   ): Promise<{ buffer: Buffer; nombreArchivo: string }> {
+    const clinico = await this.informeClinico(idOrden);
+    if (clinico) return clinico;
     if (await this.esCitologia(idOrden))
       return this.citologiaPdf.generar(idOrden);
     const r = await this.patologiaPdf.generar(idOrden, {
@@ -355,12 +377,25 @@ export class ConsultaOrdenesService {
       );
     const patologia: number[] = [];
     const citologia: number[] = [];
-    for (const id of unicos)
+    const clinicos: { buffer: Buffer; nombreArchivo: string }[] = [];
+    for (const id of unicos) {
+      const c = await this.informeClinico(id).catch(() => null);
+      if (c) {
+        clinicos.push(c);
+        continue;
+      }
       ((await this.esCitologia(id).catch(() => false))
         ? citologia
         : patologia
       ).push(id);
+    }
     const r = await this.patologiaPdf.generarLote(patologia);
+    if (clinicos.length) {
+      const zip = await JSZip.loadAsync(r.zip);
+      for (const c of clinicos) zip.file(c.nombreArchivo, c.buffer);
+      r.generados += clinicos.length;
+      r.zip = await zip.generateAsync({ type: 'nodebuffer' });
+    }
     if (citologia.length) {
       const zip = await JSZip.loadAsync(r.zip);
       for (const id of citologia) {

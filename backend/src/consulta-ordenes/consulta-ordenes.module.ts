@@ -1,3 +1,4 @@
+import { InformesClinicosModule } from '../informes-clinicos/informes-clinicos.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AtencionesModule } from '../atenciones/atenciones.module';
@@ -20,6 +21,7 @@ import { InicioController, InicioService } from './inicio';
 @Module({
   imports: [
     AtencionesModule,
+    InformesClinicosModule,
     TypeOrmModule.forFeature([
       Ordenes,
       DetalleOrden,

@@ -17,7 +17,7 @@ import { tablaPdf, ColumnaTabla } from '../reportes/tabla-pdf';
 import { fechaCorta, nombreArchivoSeguro } from '../reportes/pdf-utils';
 import { reciboEntregaPdf } from './recibo-entrega-pdf';
 import JSZip from 'jszip';
-import { estudiosPorOrden, sqlOrdenTieneEstudio } from '../admisiones/estudios-orden';
+import { estudiosPorOrden, fotosPorOrden, sqlOrdenTieneEstudio } from '../admisiones/estudios-orden';
 import { aISOLocal } from '../common/registros.util';
 
 export interface FiltrosConsulta {
@@ -29,6 +29,8 @@ export interface FiltrosConsulta {
   estado?: string;
   idSede?: number;
   idTipoEstudio?: number;
+  /** Solo órdenes con fotos del procedimiento. */
+  conFotos?: boolean;
 }
 
 /** Fila de la grilla de frmConsultarCDPatologia (mismas columnas de DOrdenes.OrdenesCDPatologia). */
@@ -53,6 +55,9 @@ export interface FilaConsulta {
   idSede: number;
   subentidad: string;
   idUsuario: number;
+  /** Fotos de la orden (sin eliminadas) y cuántas van en el informe. */
+  fotos?: number;
+  fotosInforme?: number;
 }
 
 const PREFIJOS_CITOLOGIA = ['CV', 'CB', 'CR'];
@@ -75,6 +80,7 @@ export const COLUMNAS_CONSULTA: (ColumnaTabla & { excel: number })[] = [
   { titulo: 'ENTIDAD', campo: 'entidad', ancho: 1.4, excel: 26 },
   { titulo: 'SUB ENTIDAD', campo: 'subentidad', ancho: 1.3, excel: 24 },
   { titulo: 'ESTUDIO', campo: 'estudio', ancho: 1, excel: 18 },
+  { titulo: 'FOTOS', campo: 'fotos', ancho: 0.35, excel: 7 },
   { titulo: 'ESPECIMEN', campo: 'especimen', ancho: 1.6, excel: 30 },
   { titulo: 'SEDE', campo: 'sede', ancho: 0.8, excel: 13 },
   { titulo: 'COMENTARIOS', campo: 'comentarios', ancho: 1.3, excel: 30 },
@@ -120,6 +126,8 @@ export class ConsultaOrdenesService {
     if (f.idSede) qb.andWhere('o.idSede = :idSede', { idSede: f.idSede });
     if (f.idTipoEstudio)
       qb.andWhere(sqlOrdenTieneEstudio('o', 'tipo'), { tipo: f.idTipoEstudio });
+    // Subconsulta no correlacionada (imagenes.ID_ORDEN es INT e indexado).
+    if (f.conFotos) qb.andWhere('o.id IN (SELECT im.ID_ORDEN FROM imagenes im WHERE im.eliminada = 0)');
     if (f.q && f.q.trim()) {
       const palabras = f.q.trim().split(/\s+/).slice(0, 5);
       palabras.forEach((p, i) => {
@@ -227,8 +235,14 @@ export class ConsultaOrdenesService {
 
   /** Reemplaza el estudio de la cabecera por los estudios reales de las líneas de la orden. */
   private async conEstudios(filas: FilaConsulta[]): Promise<FilaConsulta[]> {
-    const mapa = await estudiosPorOrden(this.dataSource, filas.map((f) => f.orden));
-    return filas.map((f) => ({ ...f, estudio: mapa.get(f.orden) ?? f.estudio }));
+    const ids = filas.map((f) => f.orden);
+    const [mapa, fotos] = await Promise.all([estudiosPorOrden(this.dataSource, ids), fotosPorOrden(this.dataSource, ids)]);
+    return filas.map((f) => ({
+      ...f,
+      estudio: mapa.get(f.orden) ?? f.estudio,
+      fotos: fotos.get(f.orden)?.total ?? 0,
+      fotosInforme: fotos.get(f.orden)?.enInforme ?? 0,
+    }));
   }
 
   async aniosDisponibles(): Promise<number[]> {
@@ -253,6 +267,7 @@ export class ConsultaOrdenesService {
           : `Estado ${estados[0]}`,
       );
     }
+    if (f.conFotos) partes.push('Con fotos');
     if (f.q) partes.push(`Búsqueda "${f.q}"`);
     return partes.join(' · ') || 'Todas las órdenes';
   }

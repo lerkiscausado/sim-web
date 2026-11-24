@@ -15,6 +15,12 @@ interface Imagen {
     idOrden: number;
     ruta: string;
     texto: string | null;
+    /** Foto de un reporte de procedimiento (endoscopia, colonoscopia…). */
+    procedimiento?: boolean;
+    /** Seleccionada para el informe del procedimiento. */
+    enInforme?: boolean;
+    /** El procedimiento ya fue firmado: no se puede eliminar ni cambiar (Resolución 3100). */
+    firmada?: boolean;
 }
 
 interface Pendiente {
@@ -260,7 +266,17 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                     </div>
 
                     <div className="space-y-2">
-                        <p className="text-sm font-medium">Imágenes guardadas ({guardadas.length})</p>
+                        <p className="text-sm font-medium">
+                            Imágenes guardadas ({guardadas.length})
+                            {guardadas.some((g) => g.enInforme) && (
+                                <span className="ml-1 font-normal text-muted-foreground">· {guardadas.filter((g) => g.enInforme).length} en el informe</span>
+                            )}
+                        </p>
+                        {guardadas.some((g) => g.procedimiento) && (
+                            <p className="text-[11.5px] text-muted-foreground">
+                                Las fotos de procedimientos se eligen para el informe desde Atenciones → Endoscopias.
+                            </p>
+                        )}
                         <div className="grid max-h-[420px] grid-cols-2 gap-2 overflow-auto">
                             {guardadas.length === 0 && <p className="col-span-2 py-8 text-center text-sm text-muted-foreground">Sin imágenes.</p>}
                             {guardadas.map((g) => (
@@ -275,7 +291,11 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                                             Archivo no disponible en el servidor
                                         </div>
                                     )}
+                                    {g.enInforme && (
+                                        <span className="absolute left-1 top-1 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">En el informe</span>
+                                    )}
                                     <figcaption className="truncate px-1.5 py-1 text-[11px]">{g.texto || "—"}</figcaption>
+                                    {!g.firmada && (
                                     <button
                                         type="button"
                                         title="Eliminar"
@@ -284,6 +304,7 @@ export function ImagenesDialog({ open, onOpenChange, idOrden, titulo }: Props) {
                                     >
                                         <Trash2 size={12} className="text-red-600" />
                                     </button>
+                                    )}
                                 </figure>
                             ))}
                         </div>

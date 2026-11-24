@@ -68,6 +68,9 @@ interface FilaConsulta {
     sede: string;
     idSede: number;
     subentidad: string;
+    /** Fotos de la orden (sin eliminadas) y cuántas van en el informe del procedimiento. */
+    fotos?: number;
+    fotosInforme?: number;
 }
 
 interface Resultado {
@@ -122,6 +125,7 @@ export default function ConsultarOrdenesPage() {
         estado: "",
         idSede: "",
         idTipoEstudio: "",
+        conFotos: false,
     });
     const [qDebounced, setQDebounced] = useState("");
     const [page, setPage] = useState(1);
@@ -164,8 +168,9 @@ export default function ConsultarOrdenesPage() {
         p.set("estado", filtros.estado || HISTORIAL);
         if (filtros.idSede) p.set("idSede", filtros.idSede);
         if (filtros.idTipoEstudio) p.set("idTipoEstudio", filtros.idTipoEstudio);
+        if (filtros.conFotos) p.set("conFotos", "1");
         return p;
-    }, [qDebounced, filtros.anio, filtros.fechaInicio, filtros.fechaFin, filtros.estado, filtros.idSede, filtros.idTipoEstudio]);
+    }, [qDebounced, filtros.anio, filtros.fechaInicio, filtros.fechaFin, filtros.estado, filtros.idSede, filtros.idTipoEstudio, filtros.conFotos]);
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -292,7 +297,7 @@ export default function ConsultarOrdenesPage() {
         setDialogo(d);
     }
 
-    const hayFiltrosExtra = filtros.fechaInicio || filtros.fechaFin || filtros.idSede || filtros.idTipoEstudio;
+    const hayFiltrosExtra = filtros.fechaInicio || filtros.fechaFin || filtros.idSede || filtros.idTipoEstudio || filtros.conFotos;
 
     return (
         <div className="space-y-5">
@@ -417,8 +422,20 @@ export default function ConsultarOrdenesPage() {
                             ))}
                         </Select>
                     </FiltroCompacto>
+                    <label className="flex items-center gap-1.5 text-[12px]" style={{ color: "var(--ink-secondary)" }} title="Solo órdenes con fotos del procedimiento">
+                        <input
+                            type="checkbox"
+                            className="accent-[var(--clinical-500)]"
+                            checked={filtros.conFotos}
+                            onChange={(e) => {
+                                setPage(1);
+                                setFiltros((f) => ({ ...f, conFotos: e.target.checked }));
+                            }}
+                        />
+                        <Camera size={13} /> Con fotos
+                    </label>
                     {hayFiltrosExtra && (
-                        <Button variant="ghost" size="sm" onClick={() => setFiltros((f) => ({ ...f, fechaInicio: "", fechaFin: "", idSede: "", idTipoEstudio: "" }))}>
+                        <Button variant="ghost" size="sm" onClick={() => setFiltros((f) => ({ ...f, fechaInicio: "", fechaFin: "", idSede: "", idTipoEstudio: "", conFotos: false }))}>
                             <X size={14} /> Limpiar
                         </Button>
                     )}
@@ -551,7 +568,16 @@ export default function ConsultarOrdenesPage() {
                                             )}
                                         </TableCell>
                                         <TableCell className="max-w-[240px]">
-                                            <p>{f.estudio}</p>
+                                            <p className="flex items-center gap-1.5">
+                                                <span>{f.estudio}</span>
+                                                {!!f.fotos && (
+                                                    <BadgeFotos
+                                                        fotos={f.fotos}
+                                                        enInforme={f.fotosInforme ?? 0}
+                                                        onClick={hasPermission("adjuntarImagenes") ? () => abrirDialogo(f, "imagenes") : undefined}
+                                                    />
+                                                )}
+                                            </p>
                                             <p className="truncate text-[11.5px]" style={{ color: "var(--ink-tertiary)" }} title={f.especimen}>
                                                 {f.especimen}
                                             </p>
@@ -665,7 +691,12 @@ export default function ConsultarOrdenesPage() {
             />
             <ImagenesDialog
                 open={dialogo === "imagenes"}
-                onOpenChange={(o) => !o && setDialogo(null)}
+                onOpenChange={(o) => {
+                    if (!o) {
+                        setDialogo(null);
+                        cargar(); // el conteo de fotos de la grilla puede haber cambiado
+                    }
+                }}
                 idOrden={activa?.orden ?? null}
                 titulo={activa ? `${activa.consecutivo} · ${activa.nombre}` : undefined}
             />
@@ -679,6 +710,40 @@ export default function ConsultarOrdenesPage() {
             />
             <ErrorDialog open={!!error} onOpenChange={(o) => !o && setError(null)} titulo={error?.titulo} mensaje={error?.mensaje} detalles={error?.detalles} />
         </div>
+    );
+}
+
+/** Indicador de fotos del estudio en la grilla: cámara + cantidad; el tooltip dice cuántas van en el informe. */
+function BadgeFotos({ fotos, enInforme, onClick }: { fotos: number; enInforme: number; onClick?: () => void }) {
+    const titulo = `${fotos} foto${fotos === 1 ? "" : "s"}${enInforme ? ` · ${enInforme} en el informe` : " · ninguna en el informe"}`;
+    const contenido = (
+        <>
+            <Camera size={12} />
+            <span className="dato-mono">{enInforme ? `${enInforme}/${fotos}` : fotos}</span>
+        </>
+    );
+    const clase = "inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold";
+    const estilo = enInforme
+        ? { background: "var(--clinical-50, #eff6ff)", borderColor: "var(--clinical-300, #93c5fd)", color: "var(--clinical-700, #1d4ed8)" }
+        : { background: "var(--surface-sunken, #f4f4f5)", borderColor: "var(--border-default)", color: "var(--ink-secondary)" };
+    return onClick ? (
+        <button
+            type="button"
+            className={cn(clase, "cursor-pointer hover:opacity-80")}
+            style={estilo}
+            title={`${titulo} — clic para verlas`}
+            aria-label={titulo}
+            onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+            }}
+        >
+            {contenido}
+        </button>
+    ) : (
+        <span className={clase} style={estilo} title={titulo} aria-label={titulo}>
+            {contenido}
+        </span>
     );
 }
 

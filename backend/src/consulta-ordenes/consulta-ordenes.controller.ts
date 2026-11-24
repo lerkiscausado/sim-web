@@ -48,6 +48,7 @@ function filtros(q: Record<string, string | undefined>): FiltrosConsulta {
       q.estado && /^[A-Z]+(,[A-Z]+)*$/.test(q.estado) ? q.estado : undefined,
     idSede: num(q.idSede),
     idTipoEstudio: num(q.idTipoEstudio),
+    conFotos: q.conFotos === '1' || q.conFotos === 'true',
   };
 }
 

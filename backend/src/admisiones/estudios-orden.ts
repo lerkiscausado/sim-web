@@ -11,7 +11,10 @@ import { DataSource } from 'typeorm';
  * de GASTROLAP). Por eso los estudios se buscan en una sola consulta con los ids como texto
  * (usa el índice) y el filtro usa una subconsulta no correlacionada.
  */
-export async function estudiosPorOrden(ds: DataSource, ids: number[]): Promise<Map<number, string>> {
+export async function estudiosPorOrden(
+  ds: DataSource,
+  ids: number[],
+): Promise<Map<number, string>> {
   const mapa = new Map<number, string>();
   const unicos = [...new Set(ids.filter((n) => Number.isFinite(n)))];
   for (let i = 0; i < unicos.length; i += 1000) {
@@ -43,4 +46,50 @@ export function sqlOrdenTieneEstudio(aliasOrden: string, parametro: string) {
           OR (${o}.\`ID_TIPO_ESTUDIO\` = :${parametro} AND ${o}.\`ID\` NOT IN (
             SELECT CAST(dz.ID_ORDEN AS UNSIGNED) FROM detalle_orden dz
             WHERE dz.ID_ORDEN IS NOT NULL AND dz.ESTADO <> 'CANCELADO')))`;
+}
+
+/** Tipos de estudio cuyas fotos van al informe (endoscopia, colonoscopia, rectoscopia, estudios especiales). */
+export const TIPOS_ESTUDIO_CON_FOTOS = [10, 11, 12, 15];
+
+export interface FotosOrden {
+  /** Fotos vivas de la orden (sin las eliminadas). */
+  total: number;
+  /** De esas, las seleccionadas para el informe (ESTADO='A'). */
+  enInforme: number;
+}
+
+/**
+ * Cuántas fotos tiene cada orden, en una sola consulta por lote (imagenes.ID_ORDEN es INT e
+ * indexado). Sin la migración 009 (columna `eliminada`) cuenta con la regla del escritorio.
+ */
+export async function fotosPorOrden(
+  ds: DataSource,
+  ids: number[],
+): Promise<Map<number, FotosOrden>> {
+  const mapa = new Map<number, FotosOrden>();
+  const unicos = [...new Set(ids.filter((n) => Number.isFinite(n)))];
+  for (let i = 0; i < unicos.length; i += 1000) {
+    const lote = unicos.slice(i, i + 1000);
+    const marcas = lote.map(() => '?').join(',');
+    let filas: { idOrden: number; total: string; enInforme: string }[];
+    try {
+      filas = await ds.query(
+        `SELECT ID_ORDEN AS idOrden, COUNT(*) AS total, SUM(ESTADO = 'A') AS enInforme
+         FROM imagenes WHERE ID_ORDEN IN (${marcas}) AND eliminada = 0 GROUP BY ID_ORDEN`,
+        lote,
+      );
+    } catch {
+      filas = await ds.query(
+        `SELECT ID_ORDEN AS idOrden, COUNT(*) AS total, SUM(ESTADO = 'A') AS enInforme
+         FROM imagenes WHERE ID_ORDEN IN (${marcas}) GROUP BY ID_ORDEN`,
+        lote,
+      );
+    }
+    for (const f of filas)
+      mapa.set(Number(f.idOrden), {
+        total: Number(f.total),
+        enInforme: Number(f.enInforme ?? 0),
+      });
+  }
+  return mapa;
 }

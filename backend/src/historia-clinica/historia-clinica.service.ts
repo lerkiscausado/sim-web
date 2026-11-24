@@ -483,6 +483,8 @@ export class HistoriaClinicaService {
 
   async addDiagnostico(dto: AddHistoriaDiagnosticoDto, idUsuario: number) {
     await this.asegurarEditable(dto.idDetalleOrden, idUsuario, 'Agregar diagnostico');
+    const [dx] = await this.dataSource.query('SELECT 1 FROM diagnosticos WHERE CODIGO_DIAGNOSTICO = ? LIMIT 1', [dto.idDiagnostico]);
+    if (!dx) throw new BadRequestException(`El código CIE-10 ${dto.idDiagnostico} no existe en el catálogo de diagnósticos.`);
     const fila = this.diagnosticosRepo.create(dto as Partial<HistoriaDiagnosticos>);
     return this.diagnosticosRepo.save(fila);
   }

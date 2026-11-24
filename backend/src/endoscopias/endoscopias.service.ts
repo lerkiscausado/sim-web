@@ -248,6 +248,14 @@ export class EndoscopiasService {
     ) as typeof recibidos;
     // GuardarEndoscopia del escritorio usa la misma fecha para estudio y salida.
     if (!campos.fechaSalida) campos.fechaSalida = campos.fechaEstudio;
+    // El CIE-10 debe existir en el catálogo (la pantalla lo elige de una lista; esto protege la API
+    // y evita que el PDF y el RDA salgan con un código sin descripción).
+    const codigo = campos.codigoDiagnostico?.trim();
+    if (codigo) {
+      const [dx] = await this.dataSource.query('SELECT 1 FROM diagnosticos WHERE CODIGO_DIAGNOSTICO = ? LIMIT 1', [codigo]);
+      if (!dx) throw new BadRequestException(`El código CIE-10 ${codigo} no existe en el catálogo de diagnósticos.`);
+      campos.codigoDiagnostico = codigo;
+    }
     let endoscopia = await this.repo.findOne({ where: { idDetalleOrden } });
     if (endoscopia?.firmada) {
       await this.registrar('INTENTO_BLOQUEADO', endoscopia.idOrden, endoscopia.id, idEmpleado, 'Guardar estudio');

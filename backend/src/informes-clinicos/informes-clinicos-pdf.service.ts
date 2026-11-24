@@ -245,7 +245,7 @@ export class InformesClinicosPdfService {
     if (pest.elcb && e.CAMPO5 && e.CAMPO5.trim() !== '.') secciones.push(['ELCB', escapar(e.CAMPO5)]);
     secciones.push([
       'DIAGNÓSTICO',
-      (e.DIAGNOSTICO ?? '') + (e.CODIGO_DIAGNOSTICO ? `<p><b>CIE-10:</b> ${escapar(`${e.CODIGO_DIAGNOSTICO} - ${e.nombreDiagnostico ?? ''}`)}</p>` : ''),
+      (e.DIAGNOSTICO ?? '') + (e.CODIGO_DIAGNOSTICO ? `<p><b>CIE-10:</b> ${escapar([e.CODIGO_DIAGNOSTICO, e.nombreDiagnostico].filter(Boolean).join(' - '))}</p>` : ''),
     ]);
     secciones.push([
       'TOMA DE BIOPSIA',
@@ -365,7 +365,14 @@ export class InformesClinicosPdfService {
       const x = MARGEN + 8 + col * (ancho / 3);
       const y = yIni + 6 + fila * 18;
       doc.fillColor('#666').font(FUENTES.calibri).fontSize(7.5).text(k.toUpperCase(), x, y, { width: ancho / 3 - 12, lineBreak: false });
-      doc.fillColor('black').font(FUENTES.calibriBold).fontSize(9).text(v || '—', x, y + 8, { width: ancho / 3 - 12, lineBreak: false, ellipsis: true });
+      // Una sola línea: si el valor (p. ej. un nombre largo) no cabe, se reduce la letra hasta 7 pt
+      // y, si aun así no cabe, se corta con "…". Antes pasaba a una segunda línea y tapaba la fila de abajo.
+      const anchoCelda = ancho / 3 - 12;
+      const valor = v || '—';
+      doc.font(FUENTES.calibriBold);
+      let tam = 9;
+      while (tam > 7 && doc.fontSize(tam).widthOfString(valor) > anchoCelda) tam -= 0.5;
+      doc.fillColor('black').fontSize(tam).text(valor, x, y + 8, { width: anchoCelda, height: tam + 2, lineBreak: false, ellipsis: true });
     });
     doc.y = yIni + 54;
 

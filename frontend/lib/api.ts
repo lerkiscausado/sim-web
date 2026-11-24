@@ -40,7 +40,10 @@ export async function apiFetch<T>(
     }
 
     if (res.status === 204) return undefined as T;
-    return res.json() as Promise<T>;
+    // NestJS responde 200 con cuerpo vacío cuando el handler devuelve null (p. ej. CUPS sin tarifa pactada).
+    const texto = await res.text();
+    if (!texto) return null as T;
+    return JSON.parse(texto) as T;
 }
 
 export const api = {
@@ -108,5 +111,8 @@ export async function apiFetchMultipart<T>(
     }
 
     if (res.status === 204) return undefined as T;
-    return res.json() as Promise<T>;
+    // NestJS responde 200 con cuerpo vacío cuando el handler devuelve null (p. ej. CUPS sin tarifa pactada).
+    const texto = await res.text();
+    if (!texto) return null as T;
+    return JSON.parse(texto) as T;
 }

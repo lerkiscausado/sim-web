@@ -433,7 +433,8 @@ export class InformesClinicosPdfService {
       const anchoFoto = (ancho - sep * 2) / 3;
       const altoFoto = anchoFoto * 0.75;
       const altoTexto = 22;
-      if (doc.y + 30 + altoFoto > fondoPagina()) doc.addPage();
+      // El título no puede quedar solo al final de una página: debe caber junto con la primera fila.
+      if (doc.y + 30 + altoFoto + altoTexto > fondoPagina()) doc.addPage();
       doc.fillColor(AZUL).font(FUENTES.calibriBold).fontSize(9.5).text('IMÁGENES DEL PROCEDIMIENTO', MARGEN, doc.y);
       doc.moveTo(MARGEN, doc.y + 1).lineTo(MARGEN + ancho, doc.y + 1).lineWidth(0.5).strokeColor('#B8C4D6').stroke();
       doc.y += 6;

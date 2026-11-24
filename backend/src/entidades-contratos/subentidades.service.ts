@@ -15,20 +15,25 @@ export class SubentidadesService {
     private readonly contratosRepo: Repository<Contratos>,
   ) {}
 
-  /** Activas de un contrato (para el combo de la orden). */
+  /**
+   * Vigentes de un contrato (para el combo de la orden). Misma regla que el escritorio
+   * (DSudentidades.ListarComboActivas: estado <> 'I'): en la base de GASTROLAP la mayoría
+   * de subentidades, como "NO APLICA", tienen estado 'E' y siguen en uso.
+   */
   findByContrato(idContrato: number) {
-    return this.repo.find({
-      where: { idContrato, estado: EstadoActivoInactivoEliminado.ACTIVO },
-      order: { nombre: 'ASC' },
-    });
+    return this.repo
+      .createQueryBuilder('s')
+      .where('s.idContrato = :idContrato', { idContrato })
+      .andWhere('s.estado <> :i', { i: EstadoActivoInactivoEliminado.INACTIVO })
+      .orderBy('s.nombre', 'ASC')
+      .getMany();
   }
 
-  /** Todas (activas e inactivas, sin eliminadas) para administrarlas. */
+  /** Todas para administrarlas ('E' se trata como vigente, igual que en el escritorio). */
   findTodasDeContrato(idContrato: number) {
     return this.repo
       .createQueryBuilder('s')
       .where('s.idContrato = :idContrato', { idContrato })
-      .andWhere('s.estado <> :e', { e: EstadoActivoInactivoEliminado.ELIMINADO })
       .orderBy('s.nombre', 'ASC')
       .getMany();
   }
@@ -44,8 +49,7 @@ export class SubentidadesService {
     const qb = this.repo
       .createQueryBuilder('s')
       .where('s.idContrato = :idContrato', { idContrato })
-      .andWhere('UPPER(TRIM(s.nombre)) = :nombre', { nombre })
-      .andWhere('s.estado <> :e', { e: EstadoActivoInactivoEliminado.ELIMINADO });
+      .andWhere('UPPER(TRIM(s.nombre)) = :nombre', { nombre });
     if (excluirId) qb.andWhere('s.id <> :id', { id: excluirId });
     if (await qb.getCount()) throw new ConflictException(`Ya existe la subentidad "${nombre}" en este contrato`);
   }

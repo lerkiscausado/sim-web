@@ -6,6 +6,7 @@ import { PDFDocument, pdfABuffer } from '../reportes/pdf-utils';
 import { EspecialistaRda, Json, PacienteRda, PrestadorRda, vacio } from './rda-comun';
 import { ConfigRda, cargarConfigRda, motivoBloqueoAmbiente } from './rda-config';
 import { RdaTokenService } from './rda-token.service';
+import { postExacto } from './rda-http';
 import { construirBundlePaciente } from './rda-paciente.builder';
 import { construirBundleConsultaExterna, displayOficialCie10 } from './rda-consulta.builder';
 import { explicarResultado, nombreDocumento } from './rda-explicacion';
@@ -180,13 +181,7 @@ export class RdaService {
       'Content-Type': 'application/json; charset=utf-8',
     };
     if (c.subscriptionKey) headers['Ocp-Apim-Subscription-Key'] = c.subscriptionKey;
-    const resp = await fetch(`${c.urlBaseApi}${ruta}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(cuerpo),
-      signal: AbortSignal.timeout(90000),
-    });
-    return { ok: resp.ok, status: resp.status, cuerpo: await resp.text() };
+    return postExacto(`${c.urlBaseApi}${ruta}`, headers, JSON.stringify(cuerpo), 90000);
   }
 
   // ───────────────────────────── Datos ─────────────────────────────

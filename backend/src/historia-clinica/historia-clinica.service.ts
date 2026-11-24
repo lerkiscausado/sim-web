@@ -158,12 +158,12 @@ export class HistoriaClinicaService {
     const filas = await qb.orderBy('o.FECHA_INGRESO', 'ASC').getRawMany();
 
     return filas.map((f) => ({
-      idDetalleOrden: f.idDetalleOrden,
-      idOrden: f.idOrden,
+      idDetalleOrden: Number(f.idDetalleOrden),
+      idOrden: Number(f.idOrden),
       consecutivo: f.consecutivo,
       numeroOrden: f.numeroOrden,
       fechaIngreso: f.fechaIngreso,
-      idUsuario: f.idUsuario,
+      idUsuario: Number(f.idUsuario),
       estudio: f.estudio,
       paciente: {
         id: f.pacienteId,
@@ -222,13 +222,13 @@ export class HistoriaClinicaService {
       params,
     );
     return filas.map((f: any) => ({
-      idHistoria: f.idHistoria,
-      idDetalleOrden: f.idDetalleOrden,
-      idOrden: f.idOrden,
+      idHistoria: Number(f.idHistoria),
+      idDetalleOrden: Number(f.idDetalleOrden),
+      idOrden: Number(f.idOrden),
       consecutivo: f.consecutivo,
       numeroOrden: f.numeroOrden,
       fechaIngreso: f.fechaIngreso,
-      idUsuario: f.idUsuario,
+      idUsuario: Number(f.idUsuario),
       estudio: f.estudio,
       fechaFirma: f.fechaFirma,
       adendas: Number(f.adendas),

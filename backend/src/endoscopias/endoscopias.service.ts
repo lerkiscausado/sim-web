@@ -114,12 +114,12 @@ export class EndoscopiasService {
     const filas = await qb.orderBy('o.FECHA_INGRESO', 'ASC').getRawMany();
 
     return filas.map((f) => ({
-      idDetalleOrden: f.idDetalleOrden,
-      idOrden: f.idOrden,
+      idDetalleOrden: Number(f.idDetalleOrden),
+      idOrden: Number(f.idOrden),
       consecutivo: f.consecutivo,
       numeroOrden: f.numeroOrden,
       fechaIngreso: f.fechaIngreso,
-      idUsuario: f.idUsuario,
+      idUsuario: Number(f.idUsuario),
       idTipoEstudio: Number(f.idTipoEstudio),
       estudio: f.estudio,
       nombreCups: f.nombreCups,
@@ -196,13 +196,13 @@ export class EndoscopiasService {
       params,
     );
     return filas.map((f: any) => ({
-      idEndoscopia: f.idEndoscopia,
-      idDetalleOrden: f.idDetalleOrden,
-      idOrden: f.idOrden,
+      idEndoscopia: Number(f.idEndoscopia),
+      idDetalleOrden: Number(f.idDetalleOrden),
+      idOrden: Number(f.idOrden),
       consecutivo: f.consecutivo,
       numeroOrden: f.numeroOrden,
       fechaIngreso: f.fechaIngreso,
-      idUsuario: f.idUsuario,
+      idUsuario: Number(f.idUsuario),
       idTipoEstudio: Number(f.idTipoEstudio),
       estudio: f.estudio,
       nombreCups: f.nombreCups,

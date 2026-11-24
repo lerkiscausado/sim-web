@@ -29,6 +29,7 @@ import { useFeedback } from "@/components/ui/feedback";
 import { Buscador } from "@/components/ui/buscador";
 import { usePaginacionLocal } from "@/lib/useTabla";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { FotosProcedimiento } from "./FotosProcedimiento";
 
 function FORM_INICIAL(): EndoscopiaData {
     return {
@@ -580,6 +581,8 @@ export default function EndoscopiasPage() {
                             </div>
                         </div>
                         </fieldset>
+
+                        <FotosProcedimiento key={ordenActiva.idDetalleOrden} idDetalleOrden={Number(ordenActiva.idDetalleOrden)} soloLectura={soloLectura} />
 
                         <div className="rounded-lg border p-5" style={{ background: "var(--surface-raised)", borderColor: "var(--border-default)" }}>
 

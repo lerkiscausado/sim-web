@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { leerArchivoImagen } from '../endoscopias/imagenes-archivo';
 import {
   PDFDocument,
   registrarFuentes,
@@ -35,6 +36,13 @@ function fechaHoraTexto(v: Date | string | null | undefined) {
   if (Number.isNaN(d.getTime())) return String(v);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+const MAX_FOTOS_INFORME = 9;
+
+interface FotoInforme {
+  buffer: Buffer;
+  texto: string;
 }
 
 interface DatosComunes {
@@ -252,12 +260,42 @@ export class InformesClinicosPdfService {
       e.TOMA_BIOPSIA === 'SI' ? `<b>SÍ.</b> ${escapar(e.BIOPSIA ?? '')}` : 'No se tomó biopsia.',
     ]);
 
-    const buffer = await this.dibujar(comunes, secciones);
+    const fotos = await this.fotosInforme(idDetalleOrden);
+    const buffer = await this.dibujar(comunes, secciones, fotos);
     const p = comunes.paciente;
     return {
       buffer,
       nombreArchivo: nombreArchivoSeguro(`${e.estudio ?? 'Endoscopia'} ${comunes.numero} - ${p.PRIMER_NOMBRE ?? ''} ${p.PRIMER_APELLIDO ?? ''}`) + '.pdf',
     };
+  }
+
+  /**
+   * Fotos seleccionadas para el informe del procedimiento (ESTADO='A', máx. 9, en el orden
+   * elegido), como imgendoscopia.rpt del escritorio. Las que no tienen archivo en el servidor
+   * (históricas que siguen en el equipo de captura) se omiten.
+   */
+  private async fotosInforme(idDetalleOrden: number): Promise<FotoInforme[]> {
+    let filas: { RUTA: string; TEXTO: string | null }[];
+    try {
+      filas = await this.dataSource.query(
+        `SELECT RUTA, TEXTO FROM imagenes
+         WHERE ID_DETALLE_ORDEN = ? AND ESTADO = 'A' AND eliminada = 0
+         ORDER BY COALESCE(orden_informe, 99), ID LIMIT ${MAX_FOTOS_INFORME}`,
+        [idDetalleOrden],
+      );
+    } catch {
+      // Base sin la migración 009: la regla del escritorio, sin orden ni borrado lógico.
+      filas = await this.consultaSegura(
+        `SELECT RUTA, TEXTO FROM imagenes WHERE ID_DETALLE_ORDEN = ? AND ESTADO = 'A' ORDER BY ID LIMIT ${MAX_FOTOS_INFORME}`,
+        [idDetalleOrden],
+      );
+    }
+    const fotos: FotoInforme[] = [];
+    for (const f of filas) {
+      const buffer = await leerArchivoImagen(f.RUTA);
+      if (buffer) fotos.push({ buffer, texto: (f.TEXTO ?? '').trim() });
+    }
+    return fotos;
   }
 
   // ───────────────────────────── Comunes ─────────────────────────────
@@ -305,7 +343,7 @@ export class InformesClinicosPdfService {
     };
   }
 
-  private async dibujar(d: DatosComunes, secciones: [string, string][]): Promise<Buffer> {
+  private async dibujar(d: DatosComunes, secciones: [string, string][], fotos: FotoInforme[] = []): Promise<Buffer> {
     const empresa = await empresaPrestador(this.dataSource);
     const doc = new PDFDocument({
       size: 'LETTER',
@@ -386,6 +424,40 @@ export class InformesClinicosPdfService {
       doc.fillColor('black');
       renderHtml(doc, html, MARGEN, ancho, { familia: 'arial', tamano: 9.25 });
       doc.y += 8;
+    }
+
+    // ── Fotos del procedimiento (cuadrícula de 3 columnas) ──
+    if (fotos.length) {
+      const fondoPagina = () => doc.page.height - doc.page.margins.bottom;
+      const sep = 8;
+      const anchoFoto = (ancho - sep * 2) / 3;
+      const altoFoto = anchoFoto * 0.75;
+      const altoTexto = 22;
+      if (doc.y + 30 + altoFoto > fondoPagina()) doc.addPage();
+      doc.fillColor(AZUL).font(FUENTES.calibriBold).fontSize(9.5).text('IMÁGENES DEL PROCEDIMIENTO', MARGEN, doc.y);
+      doc.moveTo(MARGEN, doc.y + 1).lineTo(MARGEN + ancho, doc.y + 1).lineWidth(0.5).strokeColor('#B8C4D6').stroke();
+      doc.y += 6;
+      for (let i = 0; i < fotos.length; i += 3) {
+        if (doc.y + altoFoto + altoTexto > fondoPagina()) doc.addPage();
+        const yFila = doc.y;
+        fotos.slice(i, i + 3).forEach((f, j) => {
+          const x = MARGEN + j * (anchoFoto + sep);
+          doc.rect(x, yFila, anchoFoto, altoFoto).fill('#111');
+          try {
+            doc.image(f.buffer, x, yFila, { fit: [anchoFoto, altoFoto], align: 'center', valign: 'center' });
+          } catch {
+            doc.fillColor('#ccc').font(FUENTES.calibri).fontSize(8).text('Imagen no válida', x, yFila + altoFoto / 2 - 4, { width: anchoFoto, align: 'center' });
+          }
+          doc.rect(x, yFila, anchoFoto, altoFoto).lineWidth(0.5).strokeColor('#B8C4D6').stroke();
+          doc
+            .fillColor('#333')
+            .font(FUENTES.calibri)
+            .fontSize(8)
+            .text(`${i + j + 1}. ${f.texto || ''}`.trim(), x, yFila + altoFoto + 3, { width: anchoFoto, height: altoTexto - 4, ellipsis: true });
+        });
+        doc.y = yFila + altoFoto + altoTexto;
+      }
+      doc.y += 4;
     }
 
     // ── Firma ──

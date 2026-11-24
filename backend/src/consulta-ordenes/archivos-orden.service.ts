@@ -73,7 +73,8 @@ export class ArchivosOrdenService {
   }
 
   private async leerArchivo(carpeta: string, ruta: string) {
-    const nombre = path.basename(ruta); // evita rutas relativas maliciosas
+    // win32.basename corta tanto "\\" como "/": sirve para rutas del escritorio (c:\\estudios\\...) y evita rutas relativas.
+    const nombre = path.win32.basename((ruta ?? '').trim());
     try {
       return await fs.readFile(carpetaAlmacenamiento(carpeta, nombre));
     } catch {
@@ -139,7 +140,7 @@ export class ArchivosOrdenService {
 
   async listarImagenes(idOrden: number) {
     return this.imagenesRepository.find({
-      where: { idOrden, estado: EstadoActivoInactivo.ACTIVO },
+      where: { idOrden, estado: EstadoActivoInactivo.ACTIVO, eliminada: false },
       order: { id: 'ASC' },
     });
   }
@@ -205,9 +206,10 @@ export class ArchivosOrdenService {
   async eliminarImagen(id: number) {
     const img = await this.imagenesRepository.findOne({ where: { id } });
     if (!img) throw new NotFoundException('Imagen no encontrada');
+    // Borrado lógico (migración 009): ESTADO='I' significa "capturada, no va en el informe".
     await this.imagenesRepository.update(
       { id },
-      { estado: EstadoActivoInactivo.INACTIVO },
+      { estado: EstadoActivoInactivo.INACTIVO, eliminada: true, ordenInforme: null },
     );
     return { id };
   }

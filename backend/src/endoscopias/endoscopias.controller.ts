@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { InformesClinicosPdfService, enviarPdf } from '../informes-clinicos/informes-clinicos-pdf.service';
@@ -8,6 +9,9 @@ import { RequirePermission } from '../auth/decorators/require-permission.decorat
 import { EndoscopiasService } from './endoscopias.service';
 import { UpsertEndoscopiaDto } from './dto/upsert-endoscopia.dto';
 import { AddAdendaDto } from '../historia-clinica/dto/add-adenda.dto';
+import { ImagenesProcedimientoService } from './imagenes-procedimiento.service';
+import type { ArchivoSubido } from '../consulta-ordenes/archivos-orden.service';
+import { ActualizarImagenDto, OrdenarImagenesDto } from './dto/imagenes-procedimiento.dto';
 
 @Controller('atenciones/endoscopias')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -16,7 +20,48 @@ export class EndoscopiasController {
   constructor(
     private readonly service: EndoscopiasService,
     private readonly pdf: InformesClinicosPdfService,
+    private readonly imagenes: ImagenesProcedimientoService,
   ) {}
+
+  // ───────── Fotos del procedimiento (solo reportes de procedimientos) ─────────
+
+  @Get('detalle-orden/:idDetalleOrden/imagenes')
+  listarImagenes(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number) {
+    return this.imagenes.listar(idDetalleOrden);
+  }
+
+  /** Una foto tomada del video del endoscopio (campo multipart "imagen"). */
+  @Post('detalle-orden/:idDetalleOrden/imagenes')
+  @UseInterceptors(FileInterceptor('imagen', { limits: { fileSize: 9 * 1024 * 1024 } }))
+  capturarImagen(
+    @Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number,
+    @UploadedFile() archivo?: ArchivoSubido,
+  ) {
+    return this.imagenes.capturar(idDetalleOrden, archivo);
+  }
+
+  @Put('detalle-orden/:idDetalleOrden/imagenes/orden')
+  ordenarImagenes(@Param('idDetalleOrden', ParseIntPipe) idDetalleOrden: number, @Body() dto: OrdenarImagenesDto) {
+    return this.imagenes.ordenar(idDetalleOrden, dto.ids);
+  }
+
+  @Get('imagenes/:id/archivo')
+  async archivoImagen(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const { buffer, mime } = await this.imagenes.archivo(id);
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  }
+
+  @Patch('imagenes/:id')
+  actualizarImagen(@Param('id', ParseIntPipe) id: number, @Body() dto: ActualizarImagenDto) {
+    return this.imagenes.actualizar(id, dto);
+  }
+
+  @Delete('imagenes/:id')
+  eliminarImagen(@Param('id', ParseIntPipe) id: number) {
+    return this.imagenes.eliminar(id);
+  }
 
   /** Informe en PDF (borrador con marca de agua si aún no está firmado). */
   @Get('detalle-orden/:idDetalleOrden/pdf')

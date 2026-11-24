@@ -11,7 +11,8 @@ Para una base que solo va a usar sim-web (el ejecutable de escritorio ya no se c
 | 1 | `006_gastrolap_base_web.sql`: createdAt/updatedAt, SET→ENUM, `users.PASS` y `contratos` para bcrypt | SQLyog: abrir el archivo, `USE \`<base>\`;` en la primera línea y ejecutar todo (`Ctrl+F9`) | Sí |
 | 2 | `007_endoscopias_resolucion3100.sql`: firma, trazabilidad y adendas de endoscopias; marca como firmadas las que ya estaban ATENDIDO | SQLyog, igual que la 006 | Sí |
 | 3 | `008_rda_envios_bundle.sql`: `rda_envios.id_detalle_orden` y `rda_envios.bundle` (documento enviado, sin el PDF) | SQLyog, igual que la 006 | Sí |
-| 4 | `rehash-legacy-passwords.ts`: cifra con bcrypt las contraseñas que el escritorio guardó en texto plano. Sin esto nadie puede iniciar sesión en la web | En `backend`, con `.env` apuntando a la base: `npx ts-node migrations/rehash-legacy-passwords.ts` | Sí (salta las que ya están cifradas) |
+| 4 | `009_imagenes_informe_procedimiento.sql`: `imagenes.orden_informe` y `imagenes.eliminada` para las fotos de los reportes de procedimientos | SQLyog, igual que la 006 | Sí |
+| 5 | `rehash-legacy-passwords.ts`: cifra con bcrypt las contraseñas que el escritorio guardó en texto plano. Sin esto nadie puede iniciar sesión en la web | En `backend`, con `.env` apuntando a la base: `npx ts-node migrations/rehash-legacy-passwords.ts` | Sí (salta las que ya están cifradas) |
 
 La tabla `sim_web_migraciones` registra los scripts SQL aplicados.
 
